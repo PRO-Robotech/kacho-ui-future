@@ -13,16 +13,13 @@ on:
   pull_request:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
-env:
-  DOCKERHUB_NAMESPACE: ${{ secrets.CUSTOM_DOCKERHUB_USERNAME || github.repository_owner }}
-
 jobs:
   build:
     name: Build ${{ matrix.project }} image
     runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.CUSTOM_DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.CUSTOM_DOCKERHUB_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
@@ -45,24 +42,93 @@ jobs:
       - name: Set image name
         id: image
         run: |
-          echo "name=${DOCKERHUB_NAMESPACE}/kacho-ui-future-${{ matrix.image_suffix }}-${{ steps.short-sha.outputs.sha }}" >> "$GITHUB_OUTPUT"
+          branch="$(echo '${{ github.head_ref || github.ref_name }}' | tr '/' '-')"
+          namespace="${DOCKERHUB_USERNAME:-${GITHUB_REPOSITORY_OWNER}}"
+          echo "tag=${branch}-${{ steps.short-sha.outputs.sha }}" >> "$GITHUB_OUTPUT"
+          echo "name=${namespace}/kacho-ui-future-${{ matrix.image_suffix }}:${branch}-${{ steps.short-sha.outputs.sha }}" >> "$GITHUB_OUTPUT"
+          if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
+        if: steps.image.outputs.push == 'true'
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.CUSTOM_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.CUSTOM_DOCKERHUB_TOKEN }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./${{ matrix.project }}/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ steps.image.outputs.push == 'true' }}
           tags: ${{ steps.image.outputs.name }}
           cache-from: type=gha,scope=${{ matrix.project }}
           cache-to: type=gha,mode=max,scope=${{ matrix.project }}
+
+  chart:
+    name: Build Helm chart
+    runs-on: ubuntu-latest
+    needs: build
+    if: always() && (needs.build.result == 'success' || github.event_name == 'pull_request')
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.CUSTOM_DOCKERHUB_USERNAME }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get short commit hash
+        uses: benjlevesque/short-sha@v3.0
+        id: short-sha
+        with:
+          length: 8
+
+      - name: Set release metadata
+        id: meta
+        run: |
+          branch="$(echo '${{ github.head_ref || github.ref_name }}' | tr '/' '-')"
+          tag="${branch}-${{ steps.short-sha.outputs.sha }}"
+          namespace="${DOCKERHUB_USERNAME:-${GITHUB_REPOSITORY_OWNER}}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "host_image=${namespace}/kacho-ui-future-host:${tag}" >> "$GITHUB_OUTPUT"
+          echo "dashboard_image=${namespace}/kacho-ui-future-dashboard:${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint chart
+        run: |
+          helm lint ./deploy \
+            --set image="${{ steps.meta.outputs.host_image }}" \
+            --set dashboard.image="${{ steps.meta.outputs.dashboard_image }}"
+
+      - name: Render chart
+        run: |
+          mkdir -p dist
+          helm template ui ./deploy \
+            --namespace kacho \
+            --set image="${{ steps.meta.outputs.host_image }}" \
+            --set dashboard.image="${{ steps.meta.outputs.dashboard_image }}" \
+            > dist/kacho-ui-future.yaml
+
+      - name: Package chart
+        run: |
+          mkdir -p dist/helm
+          helm package ./deploy \
+            --destination dist/helm \
+            --app-version "${{ steps.meta.outputs.tag }}"
+
+      - name: Upload chart artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kacho-ui-future-chart-${{ steps.meta.outputs.tag }}
+          path: |
+            dist/kacho-ui-future.yaml
+            dist/helm/*.tgz
