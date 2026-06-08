@@ -1,0 +1,10 @@
+{
+  "name": "kacho-ui-future",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "powershell -ExecutionPolicy Bypass -File ./dev-federation.ps1",
+    "typecheck": "npm run typecheck --prefix host && npm run typecheck --prefix dashboard",
+    "test": "npm test --prefix host && npm test --prefix dashboard"
+  }
+}
