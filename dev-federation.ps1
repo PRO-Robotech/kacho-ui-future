@@ -3,7 +3,9 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $HostDir = Join-Path $Root "host"
 $DashboardDir = Join-Path $Root "dashboard"
-$RemoteEntry = Join-Path $DashboardDir "dist\assets\remoteEntry.js"
+$VpcDir = Join-Path $Root "vpc"
+$DashboardRemoteEntry = Join-Path $DashboardDir "dist\assets\remoteEntry.js"
+$VpcRemoteEntry = Join-Path $VpcDir "dist\assets\remoteEntry.js"
 
 $jobs = @()
 
@@ -60,8 +62,10 @@ trap {
 }
 
 Stop-WorkspaceListener -Port 4175
+Stop-WorkspaceListener -Port 4176
 Stop-WorkspaceListener -Port 5174
 Stop-WorkspaceListener -Port 5175
+Stop-WorkspaceListener -Port 5176
 
 Write-Host "Building dashboard remote once..."
 Push-Location $DashboardDir
@@ -72,14 +76,36 @@ finally {
   Pop-Location
 }
 
+Write-Host "Building VPC remote once..."
+Push-Location $VpcDir
+try {
+  npm run build
+}
+finally {
+  Pop-Location
+}
+
 Write-Host "Starting dashboard build watcher..."
 $jobs += Start-NpmJob -Name "dashboard:watch" -WorkingDirectory $DashboardDir -Script "dev:remote:watch"
 
+Write-Host "Starting VPC build watcher..."
+$jobs += Start-NpmJob -Name "vpc:watch" -WorkingDirectory $VpcDir -Script "dev:remote:watch"
+
 Write-Host "Waiting for dashboard remote entry..."
 $deadline = (Get-Date).AddSeconds(60)
-while (-not (Test-Path $RemoteEntry)) {
+while (-not (Test-Path $DashboardRemoteEntry)) {
   if ((Get-Date) -gt $deadline) {
-    throw "Timed out waiting for $RemoteEntry"
+    throw "Timed out waiting for $DashboardRemoteEntry"
+  }
+  Receive-Job -Job $jobs | ForEach-Object { Write-Host $_ }
+  Start-Sleep -Milliseconds 500
+}
+
+Write-Host "Waiting for VPC remote entry..."
+$deadline = (Get-Date).AddSeconds(60)
+while (-not (Test-Path $VpcRemoteEntry)) {
+  if ((Get-Date) -gt $deadline) {
+    throw "Timed out waiting for $VpcRemoteEntry"
   }
   Receive-Job -Job $jobs | ForEach-Object { Write-Host $_ }
   Start-Sleep -Milliseconds 500
@@ -88,6 +114,9 @@ while (-not (Test-Path $RemoteEntry)) {
 Write-Host "Starting dashboard preview on http://localhost:4175 ..."
 $jobs += Start-NpmJob -Name "dashboard:preview" -WorkingDirectory $DashboardDir -Script "preview"
 
+Write-Host "Starting VPC preview on http://localhost:4176 ..."
+$jobs += Start-NpmJob -Name "vpc:preview" -WorkingDirectory $VpcDir -Script "preview"
+
 Write-Host "Starting host dev on http://localhost:5174 ..."
 $jobs += Start-NpmJob -Name "host:dev" -WorkingDirectory $HostDir -Script "dev"
 
@@ -95,6 +124,7 @@ Write-Host ""
 Write-Host "Federated dev is running:"
 Write-Host "  host             http://localhost:5174"
 Write-Host "  dashboard remote http://localhost:4175/assets/remoteEntry.js"
+Write-Host "  VPC remote       http://localhost:4176/assets/remoteEntry.js"
 Write-Host ""
 Write-Host "Press Ctrl+C to stop all jobs."
 

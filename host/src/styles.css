@@ -13,6 +13,20 @@
   --sidebar-active-bg: rgb(61 141 245 / 0.12);
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --kc-hover-fill: rgb(127 127 127 / 0.08);
+  --sidebar-active-bg: rgb(61 141 245 / 0.12);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --kc-hover-fill: rgb(255 255 255 / 0.08);
+  --sidebar-active-bg: rgb(61 141 245 / 0.18);
+}
+
 * {
   box-sizing: border-box;
 }

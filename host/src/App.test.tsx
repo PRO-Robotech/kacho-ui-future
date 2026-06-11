@@ -32,6 +32,15 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: "API reachability" })).not.toBeInTheDocument();
   });
 
+  it("hydrates the theme from localStorage", async () => {
+    window.localStorage.setItem("kacho-theme", "dark");
+
+    render(<App />);
+
+    expect(await screen.findByRole("button", { name: "Включить светлую тему" })).toBeInTheDocument();
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
   it("hydrates project dashboard context from the route", async () => {
     window.history.pushState(null, "", "/projects/project-1/dashboard");
 
@@ -40,12 +49,13 @@ describe("App", () => {
     expect((await screen.findAllByText("project-1")).length).toBeGreaterThan(0);
   });
 
-  it("registers project module routes in the host", async () => {
+  it("routes VPC module paths to the VPC remote", async () => {
     window.history.pushState(null, "", "/projects/project-1/vpc/networks");
 
     render(<App />);
 
-    expect(await screen.findByTestId("module-placeholder-page")).toBeInTheDocument();
+    expect(await screen.findByTestId("vpc-remote")).toBeInTheDocument();
+    expect(screen.queryByTestId("module-placeholder-page")).not.toBeInTheDocument();
     expect(screen.getByText("Virtual Private Cloud")).toBeInTheDocument();
   });
 });

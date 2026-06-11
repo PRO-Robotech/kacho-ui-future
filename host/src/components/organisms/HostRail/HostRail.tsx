@@ -93,10 +93,16 @@ export const HostRail: FC<{
   useEffect(() => {
     let cancelled = false;
 
-    void import("dashboard/navigation")
-      .then((remote) => {
+    void Promise.allSettled([import("dashboard/navigation"), import("vpc/navigation")])
+      .then((results) => {
         if (!cancelled) {
-          setSections(normalizeRemoteNavigation(remote));
+          setSections(
+            dedupeSections(
+              results.flatMap((result) =>
+                result.status === "fulfilled" ? normalizeRemoteNavigation(result.value) : [],
+              ),
+            ),
+          );
         }
       })
       .catch(() => {
@@ -188,7 +194,7 @@ function toShellItem(item: RemoteNavItem): ShellNavItem {
 function normalizeRemoteNavigation(remote: unknown): RemoteNavSection[] {
   const maybeModule = remote as {
     DASHBOARD_NAVIGATION?: unknown;
-    default?: { DASHBOARD_NAVIGATION?: unknown } | unknown;
+    default?: unknown;
   };
   const candidate =
     maybeModule.DASHBOARD_NAVIGATION ??
@@ -202,18 +208,18 @@ function normalizeRemoteNavigation(remote: unknown): RemoteNavSection[] {
   return candidate
     .filter(isRecord)
     .map((section) => ({
-      key: String(section.key ?? ""),
-      segment: String(section.segment ?? ""),
+      key: stringField(section.key),
+      segment: stringField(section.segment),
       icon: isIconName(section.icon) ? section.icon : "layers",
-      label: String(section.label ?? section.key ?? ""),
-      landingPath: String(section.landingPath ?? ""),
+      label: stringField(section.label, stringField(section.key)),
+      landingPath: stringField(section.landingPath),
       requiresProject: Boolean(section.requiresProject),
       items: Array.isArray(section.items)
         ? section.items.filter(isRecord).map((item) => ({
-            key: String(item.key ?? ""),
+            key: stringField(item.key),
             icon: isIconName(item.icon) ? item.icon : "layers",
-            label: String(item.label ?? item.key ?? ""),
-            path: String(item.path ?? ""),
+            label: stringField(item.label, stringField(item.key)),
+            path: stringField(item.path),
             requiresProject: Boolean(item.requiresProject),
           }))
         : [],
@@ -221,8 +227,20 @@ function normalizeRemoteNavigation(remote: unknown): RemoteNavSection[] {
     .filter((section) => section.key && section.segment && section.label && section.landingPath);
 }
 
+function dedupeSections(sections: RemoteNavSection[]): RemoteNavSection[] {
+  const byKey = new Map<string, RemoteNavSection>();
+  for (const section of sections) {
+    byKey.set(section.key, section);
+  }
+  return [...byKey.values()];
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function stringField(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
 }
 
 function isIconName(value: unknown): value is RemoteIconName {

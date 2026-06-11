@@ -1,13 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Dispatch, FC, SetStateAction } from "react";
 import { ConfigProvider, theme } from "antd";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { HostShell } from "./components";
 import { ModulePlaceholderPage, ReachabilityPage } from "./pages";
-import { DashboardRemote } from "./remotes";
+import { DashboardRemote, VpcRemote } from "./remotes";
+
+const THEME_STORAGE_KEY = "kacho-theme";
+
+const readStoredTheme = (): boolean => {
+  try {
+    return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark";
+  } catch {
+    return false;
+  }
+};
 
 const App: FC = () => {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(readStoredTheme);
+
+  useEffect(() => {
+    const mode = dark ? "dark" : "light";
+    document.documentElement.dataset.theme = mode;
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, mode);
+    } catch {
+      // localStorage may be unavailable in restricted browser modes.
+    }
+  }, [dark]);
 
   return (
     <ConfigProvider
@@ -41,6 +61,7 @@ const AppRoutes: FC<{
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardRemote context={context} />} />
           <Route path="/projects/:projectId/dashboard" element={<DashboardRemote context={context} />} />
+          <Route path="/projects/:projectId/vpc/*" element={<VpcRemote context={context} />} />
           <Route path="/projects/:projectId/:moduleKey/*" element={<ModulePlaceholderPage />} />
           <Route path="/iam/:iamSection/*" element={<ModulePlaceholderPage />} />
           <Route path="/system/search" element={<ModulePlaceholderPage />} />

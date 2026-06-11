@@ -6,6 +6,10 @@
 {{- default "ui-dashboard" .Values.dashboard.name -}}
 {{- end -}}
 
+{{- define "ui.vpcName" -}}
+{{- default "ui-vpc" .Values.vpc.name -}}
+{{- end -}}
+
 {{- define "ui.hostImage" -}}
 {{- default .Values.image .Values.host.image -}}
 {{- end -}}
@@ -29,6 +33,39 @@
 
 {{- define "ui.dashboardImagePullPolicy" -}}
 {{- default (include "ui.hostImagePullPolicy" .) .Values.dashboard.imagePullPolicy -}}
+{{- end -}}
+
+{{- define "ui.vpcImage" -}}
+{{- if .Values.vpc.image -}}
+{{- .Values.vpc.image -}}
+{{- else -}}
+{{- $hostImage := include "ui.hostImage" . -}}
+{{- if contains "host" $hostImage -}}
+{{- replace "host" "vpc" $hostImage -}}
+{{- else -}}
+{{- "kacho-ui-future-vpc:dev" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.vpcImagePullPolicy" -}}
+{{- default (include "ui.hostImagePullPolicy" .) .Values.vpc.imagePullPolicy -}}
+{{- end -}}
+
+{{- define "ui.dashboardUpstream" -}}
+{{- if .Values.host.upstreams.dashboard -}}
+{{- .Values.host.upstreams.dashboard -}}
+{{- else -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "ui.dashboardName" .) .Release.Namespace .Values.dashboard.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.vpcUpstream" -}}
+{{- if .Values.host.upstreams.vpc -}}
+{{- .Values.host.upstreams.vpc -}}
+{{- else -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "ui.vpcName" .) .Release.Namespace .Values.vpc.port -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "ui.hostPort" -}}
@@ -55,6 +92,12 @@ app.kubernetes.io/component: host
 app: {{ include "ui.dashboardName" . }}
 app.kubernetes.io/name: {{ include "ui.dashboardName" . }}
 app.kubernetes.io/component: dashboard-remote
+{{- end -}}
+
+{{- define "ui.vpcSelectorLabels" -}}
+app: {{ include "ui.vpcName" . }}
+app.kubernetes.io/name: {{ include "ui.vpcName" . }}
+app.kubernetes.io/component: vpc-remote
 {{- end -}}
 
 {{- define "ui.hostResources" -}}

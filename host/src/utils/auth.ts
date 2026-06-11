@@ -17,5 +17,9 @@ function currentReturnTo(): string {
 }
 
 function isAuthRoute(pathname: string): boolean {
-  return pathname.startsWith("/login") || pathname.startsWith("/.ory/kratos/public/self-service/") || pathname.startsWith("/auth/");
+  return (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/.ory/kratos/public/self-service/") ||
+    pathname.startsWith("/auth/")
+  );
 }

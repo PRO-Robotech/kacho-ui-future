@@ -8,6 +8,8 @@ module.exports = {
     "^(\\.{1,2}/.*)\\.js$": "$1",
     "^dashboard/DashboardPage$": "<rootDir>/src/test/dashboard-remote.tsx",
     "^dashboard/navigation$": "<rootDir>/src/test/dashboard-navigation.ts",
+    "^vpc/VpcPage$": "<rootDir>/src/test/vpc-remote.tsx",
+    "^vpc/navigation$": "<rootDir>/src/test/vpc-navigation.ts",
   },
   transform: {
     "^.+\\.(ts|tsx)$": [

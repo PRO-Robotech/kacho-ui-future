@@ -37,24 +37,6 @@ export interface RemoteNavSection {
 
 export const DASHBOARD_NAVIGATION: RemoteNavSection[] = [
   {
-    key: "vpc",
-    segment: "vpc",
-    icon: "network",
-    label: "Virtual Private Cloud",
-    landingPath: "vpc/networks",
-    requiresProject: true,
-    items: [
-      { key: "vpc-networks", icon: "network", label: "Облачные сети", path: "vpc/networks", requiresProject: true },
-      { key: "vpc-subnets", icon: "git-branch", label: "Подсети", path: "vpc/subnets", requiresProject: true },
-      { key: "vpc-addresses", icon: "globe", label: "IP-адреса", path: "vpc/addresses", requiresProject: true },
-      { key: "vpc-route-tables", icon: "route", label: "Таблицы маршрутов", path: "vpc/route-tables", requiresProject: true },
-      { key: "vpc-security-groups", icon: "shield", label: "Группы безопасности", path: "vpc/security-groups", requiresProject: true },
-      { key: "vpc-network-interfaces", icon: "cable", label: "Сетевые интерфейсы", path: "vpc/network-interfaces", requiresProject: true },
-      { key: "vpc-gateways", icon: "layers", label: "Шлюзы", path: "vpc/gateways", requiresProject: true },
-      { key: "vpc-operations", icon: "activity", label: "Операции", path: "vpc/operations", requiresProject: true },
-    ],
-  },
-  {
     key: "compute",
     segment: "compute",
     icon: "cloud",
@@ -62,10 +44,22 @@ export const DASHBOARD_NAVIGATION: RemoteNavSection[] = [
     landingPath: "compute/instances",
     requiresProject: true,
     items: [
-      { key: "compute-instances", icon: "server", label: "Виртуальные машины", path: "compute/instances", requiresProject: true },
+      {
+        key: "compute-instances",
+        icon: "server",
+        label: "Виртуальные машины",
+        path: "compute/instances",
+        requiresProject: true,
+      },
       { key: "compute-disks", icon: "hard-drive", label: "Диски", path: "compute/disks", requiresProject: true },
       { key: "compute-images", icon: "folder", label: "Образы", path: "compute/images", requiresProject: true },
-      { key: "compute-snapshots", icon: "camera", label: "Снимки дисков", path: "compute/snapshots", requiresProject: true },
+      {
+        key: "compute-snapshots",
+        icon: "camera",
+        label: "Снимки дисков",
+        path: "compute/snapshots",
+        requiresProject: true,
+      },
     ],
   },
   {
@@ -76,9 +70,21 @@ export const DASHBOARD_NAVIGATION: RemoteNavSection[] = [
     landingPath: "nlb/load-balancers",
     requiresProject: true,
     items: [
-      { key: "nlb-load-balancers", icon: "network", label: "Балансировщики", path: "nlb/load-balancers", requiresProject: true },
+      {
+        key: "nlb-load-balancers",
+        icon: "network",
+        label: "Балансировщики",
+        path: "nlb/load-balancers",
+        requiresProject: true,
+      },
       { key: "nlb-listeners", icon: "cable", label: "Listeners", path: "nlb/listeners", requiresProject: true },
-      { key: "nlb-target-groups", icon: "git-branch", label: "Target Groups", path: "nlb/target-groups", requiresProject: true },
+      {
+        key: "nlb-target-groups",
+        icon: "git-branch",
+        label: "Target Groups",
+        path: "nlb/target-groups",
+        requiresProject: true,
+      },
       { key: "nlb-operations", icon: "activity", label: "Операции", path: "nlb/operations", requiresProject: true },
     ],
   },

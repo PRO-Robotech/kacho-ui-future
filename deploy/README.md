@@ -10,12 +10,15 @@ It installs:
   values.
 - `ui-dashboard` Deployment and Service: the dashboard remote consumed at
   `/dashboard/assets/remoteEntry.js`.
+- `ui-vpc` Deployment and Service: the VPC remote consumed at
+  `/vpc-remote/assets/remoteEntry.js`.
 
 Build images from this repository root:
 
 ```bash
 docker build -f host/Dockerfile -t kacho-ui-future-host:dev .
 docker build -f dashboard/Dockerfile -t kacho-ui-future-dashboard:dev .
+docker build -f vpc/Dockerfile -t kacho-ui-future-vpc:dev .
 ```
 
 Standalone install:
@@ -33,5 +36,5 @@ ui:
     host: localhost
 ```
 
-If your image names do not follow the `host` -> `dashboard` convention, set
-`ui.dashboard.image` explicitly.
+If your image names do not follow the `host` -> `dashboard` / `vpc`
+convention, set `ui.dashboard.image` and `ui.vpc.image` explicitly.

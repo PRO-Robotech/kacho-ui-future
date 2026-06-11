@@ -24,8 +24,9 @@ export default defineConfig({
       name: "host",
       remotes: {
         dashboard: process.env.KACHO_DASHBOARD_REMOTE || "http://localhost:4175/assets/remoteEntry.js",
+        vpc: process.env.KACHO_VPC_REMOTE || "http://localhost:4176/assets/remoteEntry.js",
       },
-      shared: ["antd", "lucide-react", "react", "react-dom"],
+      shared: ["antd", "lucide-react", "react", "react-dom", "react-router-dom"],
     }),
   ],
   server: {
