@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "powershell -ExecutionPolicy Bypass -File ./dev-federation.ps1",
-    "typecheck": "npm run typecheck --prefix host && npm run typecheck --prefix dashboard && npm run typecheck --prefix vpc",
-    "test": "npm test --prefix host && npm test --prefix dashboard && npm test --prefix vpc"
+    "typecheck": "npm run typecheck --prefix host && npm run typecheck --prefix dashboard && npm run typecheck --prefix vpc && npm run typecheck --prefix iam",
+    "test": "npm test --prefix host && npm test --prefix dashboard && npm test --prefix vpc && npm test --prefix iam"
   }
 }

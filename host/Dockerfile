@@ -4,8 +4,10 @@ WORKDIR /app
 
 ARG KACHO_DASHBOARD_REMOTE=/dashboard/assets/remoteEntry.js
 ARG KACHO_VPC_REMOTE=/vpc-remote/assets/remoteEntry.js
+ARG KACHO_IAM_REMOTE=/iam-remote/assets/remoteEntry.js
 ENV KACHO_DASHBOARD_REMOTE=$KACHO_DASHBOARD_REMOTE
 ENV KACHO_VPC_REMOTE=$KACHO_VPC_REMOTE
+ENV KACHO_IAM_REMOTE=$KACHO_IAM_REMOTE
 
 COPY host/package*.json ./
 RUN npm ci

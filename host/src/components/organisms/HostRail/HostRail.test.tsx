@@ -50,4 +50,38 @@ describe("HostRail", () => {
     expect(screen.getByRole("button", { name: "Подсети" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Compute Cloud" })).not.toBeInTheDocument();
   });
+
+  it("switches to IAM section navigation on IAM routes", async () => {
+    render(
+      <HostRail
+        context={{
+          account: { id: "acc-1", name: "Account" },
+          project: { id: "project-1", name: "Project", accountId: "acc-1" },
+        }}
+        currentPath="/iam/accounts"
+        showReachability={false}
+      />,
+    );
+
+    expect(await screen.findByRole("button", { name: "Аккаунты" })).toHaveAttribute("data-active", "true");
+    expect(screen.getByRole("button", { name: "Проекты" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Пользователи" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Virtual Private Cloud" })).not.toBeInTheDocument();
+  });
+
+  it("matches IAM access bindings without also matching IAM access", async () => {
+    render(
+      <HostRail
+        context={{
+          account: { id: "acc-1", name: "Account" },
+          project: { id: "project-1", name: "Project", accountId: "acc-1" },
+        }}
+        currentPath="/iam/access-bindings"
+        showReachability={false}
+      />,
+    );
+
+    expect(await screen.findByRole("button", { name: "Связки прав" })).toHaveAttribute("data-active", "true");
+    expect(screen.getByRole("button", { name: "Права доступа" })).not.toHaveAttribute("data-active", "true");
+  });
 });

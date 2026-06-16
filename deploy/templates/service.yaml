@@ -45,3 +45,19 @@ spec:
     - name: http
       port: {{ .Values.vpc.port }}
       targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ui.iamName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+    {{- include "ui.iamSelectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ui.iamSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.iam.port }}
+      targetPort: http

@@ -42,6 +42,19 @@ data:
             proxy_send_timeout 30s;
         }
 
+        location ^~ /iam-remote/ {
+            set $iam_upstream "${KACHO_UI_IAM_UPSTREAM}";
+            rewrite ^/iam-remote/(.*)$ /$1 break;
+            proxy_pass http://$iam_upstream;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 30s;
+            proxy_send_timeout 30s;
+        }
+
         location ~ ^/(vpc|compute|nlb|operations)/ {
             set $api_gw_upstream "${KACHO_UI_API_GATEWAY_UPSTREAM}";
             proxy_pass http://$api_gw_upstream;
@@ -156,6 +169,47 @@ data:
     tpl=/etc/nginx/templates/default.conf.template
     sed -i "s|\${KUBE_DNS_SERVER}|$ns|g" "$tpl"
     echo "[05-resolver] nameserver $ns from /etc/resolv.conf applied to $tpl"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ui.iamName" . }}-nginx
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+data:
+  default.conf.template: |
+    server {
+        listen {{ .Values.iam.port }};
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location = /healthz {
+            access_log off;
+            add_header Content-Type text/plain;
+            return 200 "ok\n";
+        }
+
+        location = /index.html {
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+        }
+
+        location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+            try_files $uri =404;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        gzip on;
+        gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+        gzip_min_length 1024;
+    }
 ---
 apiVersion: v1
 kind: ConfigMap

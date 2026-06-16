@@ -1,0 +1,1 @@
+export { GrantAdminModal } from "./GrantAdminModal";

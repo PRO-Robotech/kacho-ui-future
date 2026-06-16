@@ -10,6 +10,10 @@
 {{- default "ui-vpc" .Values.vpc.name -}}
 {{- end -}}
 
+{{- define "ui.iamName" -}}
+{{- default "ui-iam" .Values.iam.name -}}
+{{- end -}}
+
 {{- define "ui.hostImage" -}}
 {{- default .Values.image .Values.host.image -}}
 {{- end -}}
@@ -52,6 +56,23 @@
 {{- default (include "ui.hostImagePullPolicy" .) .Values.vpc.imagePullPolicy -}}
 {{- end -}}
 
+{{- define "ui.iamImage" -}}
+{{- if .Values.iam.image -}}
+{{- .Values.iam.image -}}
+{{- else -}}
+{{- $hostImage := include "ui.hostImage" . -}}
+{{- if contains "host" $hostImage -}}
+{{- replace "host" "iam" $hostImage -}}
+{{- else -}}
+{{- "kacho-ui-future-iam:dev" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.iamImagePullPolicy" -}}
+{{- default (include "ui.hostImagePullPolicy" .) .Values.iam.imagePullPolicy -}}
+{{- end -}}
+
 {{- define "ui.dashboardUpstream" -}}
 {{- if .Values.host.upstreams.dashboard -}}
 {{- .Values.host.upstreams.dashboard -}}
@@ -65,6 +86,14 @@
 {{- .Values.host.upstreams.vpc -}}
 {{- else -}}
 {{- printf "%s.%s.svc.cluster.local:%v" (include "ui.vpcName" .) .Release.Namespace .Values.vpc.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.iamUpstream" -}}
+{{- if .Values.host.upstreams.iam -}}
+{{- .Values.host.upstreams.iam -}}
+{{- else -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "ui.iamName" .) .Release.Namespace .Values.iam.port -}}
 {{- end -}}
 {{- end -}}
 
@@ -98,6 +127,12 @@ app.kubernetes.io/component: dashboard-remote
 app: {{ include "ui.vpcName" . }}
 app.kubernetes.io/name: {{ include "ui.vpcName" . }}
 app.kubernetes.io/component: vpc-remote
+{{- end -}}
+
+{{- define "ui.iamSelectorLabels" -}}
+app: {{ include "ui.iamName" . }}
+app.kubernetes.io/name: {{ include "ui.iamName" . }}
+app.kubernetes.io/component: iam-remote
 {{- end -}}
 
 {{- define "ui.hostResources" -}}

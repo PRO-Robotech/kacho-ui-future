@@ -93,7 +93,7 @@ export const HostRail: FC<{
   useEffect(() => {
     let cancelled = false;
 
-    void Promise.allSettled([import("dashboard/navigation"), import("vpc/navigation")])
+    void Promise.allSettled([import("dashboard/navigation"), import("vpc/navigation"), import("iam/navigation")])
       .then((results) => {
         if (!cancelled) {
           setSections(
@@ -256,7 +256,7 @@ function remotePath(projectId: string | null, path: string) {
 
 function matchesRemotePath(pathname: string, path: string) {
   if (path.startsWith("/")) {
-    return pathname.startsWith(path);
+    return pathname === path || pathname.startsWith(`${path}/`);
   }
-  return new RegExp(`^/projects/[^/]+/${path.replace(/\//g, "\\/")}`).test(pathname);
+  return new RegExp(`^/projects/[^/]+/${path.replace(/\//g, "\\/")}(?:/|$)`).test(pathname);
 }

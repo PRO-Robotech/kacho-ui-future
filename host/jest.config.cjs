@@ -10,6 +10,8 @@ module.exports = {
     "^dashboard/navigation$": "<rootDir>/src/test/dashboard-navigation.ts",
     "^vpc/VpcPage$": "<rootDir>/src/test/vpc-remote.tsx",
     "^vpc/navigation$": "<rootDir>/src/test/vpc-navigation.ts",
+    "^iam/IamPage$": "<rootDir>/src/test/iam-remote.tsx",
+    "^iam/navigation$": "<rootDir>/src/test/iam-navigation.ts",
   },
   transform: {
     "^.+\\.(ts|tsx)$": [

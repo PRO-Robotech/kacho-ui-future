@@ -58,4 +58,14 @@ describe("App", () => {
     expect(screen.queryByTestId("module-placeholder-page")).not.toBeInTheDocument();
     expect(screen.getByText("Virtual Private Cloud")).toBeInTheDocument();
   });
+
+  it("routes IAM module paths to the IAM remote", async () => {
+    window.history.pushState(null, "", "/iam/accounts");
+
+    render(<App />);
+
+    expect(await screen.findByTestId("iam-remote")).toBeInTheDocument();
+    expect(screen.queryByTestId("module-placeholder-page")).not.toBeInTheDocument();
+    expect(screen.getByText("Identity and Access Management")).toBeInTheDocument();
+  });
 });
