@@ -2,7 +2,6 @@ export { FieldLabel } from "./FieldLabel";
 export { FORM_WIDTH, FormShell } from "./FormShell";
 export { FormFieldRenderer } from "./FormField";
 export { FormFooter } from "./FormFooter";
-export { FormSection } from "./FormSection";
 export { ImmutableField } from "./ImmutableField";
 export { LabelsEditor } from "./LabelsEditor";
 export { NicSpecFields } from "./NicSpecFields";

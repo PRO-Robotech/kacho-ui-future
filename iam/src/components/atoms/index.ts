@@ -1,4 +1,3 @@
-export { KachoLogo } from "./brand/KachoLogo";
 export { ContextBadge } from "./ContextBadge";
 export { CopyableId } from "./CopyableId";
 export { CopyableName } from "./CopyableName";

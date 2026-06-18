@@ -1,7 +1,4 @@
 export * from "./auth";
-export { ContextBreadcrumb } from "./ContextBreadcrumb";
-export { DeleteButton } from "./DeleteButton";
-export { DeleteConfirmStub } from "./DeleteConfirmStub";
 export { DeleteDialog } from "./DeleteDialog";
 export { DetailOverviewActions } from "./DetailOverviewActions";
 export { DopplerButton } from "./DopplerButton";
@@ -19,7 +16,6 @@ export {
 export { IpamUtilizationBar } from "./IpamUtilizationBar";
 export { JsonEditor } from "./JsonEditor";
 export { JsonMonacoView } from "./JsonMonacoView";
-export { JsonView } from "./JsonView";
 export { MoveStubDialog } from "./MoveStubDialog";
 export { OperationBanner } from "./OperationBanner";
 export { OperationDialog } from "./OperationDialog";
@@ -35,4 +31,3 @@ export { SectionHeader } from "./SectionHeader";
 export { SubnetCidrChips } from "./SubnetCidrChips";
 export { ColumnSettings, TableSearch, useHiddenColumns } from "./TableToolbar";
 export type { ToggleCol } from "./TableToolbar";
-export { Toaster } from "./Toaster";
