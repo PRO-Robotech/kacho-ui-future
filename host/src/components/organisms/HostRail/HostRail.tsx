@@ -93,7 +93,12 @@ export const HostRail: FC<{
   useEffect(() => {
     let cancelled = false;
 
-    void Promise.allSettled([import("dashboard/navigation"), import("vpc/navigation"), import("iam/navigation")])
+    void Promise.allSettled([
+      import("dashboard/navigation"),
+      import("vpc/navigation"),
+      import("nlb/navigation"),
+      import("iam/navigation"),
+    ])
       .then((results) => {
         if (!cancelled) {
           setSections(
