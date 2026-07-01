@@ -14,7 +14,7 @@ import { Result, Spin, Alert, Button } from "antd";
 import { LogoutOutlined } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { config } from "@/lib/config";
-import { AuthLayout } from "../Login";
+import { AuthLayout } from "@/pages/auth/Login";
 
 export function LogoutPage() {
   const { logout, user } = useAuth();

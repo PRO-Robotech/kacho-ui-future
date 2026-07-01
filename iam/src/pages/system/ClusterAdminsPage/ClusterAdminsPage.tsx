@@ -29,7 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOperation } from "@/lib/use-operation";
 import { toast } from "@/lib/toast";
 
-export default function ClusterAdminsPage() {
+export function ClusterAdminsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();

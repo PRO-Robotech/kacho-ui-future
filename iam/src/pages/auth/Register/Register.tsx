@@ -16,7 +16,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button, Form, Input, Typography, Alert, Space, Spin, Divider } from "antd";
 import { KeyOutlined, LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
 import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@/lib/kratos";
-import { AuthLayout, bufferToBase64Url } from "../Login";
+import { AuthLayout, bufferToBase64Url } from "@/pages/auth/Login";
 import { config } from "@/lib/config";
 
 const { Title, Text, Paragraph } = Typography;

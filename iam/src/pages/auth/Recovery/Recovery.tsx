@@ -13,7 +13,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button, Form, Input, Typography, Alert, Spin, Result } from "antd";
 import { MailOutlined, KeyOutlined } from "@ant-design/icons";
 import { kratos, type SelfServiceFlow, csrfToken, flowMessages } from "@/lib/kratos";
-import { AuthLayout } from "../Login";
+import { AuthLayout } from "@/pages/auth/Login";
 import { config } from "@/lib/config";
 
 const { Title, Text, Paragraph } = Typography;
