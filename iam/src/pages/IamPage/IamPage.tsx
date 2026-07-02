@@ -13,6 +13,7 @@ import { ResourceCreatePage } from "@/components/organisms/ResourceCreatePage";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
 import { ResourceShell } from "@/components/organisms/ResourceShell";
 import { IamScopedListShell } from "@/components/organisms/iam/IamScopedListShell";
+import { RolesListShell } from "@/components/organisms/iam/RolesListShell";
 import { AccessBindingCreatePage, AccessBindingsPage } from "@/pages/iam/AccessBindingsPage";
 import { AccessGrantPage, AccessPage } from "@/pages/iam/AccessPage";
 import { GroupCreatePage, GroupEditPage, GroupsPage } from "@/pages/iam/GroupsPage";
@@ -105,12 +106,12 @@ export const IamPage: FC<IamPageProps> = ({ context }) => {
                   <Route path="users/invite" element={<InviteUserPage />} />
                   <Route path="users/:uid" element={<ResourceShell spec={REGISTRY.users} />} />
                   <Route path="users/:uid/:tab" element={<ResourceShell spec={REGISTRY.users} />} />
-                  <Route path="groups" element={<GroupsPage />} />
+                  <Route path="groups" element={<IamScopedListShell spec={REGISTRY.groups} />} />
                   <Route path="groups/create" element={<GroupCreatePage />} />
                   <Route path="groups/:uid/edit" element={<GroupEditPage />} />
                   <Route path="groups/:uid" element={<ResourceShell spec={REGISTRY.groups} />} />
                   <Route path="groups/:uid/:tab" element={<ResourceShell spec={REGISTRY.groups} />} />
-                  <Route path="roles" element={<RolesPage />} />
+                  <Route path="roles" element={<RolesListShell />} />
                   <Route path="roles/create" element={<RoleCreatePage />} />
                   <Route path="roles/:uid/edit" element={<RoleEditPage />} />
                   <Route path="roles/:uid" element={<ResourceShell spec={REGISTRY.roles} />} />
