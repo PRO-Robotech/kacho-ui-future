@@ -80,6 +80,10 @@ export const IamPage: FC<IamPageProps> = ({ context }) => {
                   <Route path="accounts/create" element={<ResourceCreatePage spec={REGISTRY.accounts} />} />
                   <Route path="accounts/:uid" element={<ResourceShell spec={REGISTRY.accounts} />} />
                   <Route path="accounts/:uid/edit" element={<ResourceShell spec={REGISTRY.accounts} mode="edit" />} />
+                  <Route
+                    path="accounts/:uid/:childRoute/create"
+                    element={<ResourceShell spec={REGISTRY.accounts} mode="child-create" />}
+                  />
                   <Route path="accounts/:uid/:tab" element={<ResourceShell spec={REGISTRY.accounts} />} />
                   <Route path="projects" element={<IamScopedListShell spec={REGISTRY.projects} disableChildRoute />} />
                   <Route
@@ -109,7 +113,7 @@ export const IamPage: FC<IamPageProps> = ({ context }) => {
                   <Route path="users/:uid/:tab" element={<ResourceShell spec={REGISTRY.users} />} />
                   <Route path="groups" element={<IamScopedListShell spec={REGISTRY.groups} />} />
                   <Route path="groups/create" element={<GroupCreatePage />} />
-                  <Route path="groups/:uid/edit" element={<GroupEditPage />} />
+                  <Route path="groups/:uid/edit" element={<ResourceShell spec={REGISTRY.groups} mode="edit" />} />
                   <Route path="groups/:uid" element={<ResourceShell spec={REGISTRY.groups} />} />
                   <Route path="groups/:uid/:tab" element={<ResourceShell spec={REGISTRY.groups} />} />
                   <Route path="roles" element={<RolesListShell />} />

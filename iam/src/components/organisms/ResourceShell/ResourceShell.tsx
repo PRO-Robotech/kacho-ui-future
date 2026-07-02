@@ -37,7 +37,7 @@ import { TableSearch, ColumnSettings, useHiddenColumns, type ToggleCol } from "@
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
 import { detailExtension, type DescItem } from "@/components/organisms/ResourceDetailExtensions";
 import { api } from "@/api/client";
-import { REGISTRY, getByPath, resourceProjectPath, type ResourceSpec } from "@/lib/resource-registry";
+import { REGISTRY, getByPath, resourceProjectPath, resourceServicePrefix, type ResourceSpec } from "@/lib/resource-registry";
 import { buildSpecColumns } from "@/lib/spec-columns";
 import { useResourceList } from "@/lib/use-resource-list";
 import { useInvalidateResourceList } from "@/lib/use-operation";
@@ -111,7 +111,12 @@ function RelatedTable({
   // child-create — панель в зоне 3 shell РОДИТЕЛЯ (URI вложен под родителя).
   const createPath = `${detailBase}/${childSpec.route}/create`;
   // drill в ребёнка — на его собственный flat-URL (родитель → в хлебных крошках).
-  const flatChildBase = resourceProjectPath(childSpec.id, projectId) ?? `${detailBase}/${childSpec.route}`;
+  // IAM-ресурсы не project-scoped → flat-база /iam/<route> (иначе drill уходил бы
+  // в nested /iam/accounts/:uid/projects/:id, где нет detail-роута).
+  const flatChildBase =
+    resourceServicePrefix(childSpec.id) === "iam"
+      ? `/iam/${childSpec.route}`
+      : (resourceProjectPath(childSpec.id, projectId) ?? `${detailBase}/${childSpec.route}`);
   const createLabel = `Создать ${childSpec.singular.toLowerCase()}`;
 
   // Колонки: spec.columns без столбцов-ссылок на родителя (filterFields).
