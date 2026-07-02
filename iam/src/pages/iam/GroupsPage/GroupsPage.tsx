@@ -316,7 +316,7 @@ export function GroupEditPage() {
   );
 }
 
-function GroupMembersPanel({ group, accountId }: { group: Group; accountId: string | null }) {
+export function GroupMembersPanel({ group, accountId }: { group: Group; accountId: string | null }) {
   const members = useQuery({
     queryKey: ["iam", "groups", group.id, "members"],
     queryFn: () => iamApi.listGroupMembers(group.id, { pageSize: "200" }),

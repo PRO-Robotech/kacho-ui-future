@@ -10,10 +10,11 @@
 // раздувает ResourceShell. Карта миграции:
 // docs/superpowers/specs/2026-05-30-kacho-ui-rollout-migration-map.json
 
-import { type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Tag, Typography } from "antd";
+import { Table, Tag, Typography } from "antd";
+import type { ColumnsType } from "antd/es/table";
 
 import { toast } from "@/lib/toast";
 import type { DetailTab } from "@/components/organisms/DetailShell";
@@ -23,8 +24,13 @@ import { SgRulesPanel, type SgRule } from "@/components/organisms/SgRulesPanel";
 import { RoutesPanel } from "@/components/organisms/RoutesPanel";
 import { SubnetCidrPanel } from "@/components/organisms/SubnetCidrPanel";
 import { ResourceIcon } from "@/components/organisms/form/ResourceIcon";
+import { CopyableMonoId, fmtTs } from "@/components/organisms/iam/IamCommon";
+import { GroupMembersPanel } from "@/pages/iam/GroupsPage";
+import type { Group } from "@/api/iam";
+import { useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { ReferrerLink } from "@/lib/spec-columns";
 import { api } from "@/api/client";
+import { iamApi, type AccessBinding, type User } from "@/api/iam";
 import { getByPath } from "@/lib/resource-registry";
 
 export interface DescItem {
@@ -170,9 +176,233 @@ function AddressRefTags({ ids, projectId }: { ids: string[] | undefined; project
   );
 }
 
+// ─────────────────────── IAM: привилегии субъекта ───────────────────────
+// «Привилегии» — вложенный таб detail-страницы IAM-ресурса. Показывает
+// AccessBinding'и, где данный ресурс — субъект (User/ServiceAccount/Group,
+// listBySubject) либо ресурс-скоуп (Account, у которого subject-семантики нет,
+// listByResource). Только чтение; выдача/отзыв — на странице «Привязки доступа».
+
+type PrivilegesMode =
+  | { kind: "subject"; subjectType: "user" | "service_account" | "group"; subjectId: string }
+  | { kind: "resource"; resourceType: "account" | "project" | "cluster"; resourceId: string };
+
+// Цвет тега типа субъекта — единая палитра со страницей «Привязки доступа».
+function subjectColor(t: string): string {
+  switch (t) {
+    case "user":
+      return "blue";
+    case "service_account":
+      return "gold";
+    case "group":
+      return "purple";
+    default:
+      return "default";
+  }
+}
+
+// Цвет тега scope-tier'а (Область) — output-only поле AccessBinding.scope.
+function scopeColor(s: string): string {
+  switch (s) {
+    case "CLUSTER":
+      return "red";
+    case "ACCOUNT":
+      return "blue";
+    case "PROJECT":
+      return "green";
+    default:
+      return "default";
+  }
+}
+
+// SubjectPrivilegesTab — таблица AccessBinding'ов, отфильтрованных по субъекту
+// (listBySubject) или по ресурсу-скоупу (listByResource). Колонки зеркалят
+// страницу «Привязки доступа»; фиксированная строка «своей» оси (субъект или
+// ресурс) скрывается, т.к. она одинакова для всех строк.
+function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
+  const list = useQuery({
+    queryKey:
+      mode.kind === "subject"
+        ? ["iam", "access-bindings", "by-subject", mode.subjectType, mode.subjectId]
+        : ["iam", "access-bindings", "by-resource", mode.resourceType, mode.resourceId],
+    queryFn: () =>
+      mode.kind === "subject"
+        ? iamApi.listAccessBindingsBySubject(mode.subjectType, mode.subjectId, { pageSize: "200" })
+        : iamApi.listAccessBindingsByResource(mode.resourceType, mode.resourceId, { pageSize: "200" }),
+    enabled: mode.kind === "subject" ? !!mode.subjectId : !!mode.resourceId,
+    refetchInterval: 5_000,
+    staleTime: 0,
+  });
+
+  // Резолв role_id → name (как на странице «Привязки доступа»).
+  const rolesList = useQuery({
+    queryKey: ["iam", "roles", "list"],
+    queryFn: () => iamApi.listRoles({ pageSize: "1000" }),
+    staleTime: 30_000,
+  });
+  const roleNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of rolesList.data?.roles ?? []) m.set(r.id, r.name);
+    return m;
+  }, [rolesList.data]);
+
+  // В resource-режиме (Account) субъекты разные — резолвим email для user.
+  const usersList = useQuery({
+    queryKey: ["iam", "users", "list"],
+    queryFn: () => iamApi.listUsers({ pageSize: "1000" }),
+    enabled: mode.kind === "resource",
+    staleTime: 30_000,
+  });
+  const userById = useMemo(() => {
+    const m = new Map<string, User>();
+    for (const u of usersList.data?.users ?? []) m.set(u.id, u);
+    return m;
+  }, [usersList.data]);
+
+  const bindings = list.data?.access_bindings ?? [];
+  const { wrapRef, scrollY } = useTableScrollY();
+
+  const allColumns: ColumnsType<AccessBinding> = [
+    {
+      title: "Субъект",
+      key: "subject",
+      render: (_v, row) => {
+        const u = row.subject_type === "user" ? userById.get(row.subject_id) : undefined;
+        const human = u?.email || u?.display_name;
+        return (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <Tag color={subjectColor(row.subject_type)}>{row.subject_type}</Tag>
+            {human && (
+              <Typography.Text strong style={{ fontSize: 12 }}>
+                {human}
+              </Typography.Text>
+            )}
+            <CopyableMonoId id={row.subject_id} />
+          </span>
+        );
+      },
+    },
+    {
+      title: "Роль",
+      dataIndex: "role_id",
+      key: "role",
+      render: (v: string) => {
+        const roleName = roleNameById.get(v);
+        return (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {roleName && <Typography.Text strong>{roleName}</Typography.Text>}
+            <CopyableMonoId id={v} />
+          </span>
+        );
+      },
+    },
+    {
+      title: "Ресурс",
+      key: "resource",
+      render: (_v, row) => (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Tag>{row.resource_type}</Tag>
+          <CopyableMonoId id={row.resource_id} />
+        </span>
+      ),
+    },
+    {
+      title: "Область",
+      dataIndex: "scope",
+      key: "scope",
+      width: 120,
+      render: (v?: string) =>
+        v && v !== "SCOPE_UNSPECIFIED" ? (
+          <Tag color={scopeColor(v)}>{v}</Tag>
+        ) : (
+          <Typography.Text type="secondary">—</Typography.Text>
+        ),
+    },
+    {
+      title: "Создано",
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 180,
+      render: (v) => fmtTs(v as string | undefined),
+    },
+  ];
+
+  // subject-режим → субъект фиксирован (скрываем «Субъект»); resource-режим →
+  // ресурс-скоуп фиксирован (скрываем «Ресурс»).
+  const columns = allColumns.filter((c) => (mode.kind === "subject" ? c.key !== "subject" : c.key !== "resource"));
+
+  return (
+    <div ref={wrapRef} className="kc-table-fill" style={{ height: "100%", minHeight: 0, minWidth: 0 }}>
+      <Table<AccessBinding>
+        rowKey="id"
+        size="small"
+        className="kc-table"
+        loading={list.isLoading}
+        dataSource={bindings}
+        columns={columns}
+        pagination={false}
+        scroll={{ x: "max-content", y: scrollY }}
+        locale={{ emptyText: "Привилегий нет." }}
+        data-testid="subject-privileges-table"
+      />
+    </div>
+  );
+}
+
+// privilegesTab — DetailTab «Привилегии» для detail-страницы субъекта/скоупа.
+function privilegesTab(mode: PrivilegesMode): DetailTab {
+  return {
+    id: "privileges",
+    label: "Привилегии",
+    eyebrow: "Список",
+    headerTitle: "Привилегии",
+    headerIcon: <ResourceIcon specId="access-bindings" />,
+    fill: true,
+    render: () => <SubjectPrivilegesTab mode={mode} />,
+  };
+}
+
 // ─────────────────────────── реестр ───────────────────────────
 
 export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
+  // ─────────────────────────── IAM ───────────────────────────
+
+  // Account — не субъект AccessBinding'а, а ресурс-скоуп: таб показывает
+  // привязки, выданные НА этот account (listByResource account).
+  accounts: {
+    extraTabs: ({ data }) => {
+      const id = getByPath<string>(data, "id") ?? "";
+      return id ? [privilegesTab({ kind: "resource", resourceType: "account", resourceId: id })] : [];
+    },
+  },
+
+  // ServiceAccount — субъект типа service_account (listBySubject).
+  "service-accounts": {
+    extraTabs: ({ data }) => {
+      const id = getByPath<string>(data, "id") ?? "";
+      return id ? [privilegesTab({ kind: "subject", subjectType: "service_account", subjectId: id })] : [];
+    },
+  },
+
+  // User — субъект типа user (listBySubject).
+  users: {
+    extraTabs: ({ data }) => {
+      const id = getByPath<string>(data, "id") ?? "";
+      return id ? [privilegesTab({ kind: "subject", subjectType: "user", subjectId: id })] : [];
+    },
+  },
+
+  // Group — субъект типа group (listBySubject). «Участники» — секция под Обзором
+  // (GroupMembersPanel, add/remove членов); «Привилегии» — отдельный таб.
+  groups: {
+    overviewBelow: ({ data }) => (
+      <GroupMembersPanel group={data as unknown as Group} accountId={getByPath<string>(data, "account_id") ?? null} />
+    ),
+    extraTabs: ({ data }) => {
+      const id = getByPath<string>(data, "id") ?? "";
+      return id ? [privilegesTab({ kind: "subject", subjectType: "group", subjectId: id })] : [];
+    },
+  },
+
   networks: {
     overviewExtra: ({ data }) => [
       {
