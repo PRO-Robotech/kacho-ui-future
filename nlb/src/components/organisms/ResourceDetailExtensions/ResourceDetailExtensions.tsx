@@ -12,6 +12,7 @@ import { Tag, Typography } from "antd";
 
 import type { DetailTab } from "@/components/organisms/DetailShell";
 import { RefNameLink } from "@/components/molecules/RefNameLink";
+import { TargetsManager, type Target } from "@/components/organisms/TargetsManager";
 import { StatusBadge } from "@/components/atoms/StatusBadge";
 import { NlbVipCell } from "@/components/molecules/NlbVipCell";
 import { getByPath } from "@/lib/resource-registry";
@@ -141,6 +142,15 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
       },
       { label: "Health-check", value: code(getByPath<string>(data, "health_check.name")) },
     ],
+    // Управление backend-таргетами (add/remove через :addTargets/:removeTargets)
+    // прямо в блоке «Обзор».
+    overviewBelow: ({ data, projectId }) => (
+      <TargetsManager
+        targetGroupId={getByPath<string>(data, "id") ?? ""}
+        projectId={projectId}
+        targets={getByPath<Target[]>(data, "targets") ?? []}
+      />
+    ),
   },
 };
 

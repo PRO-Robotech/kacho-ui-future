@@ -136,6 +136,52 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     template: () => ({}),
   },
 
+  // Compute Instance / VPC NIC / Zone — cross-service ref-цели для target-picker'а
+  // TargetsManager (read-only, нужны RefSelect'у для apiPath/payloadKey/имени).
+  "compute-instances": {
+    id: "compute-instances",
+    route: "instances",
+    apiPath: "/compute/v1/instances",
+    payloadKey: "instances",
+    singular: "Виртуальная машина",
+    plural: "Виртуальные машины",
+    serviceTitle: "Compute Cloud",
+    ops: { create: false, update: false, delete: false },
+    columns: [
+      { header: "Имя", path: "name", format: "text" },
+      { header: "Идентификатор", path: "id", format: "text", className: "font-mono" },
+    ],
+    template: () => ({}),
+  },
+  "network-interfaces": {
+    id: "network-interfaces",
+    route: "network-interfaces",
+    apiPath: "/vpc/v1/networkInterfaces",
+    payloadKey: "network_interfaces",
+    singular: "Сетевой интерфейс",
+    plural: "Сетевые интерфейсы",
+    serviceTitle: "Virtual Private Cloud",
+    ops: { create: false, update: false, delete: false },
+    columns: [
+      { header: "Имя", path: "name", format: "text" },
+      { header: "Идентификатор", path: "id", format: "text", className: "font-mono" },
+    ],
+    template: () => ({}),
+  },
+  "zones": {
+    id: "zones",
+    route: "zones",
+    apiPath: "/geo/v1/zones",
+    payloadKey: "zones",
+    singular: "Зона",
+    plural: "Зоны",
+    serviceTitle: "Администрирование",
+    scope: "global",
+    ops: { create: false, update: false, delete: false },
+    columns: [{ header: "Идентификатор", path: "id", format: "text", className: "font-mono" }],
+    template: () => ({}),
+  },
+
   // ====== vpc (read-only ref-цели для VIP-picker'а) ======
   // Subnet / Address — cross-service ref-цели (owner — vpc). Read-only
   // registry-записи нужны RefSelect'у в NlbVipSourceField, чтобы резолвить
