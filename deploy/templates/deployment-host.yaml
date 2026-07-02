@@ -34,8 +34,8 @@ spec:
             name: {{ include "ui.hostName" . }}-nginx
             defaultMode: 0755
             items:
-              - key: resolver-from-resolvconf.sh
-                path: 05-resolver-from-resolvconf.sh
+              - key: resolver-from-resolvconf.envsh
+                path: 05-resolver-from-resolvconf.envsh
       containers:
         - name: host
           image: {{ include "ui.hostImage" . | quote }}
@@ -66,8 +66,8 @@ spec:
               subPath: default.conf.template
               readOnly: true
             - name: nginx-entrypoint
-              mountPath: /docker-entrypoint.d/05-resolver-from-resolvconf.sh
-              subPath: 05-resolver-from-resolvconf.sh
+              mountPath: /docker-entrypoint.d/05-resolver-from-resolvconf.envsh
+              subPath: 05-resolver-from-resolvconf.envsh
               readOnly: true
           readinessProbe:
             httpGet:

@@ -171,17 +171,18 @@ data:
         gzip_types text/plain text/css application/javascript application/json image/svg+xml;
         gzip_min_length 1024;
     }
-  resolver-from-resolvconf.sh: |
-    #!/bin/sh
-    set -eu
+  resolver-from-resolvconf.envsh: |
+    # Sourced (.envsh) до nginx 20-envsubst: экспортирует адрес кластерного DNS из
+    # /etc/resolv.conf в KUBE_DNS_SERVER, чтобы envsubst подставил его в
+    # `resolver ${KUBE_DNS_SERVER}` шаблона. Экспорт (не sed по read-only
+    # ConfigMap-mount) — mount доступен только на чтение, in-place правка невозможна.
     ns="$(awk '/^nameserver/ {print $2; exit}' /etc/resolv.conf)"
     if [ -z "$ns" ]; then
       echo "[05-resolver] FATAL: no nameserver in /etc/resolv.conf" >&2
-      exit 1
+      return 1 2>/dev/null || exit 1
     fi
-    tpl=/etc/nginx/templates/default.conf.template
-    sed -i "s|\${KUBE_DNS_SERVER}|$ns|g" "$tpl"
-    echo "[05-resolver] nameserver $ns from /etc/resolv.conf applied to $tpl"
+    export KUBE_DNS_SERVER="$ns"
+    echo "[05-resolver] KUBE_DNS_SERVER=$ns exported for envsubst"
 ---
 apiVersion: v1
 kind: ConfigMap
