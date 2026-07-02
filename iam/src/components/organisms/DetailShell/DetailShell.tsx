@@ -133,10 +133,13 @@ export function DetailShell({
         display: "flex",
         alignItems: "stretch",
         overflow: "hidden",
-        // Высота под viewport: header h=48 + Content padding 20+20 + small.
-        // (marginTop:-8 убран — list-страница его не имеет, иначе фон прыгал
-        // вверх на 8px при переходе list↔detail.)
-        minHeight: "100%",
+        // Detail-поверхность фиксируется по высоте под вьюпорт (за вычетом
+        // host-header + remote-header ≈ offset). Рейл табов (зона-2) и шапка
+        // зоны-3 не двигаются, скроллится только контент зоны-3 — обзор/таб не
+        // «прыгает» относительно наполнения. offset задаётся --kc-detail-offset
+        // (fallback 108px), чтобы тюнить под конкретную высоту шапок.
+        height: "calc(100dvh - var(--kc-detail-offset, 108px))",
+        maxHeight: "calc(100dvh - var(--kc-detail-offset, 108px))",
       }}
     >
       {/* KAC-246: рейл табов — часть единой detail-поверхности. Без своего
@@ -149,7 +152,8 @@ export function DetailShell({
           maxWidth: SUB_PANE_WIDTH,
           flexGrow: 0,
           flexShrink: 0,
-          overflow: "hidden",
+          overflowX: "hidden",
+          overflowY: "auto",
           display: "flex",
           flexDirection: "column",
           borderRight: "1px solid var(--kc-border-secondary)",
@@ -300,7 +304,16 @@ export function DetailShell({
         )}
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, padding: "20px 24px" }}>
+      <main
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: "20px 24px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
         {/* Зона 3 (main) верх — ТОЛЬКО название активного таба (дубль). Структура
             ЗЕРКАЛИТ зону-2: невидимый eyebrow-спейсер (та же высота, что caps-тип
             в рейле) → title встаёт ровно на строку ИМЕНИ зоны-2 (req3). minHeight
@@ -318,6 +331,8 @@ export function DetailShell({
             // → нижние линии зоны-2/зоны-3 на одной y (req2). Контент-область 42,
             // текст центрируется в ней как у зоны-2 → title на строке имени (req3).
             minHeight: 56,
+            // Шапка зоны-3 фиксирована (не скроллится) — flexShrink:0.
+            flexShrink: 0,
             paddingBottom: 14,
             marginBottom: 18,
             borderBottom: "1px solid var(--kc-border-secondary)",
@@ -360,6 +375,7 @@ export function DetailShell({
           </div>
         </div>
 
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
         {mainOverride ? (
           mainOverride
         ) : (
@@ -381,6 +397,7 @@ export function DetailShell({
             <HeaderSlotContext.Provider value={slotEl}>{active?.render()}</HeaderSlotContext.Provider>
           </>
         )}
+        </div>
       </main>
     </div>
   );

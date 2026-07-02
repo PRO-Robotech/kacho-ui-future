@@ -89,15 +89,15 @@ export const NlbPage: FC<NlbPageProps> = ({ context }) => {
 
 function NlbFrame({ children }: { children: ReactNode }) {
   return (
-    <section className="nlb-remote-frame">
-      <div className="nlb-host-header-slots">
-        <div className="nlb-host-header-actions">
+    <section className="vpc-remote-frame">
+      <div className="vpc-host-header-slots">
+        <div className="vpc-host-header-actions">
           <HeaderRightSlot />
         </div>
       </div>
 
       <OperationBanner />
-      <div className="nlb-remote-content">{children}</div>
+      <div className="vpc-remote-content">{children}</div>
       <GlobalResourceFormModal />
     </section>
   );
