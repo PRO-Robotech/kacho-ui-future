@@ -14,6 +14,7 @@ import { ResourceListPage } from "@/components/organisms/ResourceListPage";
 import { ResourceShell } from "@/components/organisms/ResourceShell";
 import { IamScopedListShell } from "@/components/organisms/iam/IamScopedListShell";
 import { RolesListShell } from "@/components/organisms/iam/RolesListShell";
+import { IamUsersListShell } from "@/components/organisms/iam/IamUsersListShell";
 import { AccessBindingCreatePage, AccessBindingsPage } from "@/pages/iam/AccessBindingsPage";
 import { AccessGrantPage, AccessPage } from "@/pages/iam/AccessPage";
 import { GroupCreatePage, GroupEditPage, GroupsPage } from "@/pages/iam/GroupsPage";
@@ -102,7 +103,7 @@ export const IamPage: FC<IamPageProps> = ({ context }) => {
                     path="service-accounts/:uid/:tab"
                     element={<ResourceShell spec={REGISTRY["service-accounts"]} />}
                   />
-                  <Route path="users" element={<UsersPage />} />
+                  <Route path="users" element={<IamUsersListShell />} />
                   <Route path="users/invite" element={<InviteUserPage />} />
                   <Route path="users/:uid" element={<ResourceShell spec={REGISTRY.users} />} />
                   <Route path="users/:uid/:tab" element={<ResourceShell spec={REGISTRY.users} />} />
