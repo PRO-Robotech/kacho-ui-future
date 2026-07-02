@@ -270,7 +270,7 @@ body.ant-modal-open {
 }
 
 .vpc-remote-content {
-  min-width: max-content;
+  min-width: 0;
   flex: 1;
 }
 

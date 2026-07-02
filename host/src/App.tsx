@@ -36,6 +36,9 @@ const App: FC = () => {
         token: {
           colorPrimary: "#3d8df5",
           borderRadius: 6,
+          // Базовый размер как в kacho-ui (эталон 13, не дефолтный AntD 14) —
+          // покрывает host-хром + dashboard; remotes задают полную тему сами.
+          fontSize: 13,
           fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         },
       }}

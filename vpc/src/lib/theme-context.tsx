@@ -4,7 +4,8 @@
 // data-theme is explicitly present.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { ThemeMode } from "@/lib/theme";
+import { ConfigProvider } from "antd";
+import { buildTheme, type ThemeMode } from "@/lib/theme";
 
 const STORAGE_KEY = "kacho-theme";
 
@@ -84,7 +85,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ThemeContextValue>(() => ({ mode, setMode, toggle }), [mode, setMode, toggle]);
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  // ConfigProvider с полной темой (buildTheme: fontSize 13 + component-токены) —
+  // host-ConfigProvider задаёт лишь colorPrimary/fontFamily без fontSize, поэтому
+  // без этого remote-контент рендерился бы в дефолтном AntD-размере (14), а не в
+  // эталонном 13 kacho-ui. Nested ConfigProvider переопределяет тему для remote.
+  return (
+    <ThemeContext.Provider value={value}>
+      <ConfigProvider theme={buildTheme(mode)}>{children}</ConfigProvider>
+    </ThemeContext.Provider>
+  );
 }
 
 export function useThemeMode(): ThemeContextValue {

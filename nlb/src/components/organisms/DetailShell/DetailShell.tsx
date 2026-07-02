@@ -375,7 +375,7 @@ export function DetailShell({
           </div>
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "auto" }}>
         {mainOverride ? (
           mainOverride
         ) : (
