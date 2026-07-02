@@ -137,28 +137,38 @@ export const HostBreadcrumb: FC<{
 
   const sep = <ChevronRight size={14} strokeWidth={2} className="breadcrumb-separator" aria-hidden />;
 
+  // На дашборде account/project выбираются в левой панели лендинга → верхние
+  // pill-селекторы не дублируем. На остальных страницах они остаются единственным
+  // способом сменить контекст. (re-render на навигации — pathname актуален.)
+  const path = typeof window !== "undefined" ? window.location.pathname : "";
+  const onDashboard = path === "/dashboard" || /^\/projects\/[^/]+\/dashboard\/?$/.test(path);
+
   return (
     <div className="context-breadcrumb" style={{ color: token.colorTextSecondary }}>
-      <Dropdown menu={accountMenu} trigger={["click"]} placement="bottomLeft">
-        <BreadcrumbPill token={token} active={!!account} placeholder="Выберите аккаунт" chevron>
-          {account?.name || account?.id}
-        </BreadcrumbPill>
-      </Dropdown>
-      {sep}
-      <Dropdown
-        menu={projectMenu}
-        trigger={["click"]}
-        placement="bottomLeft"
-        disabled={!account}
-        onOpenChange={(open) => {
-          if (open && account) loadProjects(account.id);
-        }}
-      >
-        <BreadcrumbPill token={token} active={!!project} placeholder="Проект" chevron>
-          {project?.name || project?.id}
-        </BreadcrumbPill>
-      </Dropdown>
-      {sep}
+      {!onDashboard && (
+        <>
+          <Dropdown menu={accountMenu} trigger={["click"]} placement="bottomLeft">
+            <BreadcrumbPill token={token} active={!!account} placeholder="Выберите аккаунт" chevron>
+              {account?.name || account?.id}
+            </BreadcrumbPill>
+          </Dropdown>
+          {sep}
+          <Dropdown
+            menu={projectMenu}
+            trigger={["click"]}
+            placement="bottomLeft"
+            disabled={!account}
+            onOpenChange={(open) => {
+              if (open && account) loadProjects(account.id);
+            }}
+          >
+            <BreadcrumbPill token={token} active={!!project} placeholder="Проект" chevron>
+              {project?.name || project?.id}
+            </BreadcrumbPill>
+          </Dropdown>
+          {sep}
+        </>
+      )}
       <Typography.Text className="breadcrumb-current">Все сервисы</Typography.Text>
     </div>
   );
