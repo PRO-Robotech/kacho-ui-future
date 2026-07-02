@@ -14,6 +14,7 @@ import { useIamMutation, fmtTs, CopyableMonoId } from "@/components/organisms/ia
 import { FormFooter } from "@/components/organisms/form/FormFooter";
 import { FormShell } from "@/components/organisms/form/FormShell";
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
+import { IamListShell, useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { useContext } from "@/lib/context-store";
 
 export function GroupsPage() {
@@ -51,6 +52,7 @@ export function GroupsPage() {
   });
 
   const groups = list.data?.groups ?? [];
+  const { wrapRef, scrollY } = useTableScrollY();
 
   const columns: ColumnsType<Group> = [
     {
@@ -106,28 +108,28 @@ export function GroupsPage() {
   ];
 
   return (
-    <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <Typography.Title level={3} className="t-page-title" style={{ margin: 0 }}>
-        Groups
-      </Typography.Title>
-
+    <IamListShell specId="groups" title="Groups" count={groups.length}>
       {!accountId ? (
         <Typography.Text type="secondary">Выберите Account, чтобы увидеть его Groups.</Typography.Text>
       ) : (
-        <Table<Group>
-          rowKey="id"
-          size="small"
-          loading={list.isLoading}
-          dataSource={groups}
-          columns={columns}
-          pagination={false}
-          expandable={{
-            expandedRowRender: (row) => <GroupMembersPanel group={row} accountId={accountId} />,
-          }}
-          locale={{ emptyText: "Group'ов нет. Создайте первую." }}
-        />
+        <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+          <Table<Group>
+            rowKey="id"
+            size="small"
+            className="kc-table"
+            loading={list.isLoading}
+            dataSource={groups}
+            columns={columns}
+            pagination={false}
+            scroll={{ x: "max-content", y: scrollY }}
+            expandable={{
+              expandedRowRender: (row) => <GroupMembersPanel group={row} accountId={accountId} />,
+            }}
+            locale={{ emptyText: "Group'ов нет. Создайте первую." }}
+          />
+        </div>
       )}
-    </Space>
+    </IamListShell>
   );
 }
 

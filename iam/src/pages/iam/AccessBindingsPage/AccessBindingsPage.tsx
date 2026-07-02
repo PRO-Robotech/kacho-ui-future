@@ -30,6 +30,7 @@ import { useIamMutation, fmtTs, CopyableMonoId, groupedRoleOptions } from "@/com
 import { FormFooter } from "@/components/organisms/form/FormFooter";
 import { FormShell } from "@/components/organisms/form/FormShell";
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
+import { IamListShell, useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContext } from "@/lib/context-store";
 import { usePermissions, isAlreadyExistsError, mapApiErrorToMessage } from "@/lib/permissions";
@@ -177,6 +178,7 @@ export function AccessBindingsPage() {
 
   const data = mode === "byResource" ? byResource : mode === "bySubject" ? bySubject : byAccount;
   const bindings = (data?.data as AccessBindingList | undefined)?.access_bindings ?? [];
+  const { wrapRef, scrollY } = useTableScrollY();
 
   const del = useIamMutation({
     method: "DELETE",
@@ -303,14 +305,11 @@ export function AccessBindingsPage() {
   const myBindingsRows = myBindings.data?.access_bindings ?? [];
 
   return (
-    <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <Typography.Title level={3} className="t-page-title" style={{ margin: 0 }}>
-        Access Bindings
-      </Typography.Title>
-
+    <IamListShell specId="access-bindings" title="Access Bindings" count={bindings.length}>
       {user?.id && (
         <Card
           size="small"
+          style={{ flexShrink: 0, marginBottom: 12 }}
           title={
             <Space>
               <span>Мои AccessBinding&apos;и</span>
@@ -336,7 +335,7 @@ export function AccessBindingsPage() {
         </Card>
       )}
 
-      <Space size={12} wrap>
+      <Space size={12} wrap style={{ flexShrink: 0, marginBottom: 12 }}>
         <Segmented
           value={mode}
           onChange={(v) => handleSetMode(v as ViewMode)}
@@ -353,7 +352,7 @@ export function AccessBindingsPage() {
       </Space>
 
       {mode === "byResource" && (
-        <Space size={8} wrap>
+        <Space size={8} wrap style={{ flexShrink: 0, marginBottom: 12 }}>
           <Select
             value={resType}
             onChange={(v) => setResType(v)}
@@ -369,7 +368,7 @@ export function AccessBindingsPage() {
         </Space>
       )}
       {mode === "bySubject" && (
-        <Space size={8} wrap>
+        <Space size={8} wrap style={{ flexShrink: 0, marginBottom: 12 }}>
           <Select
             value={subjType}
             onChange={(v) => setSubjType(v)}
@@ -400,7 +399,7 @@ export function AccessBindingsPage() {
         </Space>
       )}
       {mode === "byAccount" && (
-        <Space size={8} wrap>
+        <Space size={8} wrap style={{ flexShrink: 0, marginBottom: 12 }}>
           <Select
             placeholder="Account"
             value={accountIdForList || undefined}
@@ -435,20 +434,26 @@ export function AccessBindingsPage() {
       )}
 
       {emptyHint(mode, resId, subjId, accountIdForList) ? (
-        <Typography.Text type="secondary">{emptyHint(mode, resId, subjId, accountIdForList)}</Typography.Text>
+        <Typography.Text type="secondary" style={{ flexShrink: 0 }}>
+          {emptyHint(mode, resId, subjId, accountIdForList)}
+        </Typography.Text>
       ) : (
-        <Table<AccessBinding>
-          rowKey="id"
-          size="small"
-          loading={data?.isLoading}
-          dataSource={bindings}
-          columns={columns}
-          pagination={false}
-          locale={{ emptyText: "AccessBinding'ов нет." }}
-          data-testid="access-bindings-table"
-        />
+        <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+          <Table<AccessBinding>
+            rowKey="id"
+            size="small"
+            className="kc-table"
+            loading={data?.isLoading}
+            dataSource={bindings}
+            columns={columns}
+            pagination={false}
+            scroll={{ x: "max-content", y: scrollY }}
+            locale={{ emptyText: "AccessBinding'ов нет." }}
+            data-testid="access-bindings-table"
+          />
+        </div>
       )}
-    </Space>
+    </IamListShell>
   );
 }
 

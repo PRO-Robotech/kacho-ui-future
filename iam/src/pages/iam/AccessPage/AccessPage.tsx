@@ -18,6 +18,7 @@ import { CopyableMonoId } from "@/components/organisms/iam/IamCommon";
 import { FormFooter } from "@/components/organisms/form/FormFooter";
 import { FormShell } from "@/components/organisms/form/FormShell";
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
+import { IamListShell, useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { useContext } from "@/lib/context-store";
 
 type ScopeTab = "cloud" | "folder";
@@ -32,6 +33,7 @@ export function AccessPage() {
   const projectId = project?.id ?? "";
   const resourceType = scope === "cloud" ? "account" : "project";
   const resourceId = scope === "cloud" ? accountId : projectId;
+  const { wrapRef, scrollY } = useTableScrollY();
   const headerAction = useMemo(
     () => (
       <Button
@@ -153,14 +155,8 @@ export function AccessPage() {
   ];
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
-      <Space size={12} align="center">
-        <Typography.Title level={3} className="t-page-title" style={{ margin: 0 }}>
-          Права доступа
-        </Typography.Title>
-      </Space>
-
-      <Space size={12} wrap>
+    <IamListShell specId="access-bindings" title="Права доступа" count={rows.length}>
+      <Space size={12} wrap style={{ marginBottom: 12, flexShrink: 0 }}>
         <Segmented
           value={scope}
           onChange={(v) => setScope(v as ScopeTab)}
@@ -174,6 +170,7 @@ export function AccessPage() {
       {!resourceId ? (
         <Alert
           type="info"
+          style={{ flexShrink: 0 }}
           message={
             scope === "cloud"
               ? "Выберите Account в шапке для просмотра прав доступа."
@@ -184,6 +181,7 @@ export function AccessPage() {
         <>
           <Alert
             type="info"
+            style={{ marginBottom: 12, flexShrink: 0 }}
             message={
               scope === "cloud"
                 ? "В этом разделе вы можете настроить права доступа к Account."
@@ -191,18 +189,22 @@ export function AccessPage() {
             }
             closable
           />
-          <Table<Row>
-            rowKey="userId"
-            size="small"
-            loading={bindings.isLoading || users.isLoading || roles.isLoading}
-            dataSource={rows}
-            columns={columns}
-            pagination={false}
-            locale={{ emptyText: "Пользователей с правами нет." }}
-          />
+          <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+            <Table<Row>
+              rowKey="userId"
+              size="small"
+              className="kc-table"
+              loading={bindings.isLoading || users.isLoading || roles.isLoading}
+              dataSource={rows}
+              columns={columns}
+              pagination={false}
+              scroll={{ x: "max-content", y: scrollY }}
+              locale={{ emptyText: "Пользователей с правами нет." }}
+            />
+          </div>
         </>
       )}
-    </Space>
+    </IamListShell>
   );
 }
 

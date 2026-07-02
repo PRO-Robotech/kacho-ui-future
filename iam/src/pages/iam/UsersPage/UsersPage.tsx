@@ -18,6 +18,7 @@ import { useIamMutation, fmtTs, CopyableMonoId, groupedRoleOptions } from "@/com
 import { FormFooter } from "@/components/organisms/form/FormFooter";
 import { FormShell } from "@/components/organisms/form/FormShell";
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
+import { IamListShell, useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { useContext } from "@/lib/context-store";
 import { toast } from "@/lib/toast";
 
@@ -55,6 +56,7 @@ export function UsersPage() {
   });
 
   const users = data?.users ?? [];
+  const { wrapRef, scrollY } = useTableScrollY();
 
   const del = useIamMutation({
     method: "DELETE",
@@ -122,15 +124,12 @@ export function UsersPage() {
   ];
 
   return (
-    <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <Typography.Title level={3} className="t-page-title" style={{ margin: 0 }}>
-        Users
-      </Typography.Title>
-
+    <IamListShell specId="users" title="Users" count={users.length}>
       {users.length === 0 && !isLoading && (
         <Alert
           type="info"
           showIcon
+          style={{ flexShrink: 0 }}
           message="User'ов нет"
           description={
             <span>
@@ -141,16 +140,20 @@ export function UsersPage() {
         />
       )}
 
-      <Table<User>
-        rowKey="id"
-        size="small"
-        loading={isLoading}
-        dataSource={users}
-        columns={columns}
-        pagination={false}
-        locale={{ emptyText: "User'ов нет." }}
-      />
-    </Space>
+      <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+        <Table<User>
+          rowKey="id"
+          size="small"
+          className="kc-table"
+          loading={isLoading}
+          dataSource={users}
+          columns={columns}
+          pagination={false}
+          scroll={{ x: "max-content", y: scrollY }}
+          locale={{ emptyText: "User'ов нет." }}
+        />
+      </div>
+    </IamListShell>
   );
 }
 
