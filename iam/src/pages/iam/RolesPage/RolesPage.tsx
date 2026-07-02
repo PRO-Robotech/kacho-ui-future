@@ -17,6 +17,7 @@ import { useIamMutation, fmtTs, CopyableMonoId, SystemTag } from "@/components/o
 import { FormFooter } from "@/components/organisms/form/FormFooter";
 import { FormShell } from "@/components/organisms/form/FormShell";
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
+import { IamListShell, useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { useContext } from "@/lib/context-store";
 
 // Regex per E0 acceptance §2.3 — permission string format
@@ -50,6 +51,7 @@ export function RolesPage() {
   const systemRoles = useMemo(() => roles.filter((r) => r.is_system), [roles]);
   const customRoles = useMemo(() => roles.filter((r) => !r.is_system), [roles]);
   const visibleRoles = roleKind === "system" ? systemRoles : customRoles;
+  const { wrapRef, scrollY } = useTableScrollY();
 
   const del = useIamMutation({
     method: "DELETE",
@@ -151,11 +153,7 @@ export function RolesPage() {
   ];
 
   return (
-    <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <Typography.Title level={3} className="t-page-title" style={{ margin: 0 }}>
-        Roles
-      </Typography.Title>
-
+    <IamListShell specId="roles" title="Roles" count={roles.length}>
       <Tabs
         activeKey={roleKind}
         onChange={(k) => setRoleKind(k as "system" | "custom")}
@@ -164,21 +162,25 @@ export function RolesPage() {
           { key: "system", label: `Системные (${systemRoles.length})` },
           { key: "custom", label: `Кастомные (${customRoles.length})` },
         ]}
-        style={{ marginBottom: 0 }}
+        style={{ marginBottom: 12, flexShrink: 0 }}
       />
 
-      <Table<Role>
-        rowKey="id"
-        size="small"
-        loading={isLoading}
-        dataSource={visibleRoles}
-        columns={columns}
-        pagination={false}
-        locale={{
-          emptyText: roleKind === "system" ? "Системных ролей нет." : "Кастомных ролей нет.",
-        }}
-      />
-    </Space>
+      <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+        <Table<Role>
+          rowKey="id"
+          size="small"
+          className="kc-table"
+          loading={isLoading}
+          dataSource={visibleRoles}
+          columns={columns}
+          pagination={false}
+          scroll={{ x: "max-content", y: scrollY }}
+          locale={{
+            emptyText: roleKind === "system" ? "Системных ролей нет." : "Кастомных ролей нет.",
+          }}
+        />
+      </div>
+    </IamListShell>
   );
 }
 
