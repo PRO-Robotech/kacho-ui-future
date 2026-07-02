@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FC, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
 import { Card, Col, Empty, Input, Row, Space, Tree, Typography } from "antd";
 import type { DataNode } from "antd/es/tree";
 import { ArrowRight, Boxes, FolderClosed, LockKeyhole, Search } from "lucide-react";
@@ -13,22 +13,45 @@ export interface DashboardPageProps {
   navigate?: (path: string) => void | Promise<void>;
 }
 
-interface AccountTree {
-  account: AccountRef;
-  projects: ProjectRef[];
-}
-
 export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defaultNavigate }) => {
   const ctx = context ?? loadHostContext();
   const projectId = ctx.project?.id ?? null;
   const accountId = ctx.account?.id ?? null;
 
-  // Дерево «аккаунт → проекты»: аккаунты + проекты каждого (parallel). Выбор
-  // проекта навигирует на /projects/:id/dashboard — host берёт контекст из URL.
-  const [tree, setTree] = useState<AccountTree[]>([]);
+  // Дерево «аккаунт → проекты» c ленивой загрузкой: на старте грузятся ТОЛЬКО
+  // аккаунты (быстрый первый рендер), проекты аккаунта — по раскрытию узла
+  // (AntD loadData). Выбор проекта навигирует на /projects/:id/dashboard —
+  // host берёт контекст из URL.
+  const [accounts, setAccounts] = useState<AccountRef[]>([]);
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
+  const [projectsByAccount, setProjectsByAccount] = useState<Record<string, ProjectRef[]>>({});
+  const loadedAccounts = useRef<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
 
+  // loadProjects — догружает проекты одного аккаунта (идемпотентно: повторно не
+  // ходит). Вызывается из loadData (раскрытие) и при поиске (догрузка всех).
+  const loadProjects = useCallback(async (accId: string) => {
+    if (loadedAccounts.current.has(accId)) return;
+    loadedAccounts.current.add(accId);
+    try {
+      const pr = await apiList<{ projects?: Array<{ id: string; name?: string; accountId?: string }> }>(
+        "/iam/v1/projects",
+        { account_id: accId, pageSize: "1000" },
+      );
+      const projects = (pr.projects ?? []).map((p) => ({
+        id: p.id,
+        name: p.name || p.id,
+        accountId: p.accountId || accId,
+      }));
+      setProjectsByAccount((cur) => ({ ...cur, [accId]: projects }));
+    } catch {
+      setProjectsByAccount((cur) => ({ ...cur, [accId]: [] }));
+    }
+  }, []);
+
+  // Старт — только список аккаунтов; проекты текущего аккаунта подгружаем сразу
+  // (чтобы выбранный проект был виден в раскрытом узле).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -36,31 +59,20 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
         const accResp = await apiList<{ accounts?: Array<{ id: string; name?: string }> }>("/iam/v1/accounts", {
           pageSize: "1000",
         });
-        const accounts = (accResp.accounts ?? []).map((a) => ({ id: a.id, name: a.name || a.id }));
-        const withProjects = await Promise.all(
-          accounts.map(async (account) => {
-            try {
-              const pr = await apiList<{ projects?: Array<{ id: string; name?: string; accountId?: string }> }>(
-                "/iam/v1/projects",
-                { account_id: account.id, pageSize: "1000" },
-              );
-              const projects = (pr.projects ?? []).map((p) => ({
-                id: p.id,
-                name: p.name || p.id,
-                accountId: p.accountId || account.id,
-              }));
-              return { account, projects };
-            } catch {
-              return { account, projects: [] as ProjectRef[] };
-            }
-          }),
-        );
+        const accs = (accResp.accounts ?? []).map((a) => ({ id: a.id, name: a.name || a.id }));
         if (cancelled) return;
-        setTree(withProjects);
-        // раскрыть аккаунт текущего проекта (или первый).
-        setExpanded((cur) => (cur.length ? cur : [`acc:${accountId ?? withProjects[0]?.account.id ?? ""}`]));
+        setAccounts(accs);
+        setAccountsLoaded(true);
+        const cur = accountId ?? accs[0]?.id ?? "";
+        if (cur) {
+          setExpanded((prev) => (prev.length ? prev : [`acc:${cur}`]));
+          void loadProjects(cur);
+        }
       } catch {
-        if (!cancelled) setTree([]);
+        if (!cancelled) {
+          setAccounts([]);
+          setAccountsLoaded(true);
+        }
       }
     })();
     return () => {
@@ -71,30 +83,57 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
 
   const q = search.trim().toLowerCase();
 
-  // treeData для AntD Tree + авто-раскрытие совпадений при поиске.
+  // Поиск требует проектов всех аккаунтов — догружаем их один раз, когда
+  // пользователь начал искать (стартовую загрузку это не замедляет).
+  useEffect(() => {
+    if (!q) return;
+    accounts.forEach((a) => void loadProjects(a.id));
+  }, [q, accounts, loadProjects]);
+
+  // loadData — коллбэк AntD Tree: при раскрытии узла аккаунта тянет его проекты.
+  const onLoadData = useCallback(
+    async (node: DataNode) => {
+      const key = String(node.key);
+      if (key.startsWith("acc:")) await loadProjects(key.slice(4));
+    },
+    [loadProjects],
+  );
+
+  // treeData для AntD Tree + авто-раскрытие совпадений при поиске. Узел аккаунта
+  // без загруженных проектов оставляет children undefined (ленивый — стрелка +
+  // loadData); загруженный — рендерит проекты (отфильтрованные поиском).
   const { treeData, searchExpanded } = useMemo(() => {
     const autoExpand: string[] = [];
-    const data: DataNode[] = tree
-      .map(({ account, projects }) => {
+    const data: DataNode[] = accounts
+      .map((account) => {
         const accMatch = !q || account.name.toLowerCase().includes(q);
-        const shownProjects = projects.filter((p) => !q || accMatch || p.name.toLowerCase().includes(q));
-        if (q && !accMatch && shownProjects.length === 0) return null;
-        if (q && shownProjects.length > 0) autoExpand.push(`acc:${account.id}`);
-        return {
-          key: `acc:${account.id}`,
-          selectable: false,
-          title: <span className="dash-tree-acc">{highlight(account.name, q)}</span>,
-          children: shownProjects.map((p) => ({
+        const projects = projectsByAccount[account.id];
+        const loaded = projects !== undefined;
+        let children: DataNode[] | undefined;
+        if (loaded) {
+          const shown = projects.filter((p) => !q || accMatch || p.name.toLowerCase().includes(q));
+          children = shown.map((p) => ({
             key: `prj:${p.id}`,
             isLeaf: true,
             icon: <FolderClosed size={13} />,
             title: <span className="dash-tree-prj">{highlight(p.name, q)}</span>,
-          })),
+          }));
+          if (q && shown.length > 0) autoExpand.push(`acc:${account.id}`);
+        }
+        // При поиске убираем аккаунт, если ни имя, ни его (загруженные) проекты
+        // не совпали.
+        if (q && !accMatch && loaded && (children?.length ?? 0) === 0) return null;
+        return {
+          key: `acc:${account.id}`,
+          selectable: false,
+          isLeaf: false,
+          title: <span className="dash-tree-acc">{highlight(account.name, q)}</span>,
+          children,
         } as DataNode;
       })
       .filter((n): n is DataNode => n !== null);
     return { treeData: data, searchExpanded: autoExpand };
-  }, [tree, q]);
+  }, [accounts, projectsByAccount, q]);
 
   const vpcCounts = useModuleCounts(findModule("vpc"), projectId);
   const computeCounts = useModuleCounts(findModule("compute"), projectId);
@@ -130,13 +169,14 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
           className="dash-tree-search"
         />
         {treeData.length === 0 ? (
-          <div className="dash-nav-empty">{tree.length === 0 ? "Загрузка…" : "Ничего не найдено"}</div>
+          <div className="dash-nav-empty">{!accountsLoaded ? "Загрузка…" : "Ничего не найдено"}</div>
         ) : (
           <Tree
             showIcon
             blockNode
             className="dash-tree"
             treeData={treeData}
+            loadData={onLoadData}
             selectedKeys={projectId ? [`prj:${projectId}`] : []}
             expandedKeys={q ? searchExpanded : expanded}
             onExpand={(keys) => setExpanded(keys as string[])}
@@ -154,7 +194,7 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
           <Typography.Text type="secondary">{caption}</Typography.Text>
         </div>
 
-        {treeData.length === 0 && tree.length > 0 && q === "" ? (
+        {treeData.length === 0 && accountsLoaded && accounts.length > 0 && q === "" ? (
           <Card>
             <Empty image={<Boxes size={40} color="#8b8f99" />} description="Нет доступных проектов" />
           </Card>
