@@ -191,7 +191,7 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
   subnets: {
     overviewExtra: ({ data }) => [
       // Размещение подсети: ZONAL (в одной зоне) либо REGIONAL (весь регион).
-      { label: "Размещение", value: code((getByPath<string>(data, "placement_type") || "ZONAL")) },
+      { label: "Размещение", value: mono(getByPath<string>(data, "placement_type") || "ZONAL") },
       (getByPath<string>(data, "placement_type") || "ZONAL") === "REGIONAL"
         ? { label: "Регион", value: mono(getByPath<string>(data, "region_id")) }
         : { label: "Зона", value: mono(getByPath<string>(data, "zone_id")) },
