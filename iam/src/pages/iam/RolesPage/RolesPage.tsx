@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Button, Form, Input, Popconfirm, Space, Table, Tabs, Tag, Typography, Alert } from "antd";
+import { Button, Form, Input, Popconfirm, Segmented, Space, Table, Tag, Typography, Alert } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
@@ -28,8 +28,10 @@ const PERM_RE = /^[a-z_]+(\.[a-z_*]+){2}$/;
 
 export function RolesPage() {
   const navigate = useNavigate();
-  // KAC-127: разделение system / custom ролей табами.
-  const [roleKind, setRoleKind] = useState<"system" | "custom">("system");
+  // Фильтр списка ролей: сфера (Все/Системные/Кастомные) + поиск по имени/id —
+  // Segmented + Input в шапке списка (паритет с generic-списками).
+  const [roleKind, setRoleKind] = useState<"all" | "system" | "custom">("all");
+  const [query, setQuery] = useState("");
   const headerAction = useMemo(
     () => (
       <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/iam/roles/create")}>
@@ -50,7 +52,11 @@ export function RolesPage() {
   const roles = useMemo(() => data?.roles ?? [], [data?.roles]);
   const systemRoles = useMemo(() => roles.filter((r) => r.is_system), [roles]);
   const customRoles = useMemo(() => roles.filter((r) => !r.is_system), [roles]);
-  const visibleRoles = roleKind === "system" ? systemRoles : customRoles;
+  const byKind = roleKind === "system" ? systemRoles : roleKind === "custom" ? customRoles : roles;
+  const q = query.trim().toLowerCase();
+  const visibleRoles = q
+    ? byKind.filter((r) => (r.name ?? "").toLowerCase().includes(q) || (r.id ?? "").toLowerCase().includes(q))
+    : byKind;
   const { wrapRef, scrollY } = useTableScrollY();
 
   const del = useIamMutation({
@@ -153,18 +159,31 @@ export function RolesPage() {
   ];
 
   return (
-    <IamListShell specId="roles" title="Роли" count={roles.length}>
-      <Tabs
-        activeKey={roleKind}
-        onChange={(k) => setRoleKind(k as "system" | "custom")}
-        size="middle"
-        items={[
-          { key: "system", label: `Системные (${systemRoles.length})` },
-          { key: "custom", label: `Кастомные (${customRoles.length})` },
-        ]}
-        style={{ marginBottom: 12, flexShrink: 0 }}
-      />
-
+    <IamListShell
+      specId="roles"
+      title="Роли"
+      count={roles.length}
+      right={
+        <Space size={8}>
+          <Input.Search
+            placeholder="Фильтр по имени или идентификатору"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            allowClear
+            style={{ width: 280 }}
+          />
+          <Segmented
+            value={roleKind}
+            onChange={(v) => setRoleKind(v as "all" | "system" | "custom")}
+            options={[
+              { label: `Все (${roles.length})`, value: "all" },
+              { label: `Системные (${systemRoles.length})`, value: "system" },
+              { label: `Кастомные (${customRoles.length})`, value: "custom" },
+            ]}
+          />
+        </Space>
+      }
+    >
       <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
         <Table<Role>
           rowKey="id"
@@ -176,7 +195,7 @@ export function RolesPage() {
           pagination={false}
           scroll={{ x: "max-content", y: scrollY }}
           locale={{
-            emptyText: roleKind === "system" ? "Системных ролей нет." : "Кастомных ролей нет.",
+            emptyText: q ? "Ничего не найдено." : "Ролей нет.",
           }}
         />
       </div>
