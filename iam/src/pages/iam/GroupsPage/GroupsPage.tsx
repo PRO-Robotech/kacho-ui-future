@@ -11,6 +11,9 @@ import type { ColumnsType } from "antd/es/table";
 import { api } from "@/api/client";
 import { iamApi, IAM, type Group, type GroupMember, type User, type ServiceAccount } from "@/api/iam";
 import { useIamMutation, fmtTs, CopyableMonoId } from "@/components/organisms/iam/IamCommon";
+import { SectionHeader } from "@/components/molecules/SectionHeader";
+import { ResourceIcon } from "@/components/organisms/form/ResourceIcon";
+import { IamRefLink } from "@/components/molecules/IamRefLink";
 import { FormFooter } from "@/components/organisms/form/FormFooter";
 import { FormShell } from "@/components/organisms/form/FormShell";
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
@@ -341,14 +344,14 @@ export function GroupMembersPanel({ group, accountId }: { group: Group; accountI
     method: "ACTION",
     path: `${IAM.groups}/${group.id}:addMember`,
     invalidateKeys: [["iam", "groups", group.id, "members"]],
-    successText: "Member добавлен",
+    successText: "Участник добавлен",
   });
 
   const removeMut = useIamMutation({
     method: "ACTION",
     path: `${IAM.groups}/${group.id}:removeMember`,
     invalidateKeys: [["iam", "groups", group.id, "members"]],
-    successText: "Member удалён",
+    successText: "Участник удалён",
   });
 
   const [pickerType, setPickerType] = useState<"user" | "service_account">("user");
@@ -356,55 +359,21 @@ export function GroupMembersPanel({ group, accountId }: { group: Group; accountI
 
   const memberList = members.data?.members ?? [];
 
-  const columns: ColumnsType<GroupMember> = [
-    {
-      title: "Тип",
-      dataIndex: "member_type",
-      key: "type",
-      width: 130,
-      render: (v) => <Tag color={v === "user" ? "blue" : "gold"}>{v}</Tag>,
-    },
-    {
-      title: "ID",
-      dataIndex: "member_id",
-      key: "id",
-      render: (v) => <CopyableMonoId id={v} />,
-    },
-    {
-      title: "Добавлен",
-      dataIndex: "added_at",
-      key: "added_at",
-      width: 180,
-      render: (v) => fmtTs(v),
-    },
-    {
-      title: "",
-      key: "actions",
-      width: 60,
-      render: (_v, row) => (
-        <Popconfirm
-          title="Удалить member?"
-          okText="Удалить"
-          okButtonProps={{ danger: true }}
-          cancelText="Отмена"
-          onConfirm={() =>
-            void removeMut.run({
-              member_type: row.member_type,
-              member_id: row.member_id,
-            })
-          }
-        >
-          <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-        </Popconfirm>
-      ),
-    },
-  ];
+  const MEMBER_TYPE_LABEL: Record<string, string> = { user: "пользователь", service_account: "сервисный аккаунт" };
 
   return (
-    <Space direction="vertical" size={8} style={{ width: "100%", padding: 8 }}>
-      <Typography.Text strong>Members группы {group.name}</Typography.Text>
+    <div style={{ marginTop: 24, maxWidth: 820 }}>
+      <SectionHeader
+        icon={<ResourceIcon specId="groups" />}
+        eyebrow="Список"
+        title={
+          <span>
+            Участники <Typography.Text type="secondary">({memberList.length})</Typography.Text>
+          </span>
+        }
+      />
 
-      <Space size={8} wrap>
+      <Space size={8} wrap style={{ marginBottom: 12 }}>
         <Select
           value={pickerType}
           style={{ width: 200 }}
@@ -413,15 +382,15 @@ export function GroupMembersPanel({ group, accountId }: { group: Group; accountI
             setPickerValue(null);
           }}
           options={[
-            { value: "user", label: "User" },
-            { value: "service_account", label: "Service Account" },
+            { value: "user", label: "Пользователь" },
+            { value: "service_account", label: "Сервисный аккаунт" },
           ]}
         />
         <Select
           style={{ width: 360 }}
           value={pickerValue ?? undefined}
           onChange={(v) => setPickerValue(v)}
-          placeholder={`Выберите ${pickerType}`}
+          placeholder={pickerType === "user" ? "Выберите пользователя" : "Выберите сервисный аккаунт"}
           options={
             pickerType === "user"
               ? (users.data?.users ?? []).map((u: User) => ({
@@ -438,15 +407,11 @@ export function GroupMembersPanel({ group, accountId }: { group: Group; accountI
         />
         <Button
           type="primary"
-          size="small"
           icon={<PlusOutlined />}
           disabled={!pickerValue}
           onClick={() => {
             if (!pickerValue) return;
-            void addMut.run({
-              member_type: pickerType,
-              member_id: pickerValue,
-            });
+            void addMut.run({ member_type: pickerType, member_id: pickerValue });
             setPickerValue(null);
           }}
         >
@@ -454,15 +419,93 @@ export function GroupMembersPanel({ group, accountId }: { group: Group; accountI
         </Button>
       </Space>
 
-      <Table<GroupMember>
-        rowKey={(r) => `${r.member_type}:${r.member_id}`}
-        size="small"
-        loading={members.isLoading}
-        dataSource={memberList}
-        columns={columns}
-        pagination={false}
-        locale={{ emptyText: "Members нет." }}
-      />
-    </Space>
+      {/* Bordered kc-grid-table — единый вид с CIDR-блоками подсети (конвенция
+          overviewBelow-секций): Тип | Участник | Добавлен | действие. */}
+      <div
+        style={{
+          border: "1px solid var(--kc-border)",
+          borderRadius: 8,
+          overflow: "hidden",
+          background: "var(--kc-page)",
+        }}
+      >
+        <table className="w-full text-sm kc-grid-table" style={{ tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: 170 }} />
+            <col />
+            <col style={{ width: 180 }} />
+            <col style={{ width: 48 }} />
+          </colgroup>
+          <thead>
+            <tr style={{ background: "var(--kc-container)" }}>
+              {["Тип", "Участник", "Добавлен"].map((h) => (
+                <th
+                  key={h}
+                  className="text-left"
+                  style={{
+                    padding: "7px 12px",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    color: "var(--kc-text-tertiary)",
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+              <th style={{ padding: "7px 4px" }} />
+            </tr>
+          </thead>
+          <tbody>
+            {memberList.length === 0 && (
+              <tr style={{ height: 44, borderTop: "1px solid var(--kc-border-secondary)" }}>
+                <td
+                  colSpan={4}
+                  style={{ textAlign: "center", verticalAlign: "middle", fontSize: 12, color: "var(--kc-text-tertiary)" }}
+                >
+                  Участников нет
+                </td>
+              </tr>
+            )}
+            {memberList.map((m) => (
+              <tr
+                key={`${m.member_type}:${m.member_id}`}
+                className="kc-kv-row"
+                style={{ height: 44, borderTop: "1px solid var(--kc-border-secondary)" }}
+              >
+                <td style={{ padding: "0 12px", verticalAlign: "middle" }}>
+                  <Tag color={m.member_type === "user" ? "blue" : "gold"} style={{ margin: 0 }}>
+                    {MEMBER_TYPE_LABEL[m.member_type] ?? m.member_type}
+                  </Tag>
+                </td>
+                <td style={{ padding: "0 12px", verticalAlign: "middle" }}>
+                  <IamRefLink
+                    specId={m.member_type === "user" ? "users" : "service-accounts"}
+                    refId={m.member_id}
+                    nameField={m.member_type === "user" ? "email" : "name"}
+                  />
+                </td>
+                <td style={{ padding: "0 12px", verticalAlign: "middle" }}>
+                  <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                    {fmtTs(m.added_at)}
+                  </Typography.Text>
+                </td>
+                <td style={{ textAlign: "center", verticalAlign: "middle" }}>
+                  <Popconfirm
+                    title="Удалить участника?"
+                    okText="Удалить"
+                    okButtonProps={{ danger: true }}
+                    cancelText="Отмена"
+                    onConfirm={() => void removeMut.run({ member_type: m.member_type, member_id: m.member_id })}
+                  >
+                    <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
