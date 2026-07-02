@@ -133,13 +133,13 @@ export function DetailShell({
         display: "flex",
         alignItems: "stretch",
         overflow: "hidden",
-        // Detail-поверхность фиксируется по высоте под вьюпорт (за вычетом
-        // host-header + remote-header ≈ offset). Рейл табов (зона-2) и шапка
-        // зоны-3 не двигаются, скроллится только контент зоны-3 — обзор/таб не
-        // «прыгает» относительно наполнения. offset задаётся --kc-detail-offset
-        // (fallback 108px), чтобы тюнить под конкретную высоту шапок.
-        height: "calc(100dvh - var(--kc-detail-offset, 108px))",
-        maxHeight: "calc(100dvh - var(--kc-detail-offset, 108px))",
+        // Detail-поверхность заполняет ограниченную content-область host'а
+        // (header + content + footer в 100vh; .app-content overflow:hidden →
+        // .vpc-remote-content flex:1 → .kc-surface height:100%). Рейл табов
+        // (зона-2) и шапка зоны-3 не двигаются, скроллится только контент
+        // зоны-3. Единый размер с list-поверхностью (обе height:100%).
+        height: "100%",
+        maxHeight: "100%",
       }}
     >
       {/* KAC-246: рейл табов — часть единой detail-поверхности. Без своего
