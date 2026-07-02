@@ -67,30 +67,63 @@ function boolTag(v: unknown, yes = "Да", no = "Нет"): ReactNode {
 
 export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
   "load-balancers": {
-    overviewExtra: ({ data }) => [
-      { label: "Регион", value: txt(getByPath<string>(data, "region_id")) },
-      { label: "Схема", value: code(getByPath<string>(data, "type")) },
-      { label: "Размещение", value: code(getByPath<string>(data, "placement_type")) },
-      {
-        label: "VIP-адрес",
-        value: (
-          <NlbVipCell
-            v4AddressId={getByPath<string>(data, "v4_address_id")}
-            v6AddressId={getByPath<string>(data, "v6_address_id")}
-          />
-        ),
-      },
-      { label: "Session affinity", value: code(getByPath<string>(data, "session_affinity")) },
-      { label: "Статус", value: <StatusBadge state={getByPath<string>(data, "status")} /> },
-      { label: "Защита от удаления", value: boolTag(getByPath<boolean>(data, "deletion_protection")) },
-    ],
+    // Единая таблица «Обзор»: immutable схема/размещение + mutable-скаляры +
+    // резолвнутый VIP пофамильно + drain-зоны. Размещение — только для INTERNAL,
+    // зоны без анонса — только для REGIONAL (зеркалит форму создания).
+    overviewExtra: ({ data }) => {
+      const type = getByPath<string>(data, "type") ?? "";
+      const placement = getByPath<string>(data, "placement_type") ?? "";
+      const drainZones = (getByPath<string[]>(data, "disabled_announce_zones") ?? []) as string[];
+      const items: DescItem[] = [
+        { label: "Регион", value: code(getByPath<string>(data, "region_id")) },
+        {
+          label: "Схема",
+          value: type ? <Tag color={type === "INTERNAL" ? "geekblue" : "blue"}>{type}</Tag> : dash,
+        },
+      ];
+      if (type === "INTERNAL") {
+        items.push({
+          label: "Размещение",
+          value: placement ? <Tag color={placement === "REGIONAL" ? "purple" : "cyan"}>{placement}</Tag> : dash,
+        });
+      }
+      items.push(
+        { label: "Session affinity", value: code(getByPath<string>(data, "session_affinity")) },
+        { label: "IPv4-адрес", value: <NlbVipCell v4AddressId={getByPath<string>(data, "v4_address_id")} /> },
+        { label: "IPv6-адрес", value: <NlbVipCell v6AddressId={getByPath<string>(data, "v6_address_id")} /> },
+      );
+      if (placement === "REGIONAL") {
+        items.push({
+          label: "Зоны без анонса",
+          value:
+            drainZones.length > 0 ? (
+              <span>
+                {drainZones.map((z) => (
+                  <Tag key={z} style={{ marginInlineEnd: 4 }}>
+                    {z}
+                  </Tag>
+                ))}
+              </span>
+            ) : (
+              <Typography.Text type="secondary">анонс из всех зон</Typography.Text>
+            ),
+        });
+      }
+      items.push(
+        { label: "Статус", value: <StatusBadge state={getByPath<string>(data, "status")} /> },
+        { label: "Защита от удаления", value: boolTag(getByPath<boolean>(data, "deletion_protection")) },
+      );
+      return items;
+    },
   },
 
   listeners: {
     overviewExtra: ({ data }) => [
       {
         label: "Балансировщик",
-        value: <RefNameLink specId="load-balancers" refId={getByPath<string>(data, "load_balancer_id")} maxChars={42} />,
+        value: (
+          <RefNameLink specId="load-balancers" refId={getByPath<string>(data, "load_balancer_id")} maxChars={42} />
+        ),
       },
       { label: "Протокол", value: code(getByPath<string>(data, "protocol")) },
       { label: "Порт", value: code(getByPath<number>(data, "port")) },

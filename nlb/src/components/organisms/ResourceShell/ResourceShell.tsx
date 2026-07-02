@@ -35,7 +35,7 @@ import { OperationsTab } from "@/components/organisms/OperationsTab";
 import { InlineResourceForm } from "@/components/organisms/InlineResourceForm";
 import { TableSearch, ColumnSettings, useHiddenColumns, type ToggleCol } from "@/components/molecules/TableToolbar";
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
-import { detailExtension, type DescItem } from "@/components/organisms/ResourceDetailExtensions";
+import { detailExtension, type DescItem, type DetailExtCtx } from "@/components/organisms/ResourceDetailExtensions";
 import { api } from "@/api/client";
 import { REGISTRY, getByPath, resourceProjectPath, type ResourceSpec } from "@/lib/resource-registry";
 import { buildSpecColumns } from "@/lib/spec-columns";
@@ -152,7 +152,18 @@ function RelatedTable({
   );
 }
 
-export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: ResourceShellMode }) {
+export function ResourceShell({
+  spec,
+  mode,
+  extraTabs,
+}: {
+  spec: ResourceSpec;
+  mode?: ResourceShellMode;
+  // Доменные табы поверх registry-related/ext (bespoke detail-обёртки, напр.
+  // LoadBalancer → «Целевые группы» attach/detach). Рендерятся сразу после
+  // «Обзора», перед связанными табами.
+  extraTabs?: (ctx: DetailExtCtx) => DetailTab[];
+}) {
   const { projectId, uid, childRoute } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -304,6 +315,9 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
       ),
     },
   ];
+
+  // Bespoke доменные табы (prop) — сразу после «Обзора», перед связанными.
+  (extraTabs?.(extCtx) ?? []).forEach((t) => tabs.push(t));
 
   // Связанные ресурсы — отдельный таб на каждый тип.
   related.forEach((r) => {

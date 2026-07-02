@@ -41,6 +41,10 @@ export default defineConfig({
         target: apiGateway,
         changeOrigin: true,
       },
+      "/geo": {
+        target: apiGateway,
+        changeOrigin: true,
+      },
       "/nlb": {
         target: apiGateway,
         changeOrigin: true,

@@ -121,6 +121,14 @@ export function InlineResourceCreateForm({
 
   const submit = () => {
     let parsed: Record<string, unknown> = obj;
+    // Клиент-валидация ДО sanitize (инварианты читают UI-дискриминаторы формы).
+    if (spec.validate) {
+      const err = spec.validate(parsed);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
     if (spec.sanitize) parsed = spec.sanitize(parsed);
     mutation.mutate(parsed);
   };

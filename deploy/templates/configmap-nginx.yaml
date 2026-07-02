@@ -68,7 +68,7 @@ data:
             proxy_send_timeout 30s;
         }
 
-        location ~ ^/(vpc|compute|nlb|operations)/ {
+        location ~ ^/(vpc|compute|nlb|geo|operations)/ {
             set $api_gw_upstream "${KACHO_UI_API_GATEWAY_UPSTREAM}";
             proxy_pass http://$api_gw_upstream;
             proxy_http_version 1.1;

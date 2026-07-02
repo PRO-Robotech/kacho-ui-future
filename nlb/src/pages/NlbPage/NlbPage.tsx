@@ -10,6 +10,7 @@ import { OperationBanner } from "@/components/molecules/OperationBanner";
 import { ResourceCreatePage } from "@/components/organisms/ResourceCreatePage";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
 import { ResourceShell } from "@/components/organisms/ResourceShell";
+import { LoadBalancerDetailPage } from "@/pages/LoadBalancerDetailPage";
 import { contextApi } from "@/lib/context-store";
 import { REGISTRY } from "@/lib/resource-registry";
 import "@/typography.css";
@@ -58,25 +59,48 @@ export const NlbPage: FC<NlbPageProps> = ({ context }) => {
             <NlbFrame>
               <Routes>
                 <Route index element={<ProjectNlbDefaultRedirect />} />
-                {NLB_SCOPED.map((spec) => (
-                  <Route key={spec.id}>
-                    <Route
-                      path={spec.route}
-                      element={<ResourceListPage spec={spec} parentField="project_id" parentParam="projectId" />}
-                    />
-                    <Route
-                      path={`${spec.route}/create`}
-                      element={<ResourceCreatePage spec={spec} parentField="project_id" parentParam="projectId" />}
-                    />
-                    <Route path={`${spec.route}/:uid`} element={<ResourceShell spec={spec} />} />
-                    <Route path={`${spec.route}/:uid/edit`} element={<ResourceShell spec={spec} mode="edit" />} />
-                    <Route
-                      path={`${spec.route}/:uid/:childRoute/create`}
-                      element={<ResourceShell spec={spec} mode="child-create" />}
-                    />
-                    <Route path={`${spec.route}/:uid/:tab`} element={<ResourceShell spec={spec} />} />
-                  </Route>
-                ))}
+                {NLB_SCOPED.map((spec) => {
+                  // LoadBalancer detail — bespoke обёртка (вкладка «Целевые группы»
+                  // attach/detach); остальные ресурсы — generic ResourceShell.
+                  // Layout/edit/child-create — тот же ResourceShell внутри обёртки.
+                  const isLb = spec.id === "load-balancers";
+                  return (
+                    <Route key={spec.id}>
+                      <Route
+                        path={spec.route}
+                        element={<ResourceListPage spec={spec} parentField="project_id" parentParam="projectId" />}
+                      />
+                      <Route
+                        path={`${spec.route}/create`}
+                        element={<ResourceCreatePage spec={spec} parentField="project_id" parentParam="projectId" />}
+                      />
+                      <Route
+                        path={`${spec.route}/:uid`}
+                        element={isLb ? <LoadBalancerDetailPage /> : <ResourceShell spec={spec} />}
+                      />
+                      <Route
+                        path={`${spec.route}/:uid/edit`}
+                        element={
+                          isLb ? <LoadBalancerDetailPage mode="edit" /> : <ResourceShell spec={spec} mode="edit" />
+                        }
+                      />
+                      <Route
+                        path={`${spec.route}/:uid/:childRoute/create`}
+                        element={
+                          isLb ? (
+                            <LoadBalancerDetailPage mode="child-create" />
+                          ) : (
+                            <ResourceShell spec={spec} mode="child-create" />
+                          )
+                        }
+                      />
+                      <Route
+                        path={`${spec.route}/:uid/:tab`}
+                        element={isLb ? <LoadBalancerDetailPage /> : <ResourceShell spec={spec} />}
+                      />
+                    </Route>
+                  );
+                })}
                 <Route path="*" element={<ProjectNlbDefaultRedirect />} />
               </Routes>
             </NlbFrame>

@@ -12,6 +12,11 @@ import { CopyableName } from "@/components/atoms/CopyableName";
 import { RefNameLink } from "@/components/molecules/RefNameLink";
 import { LabelsCell } from "@/components/atoms/LabelsCell";
 import { NlbVipCell } from "@/components/molecules/NlbVipCell";
+import {
+  NlbVipSourceField,
+  NlbDisabledZonesField,
+  buildVipSource,
+} from "@/components/organisms/form/NlbVipSourceField";
 
 export interface ResourceColumn {
   header: string;
@@ -62,6 +67,10 @@ export interface ResourceSpec {
   sanitize?: (obj: Record<string, unknown>) => Record<string, unknown>;
   // Обратная sanitize: wire → form (edit-режим).
   hydrate?: (obj: Record<string, unknown>) => Record<string, unknown>;
+  // Клиентская валидация ДО submit (Create). Возвращает текст ошибки или null.
+  // Используется для инвариантов, которые backend отверг бы асинхронно через
+  // 1-2с (напр. LB: хотя бы одно семейство VIP включено).
+  validate?: (obj: Record<string, unknown>) => string | null;
   /** Path-template для internal/infra-проекции ресурса (плейсхолдер `{id}`). */
   internalGetPath?: string;
   /** Связанные дочерние ресурсы — отдельные табы во ResourceShell. */
@@ -127,6 +136,44 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     template: () => ({}),
   },
 
+  // ====== vpc (read-only ref-цели для VIP-picker'а) ======
+  // Subnet / Address — cross-service ref-цели (owner — vpc). Read-only
+  // registry-записи нужны RefSelect'у в NlbVipSourceField, чтобы резолвить
+  // apiPath/payloadKey + показать CIDR/IP в dropdown'е (extraInfoFor).
+  subnets: {
+    id: "subnets",
+    route: "subnets",
+    apiPath: "/vpc/v1/subnets",
+    payloadKey: "subnets",
+    singular: "Подсеть",
+    plural: "Подсети",
+    serviceTitle: "Virtual Private Cloud",
+    scope: "project",
+    ops: { create: false, update: false, delete: false },
+    columns: [
+      { header: "Имя", path: "name", format: "text" },
+      { header: "Идентификатор", path: "id", format: "uid-short" },
+    ],
+    template: () => ({}),
+  },
+
+  addresses: {
+    id: "addresses",
+    route: "addresses",
+    apiPath: "/vpc/v1/addresses",
+    payloadKey: "addresses",
+    singular: "Адрес",
+    plural: "Адреса",
+    serviceTitle: "Virtual Private Cloud",
+    scope: "project",
+    ops: { create: false, update: false, delete: false },
+    columns: [
+      { header: "Имя", path: "name", format: "text" },
+      { header: "Идентификатор", path: "id", format: "uid-short" },
+    ],
+    template: () => ({}),
+  },
+
   // ====== nlb ======
   // proto: kacho.cloud.nlb.v1.NetworkLoadBalancerService.
 
@@ -141,9 +188,14 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     genitive: "Балансировщика нагрузки",
     serviceTitle: "Network Load Balancer",
     scope: "project",
-    // NetworkLoadBalancerService несёт Start/Stop → флаги обязаны быть в ops,
-    // иначе кнопки действий не рендерятся.
-    ops: { create: true, update: true, delete: true, start: true, stop: true },
+    // Start/Stop намеренно НЕ в ops — lifecycle-действия балансировщика в UI не
+    // экспонируются (управление статусом идёт через create/delete + data-plane).
+    ops: { create: true, update: true, delete: true },
+    // Листенеры — связанный дочерний ресурс (within-service FK load_balancer_id):
+    // отдельный registry-driven таб + auto-CTA «Создать листенер». Целевые группы
+    // не выражаются filterField (pivot attached_target_groups) — их вкладку
+    // подаёт bespoke LoadBalancerDetailPage.
+    related: [{ childId: "listeners", filterField: "load_balancer_id", label: "Листенеры" }],
     columns: [
       {
         header: "Имя",
@@ -219,32 +271,27 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       },
       {
         // Источник VIP-адреса (per-family oneof v4_source/v6_source) — интерактивный
-        // picker подключается на следующем этапе; пока поле-заглушка, а sanitize
-        // не отправляет служебное `vip_source` на провод.
+        // picker: пофамильный (v4/v6) выбор subnet/address/public; в edit источник
+        // неизменяем (read-only резолвнутый Address). sanitize собирает wire-oneof.
         name: "vip_source",
         label: "Источник VIP",
         type: "custom",
         immutable: true,
-        render: () => (
-          <div style={{ fontSize: 13, opacity: 0.65, lineHeight: 1.5 }}>
-            Выбор источника VIP-адреса (подсеть / привязка Address / публичный пул) появится в следующей версии
-            формы. Пока балансировщик создаётся с VIP-источником по умолчанию для выбранной схемы.
-          </div>
+        render: ({ value, onChange, editMode }) => (
+          <NlbVipSourceField value={value} onChange={onChange} editMode={editMode} />
         ),
       },
       {
         name: "disabled_announce_zones",
         label: "Зоны без анонса",
-        type: "array",
-        itemLabel: "зона",
-        // Drain только для REGIONAL; mutable через Update.
+        type: "custom",
+        // Drain только для REGIONAL; mutable через Update. fullWidth:false — label
+        // слева (как обычное поле), multi-select зон справа.
+        fullWidth: false,
         visibleWhen: { field: "placement_type", equals: "REGIONAL" },
         description:
           "Зоны, из которых anycast-VIP не анонсируется (drain). Пусто — анонс из всех здоровых зон региона.",
-        newItem: () => ({ value: "" }),
-        itemFields: [
-          { name: "value", label: "Зона", type: "string", required: true, placeholder: "zone-id" },
-        ],
+        render: ({ value, onChange }) => <NlbDisabledZonesField value={value} onChange={onChange} />,
       },
       {
         name: "session_affinity",
@@ -278,42 +325,60 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       session_affinity: "FIVE_TUPLE",
       deletion_protection: false,
       disabled_announce_zones: [],
+      // vip_source — UI-представление источника VIP per-family (NlbVipSourceField).
+      // По умолчанию включён IPv4 в режиме «из подсети». sanitize собирает wire
+      // oneof v4_source/v6_source (ровно один кейс на семейство) и опускает
+      // невключённое семейство целиком.
+      vip_source: {
+        _v4_enabled: true,
+        _v4_mode: "subnet",
+        v4: { subnet_id: "", address_id: "" },
+        _v6_enabled: false,
+        _v6_mode: "subnet",
+        v6: { subnet_id: "", address_id: "" },
+      },
       labels: {},
     }),
-    // Стрижёт служебные поля и неприменимые ветки перед POST/PATCH:
-    //  • disabled_announce_zones [{value}] → [str], присылается только для REGIONAL;
-    //  • placement_type — только для INTERNAL;
-    //  • vip_source (UI-заглушка источника VIP) — не на провод.
+    // Клиент-валидация ДО submit: хотя бы одно семейство VIP (IPv4/IPv6) должно
+    // быть включено — иначе backend отвергнет InvalidArgument через 1-2с.
+    validate: (obj) => {
+      const vs = (obj.vip_source as Record<string, unknown> | undefined) ?? {};
+      if (!vs._v4_enabled && !vs._v6_enabled) {
+        return "Включите хотя бы одно семейство VIP: IPv4 или IPv6.";
+      }
+      return null;
+    },
+    // Собирает per-family oneof v4_source/v6_source из UI-представления
+    // (NlbVipSourceField): для каждого включённого семейства строится ровно один
+    // кейс oneof (subnet_id / address_id / public {}), служебные `_*` вычищаются.
+    // placement_type шлётся только для INTERNAL, disabled_announce_zones — только
+    // для REGIONAL (иначе backend отклонит).
     sanitize: (obj) => {
       const out: Record<string, unknown> = { ...obj };
       const type = (out.type as string) || "INTERNAL";
 
-      const rawZones = out.disabled_announce_zones;
-      if (Array.isArray(rawZones)) {
-        out.disabled_announce_zones = rawZones
-          .map((item) =>
-            typeof item === "object" && item !== null && "value" in (item as object)
-              ? (item as Record<string, unknown>)["value"]
-              : item,
-          )
-          .filter((v) => typeof v === "string" && v);
+      const vs = (out.vip_source as Record<string, unknown> | undefined) ?? {};
+      if (vs._v4_enabled) {
+        out.v4_source = buildVipSource(
+          type,
+          vs._v4_mode as string | undefined,
+          vs.v4 as Record<string, unknown> | undefined,
+        );
       }
-
+      if (vs._v6_enabled) {
+        out.v6_source = buildVipSource(
+          type,
+          vs._v6_mode as string | undefined,
+          vs.v6 as Record<string, unknown> | undefined,
+        );
+      }
       delete out.vip_source;
+
       // placement_type — INTERNAL only.
       if (type !== "INTERNAL") delete out.placement_type;
       // disabled_announce_zones — REGIONAL only.
       if ((out.placement_type as string) !== "REGIONAL") delete out.disabled_announce_zones;
 
-      return out;
-    },
-    // Inverse sanitize: wire-strings → form-objects {value} для array-поля.
-    hydrate: (obj) => {
-      const out: Record<string, unknown> = { ...obj };
-      const raw = out.disabled_announce_zones;
-      if (Array.isArray(raw)) {
-        out.disabled_announce_zones = raw.map((item) => (typeof item === "string" ? { value: item } : item));
-      }
       return out;
     },
   },
@@ -402,8 +467,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         type: "bool",
         required: false,
         default: false,
-        description:
-          "PROXY-protocol v2 framing на входящих соединениях (передаёт target'у исходный адрес клиента).",
+        description: "PROXY-protocol v2 framing на входящих соединениях (передаёт target'у исходный адрес клиента).",
       },
       {
         name: "default_target_group_id",
@@ -490,7 +554,8 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         label: "HC: имя",
         type: "string",
         required: true,
-        description: "Имя health-check'а (3-63 символа, lowercase + цифры + дефисы). Уникально в пределах target-group.",
+        description:
+          "Имя health-check'а (3-63 символа, lowercase + цифры + дефисы). Уникально в пределах target-group.",
       },
       {
         name: "health_check.tcp_options.port",
