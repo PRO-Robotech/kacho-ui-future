@@ -225,6 +225,21 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       FIELD_LABELS,
       FIELD_DESCRIPTION,
     ],
+    related: [
+      { childId: "projects", filterField: "account_id", label: "Проекты" },
+      { childId: "service-accounts", filterField: "account_id", label: "Сервисные аккаунты" },
+    ],
+    docs: [
+      { label: "Аккаунты и организации", href: "#" },
+      { label: "Управление доступом", href: "#" },
+    ],
+    emptyState: {
+      title: "Создайте первый Account",
+      body:
+        "Account — верхнеуровневый tenant Kachō: владелец, проекты, пользователи и роли живут внутри него. " +
+        "Создайте Account, чтобы начать выдавать доступ и заводить проекты.",
+      docs: ["Аккаунты и организации"],
+    },
     template: () => ({ name: "", owner_user_id: "", description: "" }),
   },
 
@@ -252,9 +267,12 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       COL_ID,
     ],
     fields: [FIELD_NAME, FIELD_ACCOUNT_ID, FIELD_LABELS, FIELD_DESCRIPTION],
-    // Project drill-down → /projects/:id; ProjectDefaultRedirect перебрасывает
-    // дальше на /projects/:id/dashboard.
-    childRoute: "/projects/:id",
+    // Клик по проекту в списке ведёт на его IAM-detail (/iam/projects/:id) —
+    // без childRoute drill идёт на generic ResourceShell detail, а не на дашборд.
+    docs: [
+      { label: "Проекты", href: "#" },
+      { label: "Управление доступом", href: "#" },
+    ],
     template: ({ accountId }) => ({
       name: "",
       account_id: accountId ?? "",
@@ -284,6 +302,10 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       COL_ID,
     ],
     fields: [FIELD_NAME, FIELD_ACCOUNT_ID, FIELD_DESCRIPTION],
+    docs: [
+      { label: "Сервисные аккаунты", href: "#" },
+      { label: "Управление доступом", href: "#" },
+    ],
     template: ({ accountId }) => ({
       name: "",
       account_id: accountId ?? "",

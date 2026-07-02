@@ -85,7 +85,15 @@ function RelatedTable({
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [hidden, toggleHidden] = useHiddenColumns(`cols:${childSpec.id}`);
-  const { data, isLoading, isError, error } = useResourceList(childSpec, "project_id", projectId);
+  // Дочерний список тянется в scope своего родителя: account-scoped ресурсы
+  // (Project/ServiceAccount) требуют account_id = uid аккаунта-родителя; прочие —
+  // project_id из URL. Затем ownRows дофильтровывает по filterField.
+  const accountScoped = childSpec.scope === "account";
+  const { data, isLoading, isError, error } = useResourceList(
+    childSpec,
+    accountScoped ? "account_id" : "project_id",
+    accountScoped ? parentId : projectId,
+  );
   const all = (data?.[childSpec.payloadKey] as Record<string, unknown>[] | undefined) ?? [];
   // Фильтр по родителю (OR по нескольким полям — напр. subnet→addresses v4∪v6).
   const ownRows = all.filter((r) => filterFields.some((ff) => getByPath<string>(r, ff) === parentId));
