@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FC, type ReactNode } from "react";
-import { Card, Col, Empty, Input, Row, Space, Statistic, Tree, Typography } from "antd";
+import { Card, Col, Empty, Input, Row, Space, Tree, Typography } from "antd";
 import type { DataNode } from "antd/es/tree";
 import { ArrowRight, Boxes, FolderClosed, LockKeyhole, Search } from "lucide-react";
 import { SERVICE_MODULES } from "../../lib/service-modules";
@@ -182,20 +182,16 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
                   }
                   extra={disabled ? <LockKeyhole size={16} /> : <ArrowRight size={16} />}
                 >
-                  <Typography.Paragraph type="secondary" className="dashboard-description">
-                    {module.description}
-                  </Typography.Paragraph>
-                  <Row gutter={16} className="dashboard-tile-stats">
+                  <div className="dashboard-tile-stats">
                     {module.stats.map((stat) => (
-                      <Col key={stat.key} span={Math.floor(24 / module.stats.length)}>
-                        <Statistic
-                          title={stat.label}
-                          value={countsByModule[module.key]?.[stat.key] ?? "-"}
-                          styles={{ content: { fontSize: 22 } }}
-                        />
-                      </Col>
+                      <div key={stat.key} className="dashboard-metric">
+                        <span className="dashboard-metric-value">{countsByModule[module.key]?.[stat.key] ?? "—"}</span>
+                        <span className="dashboard-metric-label" title={stat.label}>
+                          {stat.label}
+                        </span>
+                      </div>
                     ))}
-                  </Row>
+                  </div>
                 </Card>
               </Col>
             );
