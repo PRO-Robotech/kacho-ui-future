@@ -1,6 +1,7 @@
-import { useEffect, useState, type FC } from "react";
-import { Card, Col, Row, Space, Statistic, Typography } from "antd";
-import { ArrowRight, LockKeyhole } from "lucide-react";
+import { useEffect, useMemo, useState, type FC, type ReactNode } from "react";
+import { Card, Col, Empty, Input, Row, Space, Statistic, Tree, Typography } from "antd";
+import type { DataNode } from "antd/es/tree";
+import { ArrowRight, Boxes, FolderClosed, LockKeyhole, Search } from "lucide-react";
 import { SERVICE_MODULES } from "../../lib/service-modules";
 import type { ServiceModule } from "../../lib/service-modules";
 import { useModuleCounts } from "../../hooks/use-module-counts";
@@ -12,52 +13,88 @@ export interface DashboardPageProps {
   navigate?: (path: string) => void | Promise<void>;
 }
 
+interface AccountTree {
+  account: AccountRef;
+  projects: ProjectRef[];
+}
+
 export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defaultNavigate }) => {
   const ctx = context ?? loadHostContext();
   const projectId = ctx.project?.id ?? null;
   const accountId = ctx.account?.id ?? null;
 
-  // Левая панель: список аккаунтов + проекты выбранного аккаунта. Выбор проекта
-  // навигирует на /projects/:id/dashboard — host подхватывает контекст из URL.
-  const [accounts, setAccounts] = useState<AccountRef[]>([]);
-  const [selAccountId, setSelAccountId] = useState<string | null>(accountId);
-  const [projects, setProjects] = useState<ProjectRef[]>([]);
+  // Дерево «аккаунт → проекты»: аккаунты + проекты каждого (parallel). Выбор
+  // проекта навигирует на /projects/:id/dashboard — host берёт контекст из URL.
+  const [tree, setTree] = useState<AccountTree[]>([]);
+  const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    apiList<{ accounts?: Array<{ id: string; name?: string }> }>("/iam/v1/accounts", { pageSize: "1000" })
-      .then((r) => {
+    (async () => {
+      try {
+        const accResp = await apiList<{ accounts?: Array<{ id: string; name?: string }> }>("/iam/v1/accounts", {
+          pageSize: "1000",
+        });
+        const accounts = (accResp.accounts ?? []).map((a) => ({ id: a.id, name: a.name || a.id }));
+        const withProjects = await Promise.all(
+          accounts.map(async (account) => {
+            try {
+              const pr = await apiList<{ projects?: Array<{ id: string; name?: string; accountId?: string }> }>(
+                "/iam/v1/projects",
+                { account_id: account.id, pageSize: "1000" },
+              );
+              const projects = (pr.projects ?? []).map((p) => ({
+                id: p.id,
+                name: p.name || p.id,
+                accountId: p.accountId || account.id,
+              }));
+              return { account, projects };
+            } catch {
+              return { account, projects: [] as ProjectRef[] };
+            }
+          }),
+        );
         if (cancelled) return;
-        const list = (r.accounts ?? []).map((a) => ({ id: a.id, name: a.name || a.id }));
-        setAccounts(list);
-        setSelAccountId((cur) => cur ?? accountId ?? list[0]?.id ?? null);
-      })
-      .catch(() => undefined);
+        setTree(withProjects);
+        // раскрыть аккаунт текущего проекта (или первый).
+        setExpanded((cur) => (cur.length ? cur : [`acc:${accountId ?? withProjects[0]?.account.id ?? ""}`]));
+      } catch {
+        if (!cancelled) setTree([]);
+      }
+    })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!selAccountId) {
-      setProjects([]);
-      return;
-    }
-    let cancelled = false;
-    apiList<{ projects?: Array<{ id: string; name?: string; accountId?: string }> }>("/iam/v1/projects", {
-      account_id: selAccountId,
-      pageSize: "1000",
-    })
-      .then((r) => {
-        if (cancelled) return;
-        setProjects((r.projects ?? []).map((p) => ({ id: p.id, name: p.name || p.id, accountId: p.accountId || selAccountId })));
+  const q = search.trim().toLowerCase();
+
+  // treeData для AntD Tree + авто-раскрытие совпадений при поиске.
+  const { treeData, searchExpanded } = useMemo(() => {
+    const autoExpand: string[] = [];
+    const data: DataNode[] = tree
+      .map(({ account, projects }) => {
+        const accMatch = !q || account.name.toLowerCase().includes(q);
+        const shownProjects = projects.filter((p) => !q || accMatch || p.name.toLowerCase().includes(q));
+        if (q && !accMatch && shownProjects.length === 0) return null;
+        if (q && shownProjects.length > 0) autoExpand.push(`acc:${account.id}`);
+        return {
+          key: `acc:${account.id}`,
+          selectable: false,
+          title: <span className="dash-tree-acc">{highlight(account.name, q)}</span>,
+          children: shownProjects.map((p) => ({
+            key: `prj:${p.id}`,
+            isLeaf: true,
+            icon: <FolderClosed size={13} />,
+            title: <span className="dash-tree-prj">{highlight(p.name, q)}</span>,
+          })),
+        } as DataNode;
       })
-      .catch(() => setProjects([]));
-    return () => {
-      cancelled = true;
-    };
-  }, [selAccountId]);
+      .filter((n): n is DataNode => n !== null);
+    return { treeData: data, searchExpanded: autoExpand };
+  }, [tree, q]);
 
   const vpcCounts = useModuleCounts(findModule("vpc"), projectId);
   const computeCounts = useModuleCounts(findModule("compute"), projectId);
@@ -78,39 +115,37 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
 
   const caption = ctx.project
     ? `Проект: ${ctx.project.name || ctx.project.id}`
-    : "Выберите проект в панели слева, чтобы открыть VPC / Compute / NLB. IAM доступен всегда.";
+    : "Выберите проект в дереве слева, чтобы открыть VPC / Compute / NLB. IAM доступен всегда.";
 
   return (
     <section className="dashboard-console" data-testid="dashboard-page">
       <aside className="dashboard-nav">
-        <NavGroup title="Аккаунты">
-          {accounts.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              className={`dash-nav-item${a.id === selAccountId ? " is-active" : ""}`}
-              onClick={() => setSelAccountId(a.id)}
-              title={a.name}
-            >
-              {a.name}
-            </button>
-          ))}
-        </NavGroup>
-
-        <NavGroup title="Проекты">
-          {projects.length === 0 && <div className="dash-nav-empty">Проектов нет</div>}
-          {projects.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className={`dash-nav-item${p.id === projectId ? " is-active" : ""}`}
-              onClick={() => navigate(`/projects/${p.id}/dashboard`)}
-              title={p.name}
-            >
-              {p.name}
-            </button>
-          ))}
-        </NavGroup>
+        <Input
+          allowClear
+          size="small"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск аккаунта или проекта"
+          prefix={<Search size={13} style={{ opacity: 0.5 }} />}
+          className="dash-tree-search"
+        />
+        {treeData.length === 0 ? (
+          <div className="dash-nav-empty">{tree.length === 0 ? "Загрузка…" : "Ничего не найдено"}</div>
+        ) : (
+          <Tree
+            showIcon
+            blockNode
+            className="dash-tree"
+            treeData={treeData}
+            selectedKeys={projectId ? [`prj:${projectId}`] : []}
+            expandedKeys={q ? searchExpanded : expanded}
+            onExpand={(keys) => setExpanded(keys as string[])}
+            onSelect={(_keys, info) => {
+              const key = String(info.node.key);
+              if (key.startsWith("prj:")) void navigate(`/projects/${key.slice(4)}/dashboard`);
+            }}
+          />
+        )}
       </aside>
 
       <main className="dashboard-main">
@@ -118,6 +153,12 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
           <Typography.Title level={3}>Сервисы облака</Typography.Title>
           <Typography.Text type="secondary">{caption}</Typography.Text>
         </div>
+
+        {treeData.length === 0 && tree.length > 0 && q === "" ? (
+          <Card>
+            <Empty image={<Boxes size={40} color="#8b8f99" />} description="Нет доступных проектов" />
+          </Card>
+        ) : null}
 
         <Row gutter={[16, 16]}>
           {SERVICE_MODULES.map((module) => {
@@ -165,12 +206,19 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
   );
 };
 
-const NavGroup: FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="dash-nav-group">
-    <div className="dash-nav-title">{title}</div>
-    <div className="dash-nav-list">{children}</div>
-  </div>
-);
+// highlight — подсветка совпадения поиска в названии узла.
+function highlight(text: string, q: string): ReactNode {
+  if (!q) return text;
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx < 0) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="dash-tree-mark">{text.slice(idx, idx + q.length)}</mark>
+      {text.slice(idx + q.length)}
+    </>
+  );
+}
 
 function findModule(key: string): ServiceModule {
   const module = SERVICE_MODULES.find((item) => item.key === key);

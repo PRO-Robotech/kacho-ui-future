@@ -35,62 +35,79 @@ body,
 }
 
 .dashboard-nav {
-  width: 248px;
-  min-width: 248px;
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
+  gap: 8px;
+  width: 236px;
+  min-width: 236px;
+  padding: 8px 10px 12px;
   overflow-y: auto;
-  padding: 4px 12px 12px;
   border-right: 1px solid var(--kc-border-secondary, rgb(127 127 127 / 0.18));
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }
 
-.dash-nav-group {
-  display: flex;
-  flex-direction: column;
+/* Поиск по дереву — компактный. */
+.dash-tree-search {
+  margin-bottom: 2px;
 }
 
-.dash-nav-title {
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--kc-text-tertiary, rgb(127 127 127 / 0.7));
-}
-
-.dash-nav-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.dash-nav-item {
-  display: block;
-  width: 100%;
-  padding: 7px 10px;
-  overflow: hidden;
+/* Дерево аккаунтов/проектов — плотное, без «воздуха». */
+.dash-tree.ant-tree {
   font-size: 13px;
-  color: var(--kc-text, inherit);
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
   background: transparent;
-  border: 0;
-  border-radius: 8px;
+}
+
+.dash-tree .ant-tree-treenode {
+  width: 100%;
+  padding: 0;
+  align-items: center;
+}
+
+.dash-tree .ant-tree-node-content-wrapper {
+  min-height: 28px;
+  line-height: 28px;
+  padding: 0 6px;
+  border-radius: 7px;
   transition: background-color 120ms ease;
 }
 
-.dash-nav-item:hover {
+.dash-tree .ant-tree-node-content-wrapper:hover {
   background: var(--kc-hover-fill, rgb(127 127 127 / 0.08));
 }
 
-.dash-nav-item.is-active {
-  font-weight: 500;
+.dash-tree .ant-tree-node-selected {
   color: #3d8df5;
-  background: var(--sidebar-active-bg, rgb(61 141 245 / 0.12));
+  font-weight: 500;
+  background: var(--sidebar-active-bg, rgb(61 141 245 / 0.12)) !important;
+}
+
+.dash-tree .ant-tree-switcher {
+  width: 20px;
+  line-height: 28px;
+}
+
+.dash-tree .ant-tree-iconEle {
+  color: var(--kc-text-tertiary, rgb(127 127 127 / 0.75));
+  vertical-align: -2px;
+}
+
+/* Аккаунт-узел — чуть плотнее/весомее; проект — обычный. */
+.dash-tree-acc {
+  font-weight: 500;
+}
+
+.dash-tree-prj,
+.dash-tree-acc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-tree-mark {
+  padding: 0;
+  color: inherit;
+  background: rgb(61 141 245 / 0.28);
+  border-radius: 3px;
 }
 
 .dash-nav-empty {
