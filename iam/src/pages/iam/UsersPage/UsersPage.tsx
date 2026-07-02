@@ -124,7 +124,7 @@ export function UsersPage() {
   ];
 
   return (
-    <IamListShell specId="users" title="Users" count={users.length}>
+    <IamListShell specId="users" title="Пользователи" count={users.length}>
       {users.length === 0 && !isLoading && (
         <Alert
           type="info"

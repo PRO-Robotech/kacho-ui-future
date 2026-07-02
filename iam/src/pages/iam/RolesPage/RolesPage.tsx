@@ -153,7 +153,7 @@ export function RolesPage() {
   ];
 
   return (
-    <IamListShell specId="roles" title="Roles" count={roles.length}>
+    <IamListShell specId="roles" title="Роли" count={roles.length}>
       <Tabs
         activeKey={roleKind}
         onChange={(k) => setRoleKind(k as "system" | "custom")}

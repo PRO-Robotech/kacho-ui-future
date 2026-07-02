@@ -305,7 +305,7 @@ export function AccessBindingsPage() {
   const myBindingsRows = myBindings.data?.access_bindings ?? [];
 
   return (
-    <IamListShell specId="access-bindings" title="Access Bindings" count={bindings.length}>
+    <IamListShell specId="access-bindings" title="Привязки доступа" count={bindings.length}>
       {user?.id && (
         <Card
           size="small"

@@ -108,7 +108,7 @@ export function GroupsPage() {
   ];
 
   return (
-    <IamListShell specId="groups" title="Groups" count={groups.length}>
+    <IamListShell specId="groups" title="Группы" count={groups.length}>
       {!accountId ? (
         <Typography.Text type="secondary">Выберите Account, чтобы увидеть его Groups.</Typography.Text>
       ) : (
