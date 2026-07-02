@@ -43,6 +43,7 @@ export function InlineSubnetCreateForm({ projectId, networkId: presetNetworkId, 
   const invalidate = useInvalidateResourceList();
   const subnetSpec = REGISTRY["subnets"];
   const zoneSpec = REGISTRY["zones"];
+  const regionSpec = REGISTRY["regions"];
   const rtSpec = REGISTRY["route-tables"];
   const networkSpec = REGISTRY["networks"];
 
@@ -75,6 +76,9 @@ export function InlineSubnetCreateForm({ projectId, networkId: presetNetworkId, 
   const [description, setDescription] = useState("");
   const [labels, setLabels] = useState<LabelEntry[]>([]);
   const [zoneId, setZoneId] = useState<string | undefined>(undefined);
+  // Размещение подсети: ZONAL (одна зона) либо REGIONAL (весь регион).
+  const [placementType, setPlacementType] = useState<"ZONAL" | "REGIONAL">("ZONAL");
+  const [regionId, setRegionId] = useState<string | undefined>(undefined);
   const [routeTableId, setRouteTableId] = useState<string | undefined>(undefined);
   // CIDR-блоки храним как массив готовых строк "10.0.0.0/24" (как в edit-вью);
   // визуально — chip-list через SubnetCidrChips (visual parity с SubnetCidrManager).
@@ -107,6 +111,25 @@ export function InlineSubnetCreateForm({ projectId, networkId: presetNetworkId, 
       setZoneId(zoneOptions[0].value);
     }
   }, [zoneId, zoneOptions]);
+
+  // Регионы (для REGIONAL-размещения) — geo admin-ресурс, без project_id.
+  const { data: regionData } = useQuery({
+    queryKey: ["regions", "list"],
+    queryFn: () =>
+      api.list<{ regions: Array<{ id: string; name?: string }> }>(regionSpec.apiPath, {
+        pageSize: "500",
+      }),
+    staleTime: 60_000,
+  });
+  const regionOptions = useMemo(
+    () => (regionData?.regions ?? []).map((r) => ({ value: r.id, label: r.name || r.id })),
+    [regionData],
+  );
+  useEffect(() => {
+    if (placementType === "REGIONAL" && !regionId && regionOptions.length > 0) {
+      setRegionId(regionOptions[0].value);
+    }
+  }, [placementType, regionId, regionOptions]);
 
   // RouteTables: project-scoped, ещё фильтруем по network.
   const { data: rtData } = useQuery({
@@ -174,8 +197,12 @@ export function InlineSubnetCreateForm({ projectId, networkId: presetNetworkId, 
       toast.error("Выберите сеть для подсети.");
       return;
     }
-    if (!zoneId) {
+    if (placementType === "ZONAL" && !zoneId) {
       toast.error("Выберите зону доступности.");
+      return;
+    }
+    if (placementType === "REGIONAL" && !regionId) {
+      toast.error("Выберите регион.");
       return;
     }
     // CIDR-строки уже валидированы и добавлены через SubnetCidrChips —
@@ -197,7 +224,9 @@ export function InlineSubnetCreateForm({ projectId, networkId: presetNetworkId, 
     const payload: Record<string, unknown> = {
       project_id: projectId,
       network_id: networkId,
-      zone_id: zoneId,
+      placement_type: placementType,
+      zone_id: placementType === "ZONAL" ? zoneId : undefined,
+      region_id: placementType === "REGIONAL" ? regionId : undefined,
       name,
       description: description || undefined,
       labels: Object.keys(labelMap).length > 0 ? labelMap : undefined,
@@ -244,9 +273,26 @@ export function InlineSubnetCreateForm({ projectId, networkId: presetNetworkId, 
           <LabelsEditor value={labels} onChange={setLabels} />
         </Form.Item>
 
-        <Form.Item label="Зона доступности" required>
-          <Select value={zoneId} onChange={setZoneId} options={zoneOptions} placeholder="Выберите зону" />
+        <Form.Item label="Размещение" required>
+          <Select
+            value={placementType}
+            onChange={(v) => setPlacementType(v)}
+            options={[
+              { value: "ZONAL", label: "ZONAL — в одной зоне доступности" },
+              { value: "REGIONAL", label: "REGIONAL — во всём регионе" },
+            ]}
+          />
         </Form.Item>
+
+        {placementType === "ZONAL" ? (
+          <Form.Item label="Зона доступности" required>
+            <Select value={zoneId} onChange={setZoneId} options={zoneOptions} placeholder="Выберите зону" />
+          </Form.Item>
+        ) : (
+          <Form.Item label="Регион" required>
+            <Select value={regionId} onChange={setRegionId} options={regionOptions} placeholder="Выберите регион" />
+          </Form.Item>
+        )}
 
         <Form.Item label="Таблица маршрутизации">
           <Select

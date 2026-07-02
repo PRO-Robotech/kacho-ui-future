@@ -190,7 +190,11 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
 
   subnets: {
     overviewExtra: ({ data }) => [
-      { label: "Зона", value: mono(getByPath<string>(data, "zone_id")) },
+      // Размещение подсети: ZONAL (в одной зоне) либо REGIONAL (весь регион).
+      { label: "Размещение", value: code((getByPath<string>(data, "placement_type") || "ZONAL")) },
+      (getByPath<string>(data, "placement_type") || "ZONAL") === "REGIONAL"
+        ? { label: "Регион", value: mono(getByPath<string>(data, "region_id")) }
+        : { label: "Зона", value: mono(getByPath<string>(data, "zone_id")) },
       {
         label: "Сеть",
         value: <RefNameLink specId="networks" refId={getByPath<string>(data, "network_id")} maxChars={42} />,
