@@ -122,7 +122,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   "compute-regions": {
     id: "compute-regions",
     route: "compute-regions",
-    apiPath: "/compute/v1/regions",
+    apiPath: "/geo/v1/regions",
     payloadKey: "regions",
     singular: "Регион",
     plural: "Регионы",
@@ -210,7 +210,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       { header: "Регион", path: "region_id", format: "text" },
       { header: "Схема", path: "type", format: "code" },
       {
-        header: "VIP-адрес",
+        header: "Адрес",
         path: "v4_address_id",
         render: (row) => (
           <NlbVipCell

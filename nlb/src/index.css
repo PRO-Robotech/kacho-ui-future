@@ -277,7 +277,7 @@ body.ant-modal-open {
   min-width: 0;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 @media (width <= 900px) {

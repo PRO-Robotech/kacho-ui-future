@@ -1441,7 +1441,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   "compute-zones": {
     id: "compute-zones",
     route: "compute-zones",
-    apiPath: "/compute/v1/zones",
+    apiPath: "/geo/v1/zones",
     payloadKey: "zones",
     singular: "Зона",
     plural: "Зоны (Compute)",
@@ -1459,7 +1459,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   "compute-regions": {
     id: "compute-regions",
     route: "compute-regions",
-    apiPath: "/compute/v1/regions",
+    apiPath: "/geo/v1/regions",
     payloadKey: "regions",
     singular: "Регион",
     plural: "Регионы (Compute)",
@@ -2078,7 +2078,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   regions: {
     id: "regions",
     route: "regions",
-    apiPath: "/compute/v1/regions",
+    apiPath: "/geo/v1/regions",
     payloadKey: "regions",
     singular: "Регион",
     plural: "Регионы",
@@ -2109,7 +2109,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   zones: {
     id: "zones",
     route: "zones",
-    apiPath: "/compute/v1/zones",
+    apiPath: "/geo/v1/zones",
     payloadKey: "zones",
     singular: "Зона",
     plural: "Зоны",
@@ -2770,6 +2770,7 @@ export function resourceServicePrefix(specId: string): "vpc" | "compute" | "nlb"
   switch (specId) {
     // NLB domain
     case "network-load-balancers":
+    case "load-balancers":
     case "listeners":
     case "target-groups":
       return "nlb";

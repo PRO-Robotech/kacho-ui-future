@@ -42,8 +42,8 @@ const DOMAINS = [
     linkBase: "/projects/:project_id/vpc/network-interfaces/:id",
   },
   { resource: "address-pools", path: "/vpc/v1/addressPools", key: "pools", linkBase: "/system/address-pools/:id" },
-  { resource: "regions", path: "/compute/v1/regions", key: "regions", linkBase: "/system/regions/:id" },
-  { resource: "zones", path: "/compute/v1/zones", key: "zones", linkBase: "/system/zones/:id" },
+  { resource: "regions", path: "/geo/v1/regions", key: "regions", linkBase: "/system/regions/:id" },
+  { resource: "zones", path: "/geo/v1/zones", key: "zones", linkBase: "/system/zones/:id" },
 ];
 
 // ВАЖНО: VPC list endpoints (networks/subnets/addresses) обычно требуют projectId,
