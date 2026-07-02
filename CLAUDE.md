@@ -471,3 +471,63 @@ unselected root-breadcrumb, реальные IAM-пути.
 4. `done=true` → проверить `!op.error`; error `{code,message,details}` в toast.
 5. asymmetric-payload (attach vs detach) — раздельные builder'ы, не generic sanitize.
 6. Тест happy+negative; verification-гейт.
+
+---
+
+## I. Production-readiness / UX (эталон облачного UI 2026)
+
+Нормативные практики, выверенные живыми замерами в браузере. Эталон поведения — `kacho-ui`.
+Цель — единообразный, читаемый, «взрослый» инфраструктурный UI без визуальных дефектов.
+
+**I1. Layout — фикс-поверхность до футера.** host `.app-content` = flex-column + `overflow`
+позволяет скролл форм (`auto`, НЕ `hidden` — иначе высокие формы клипаются); footer — сиблинг
+Content (всегда виден). Заполнение высоты — **flex:1 на каждом уровне**, НЕ `height:100%` через
+block-границу (Chrome не резолвит percentage-height → поверхность «висит» короткой). **Gotcha:**
+antd `<App>` рендерит `<div class="ant-app">` прямым ребёнком `.app-content` — по умолчанию
+`display:block/height:auto` РВЁТ цепочку; host-правило `.app-content > .ant-app { display:flex;
+flex-direction:column; flex:1; min-height:0 }` обязательно. Дальше `.vpc-remote-frame{flex:1}` →
+`.vpc-remote-content{flex:1;display:flex;column;overflow:auto}` → `.kc-surface{height:100%}`.
+
+**I2. Таблицы — фикс-шапка + внутренний скролл (list + related + operations).** `ResourceTable`
+и `OperationsTable`: `scroll={{ x:'max-content', y:<ResizeObserver> }}` — `x` даёт свой
+горизонтальный скролл (иначе `table-layout:auto` сжимает колонки до посимвольного переноса), `y`
+(высота обёртки минус thead) — фикс-thead + вертикальный скролл тела; обёртка `.kc-table-fill`
+(`height:100%`) ОБЯЗАНА иметь flex:1-родителя с definite-высотой. **List:** `ResourceListPage` =
+`.kc-surface` flex-column/`overflow:hidden` → фикс-шапка (`flex-shrink:0`) + область таблицы
+(`flex:1,min-height:0`). **Detail:** `DetailTab.fill` — related-таблица заполняет зону-3 и
+скроллит СЕБЯ; content-таб (Обзор/JSON/форма) — скроллится целиком (`overflow:auto`). Верх
+(шапка списка + thead) НЕ скроллится.
+
+**I3. Формы — единый AntD-look.** Все дропдауны — AntD `<Select showSearch allowClear>` (enum +
+RefSelect), НЕ нативный `<select>` (эталон — «таблица маршрутизации» на subnet-create). Standalone
+create/edit скроллятся через `.vpc-remote-content overflow:auto`. Modal == page == custom → единый
+`ResourceFormBody`/`FormShell` (FORM_WIDTH 820). Ошибка мутации НЕ закрывает форму — только toast.
+
+**I4. Cross-resource резолв и ссылки.**
+- Ссылка на ресурс = `RefNameLink` (иконка+имя) / для адреса — сам IP (моноширинно) ссылкой на
+  detail. **Резолв — через ОДНУ общую LIST-выборку** (`queryKey` per-(specId,projectId)), НЕ per-id
+  GET (иначе 50 строк = 50 запросов, тормозит — делать «мгновенно»).
+- **Cross-module URL**: `resourceServicePrefix(specId)` ОБЯЗАН знать все specId домена (напр.
+  `load-balancers`→`nlb`, иначе ссылка уходит в `/vpc/...` → 404). `used_by`/`потребитель` —
+  `REFERRER_SPEC` в spec-columns (`network_load_balancer`→`load-balancers`).
+- `RefSelect.extraInfoFor` — каждый ref-тип несёт «имя · инфо» (subnet→CIDR, address→IP,
+  load-balancer→регион·схема, target-group→регион, region→id). Новый ref-тип обязан иметь case.
+
+**I5. Иконки сайдбара = иконки таблиц.** host-рейл рендерит те же AntD `ResourceIcon` по specId
+(последний сегмент nav-path), НЕ lucide — один глиф ресурса в рейле и таблице. Новый ресурс →
+запись и в `ResourceIcon.ICONS`, и в host `antdIconBySpec`.
+
+**I6. Эндпоинты — актуальный домен.** Geography (Region/Zone) живёт в geo: `/geo/v1/{regions,zones}`,
+НЕ легаси `/compute/v1/regions` (отдаёт 403 после выноса geo). Сверять apiPath реестра с реальным
+gateway-роутом.
+
+**I7. Обратная связь — Toaster.** `<Toaster/>` (theme-aware, `--toast-*` vars) смонтирован в каждый
+remote-frame рядом с `OperationBanner`. Async-мутации (Operation) → `useOperationToast` → success/
+error toast с текстом. Toast-store есть — но без смонтированного Toaster попапы не появляются.
+
+**I8. Распространение generic-компонентов.** Правка generic-компонента (ResourceTable/
+ResourceListPage/DetailShell/RefSelect/FormField/Toaster/OperationsTable) — в одном remote, затем
+КОПИЯ в остальные. Per-remote-диффы НЕ перетирать копированием: `ResourceListPage.panelForms`
+(vpc/iam/nlb различны), `ResourceShell.extraTabs` (nlb bespoke LoadBalancerDetailPage) — править
+точечно. Dev: host `styles.css`/`.tsx` — HMR; remote `index.css`/`.tsx` — `vite build --watch`
+(watch иногда пропускает `perl -i`/`cp` из-за смены inode → форсировать одним `touch` на remote).
