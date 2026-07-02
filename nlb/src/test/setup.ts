@@ -41,6 +41,7 @@ jest.unstable_mockModule("antd", () => {
     Text: Component,
     Title: Component,
     Paragraph: Component,
+    Link: Component,
   });
   const Layout = Object.assign(Component, {
     Content: Component,
@@ -90,7 +91,7 @@ jest.unstable_mockModule("antd", () => {
     Empty: Component,
     Form,
     Image: Component,
-    Input: Object.assign(Input, { TextArea: Textarea }),
+    Input: Object.assign(Input, { TextArea: Textarea, Search: Input }),
     InputNumber: Input,
     Layout,
     List: Component,
@@ -101,7 +102,7 @@ jest.unstable_mockModule("antd", () => {
     Row: Component,
     Segmented: Component,
     Select,
-    Space: Component,
+    Space: Object.assign(Component, { Compact: Component }),
     Spin: Component,
     Statistic: Component,
     Switch: Input,

@@ -1,10 +1,17 @@
 import { useEffect, useMemo } from "react";
 import type { FC, ReactNode } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App as AntdApp } from "antd";
 import { ThemeProvider } from "@/lib/theme-context";
+import { HeaderRightSlot, PageHeaderSlotProvider } from "@/components/molecules/PageHeaderSlot";
+import { GlobalResourceFormModal } from "@/components/organisms/GlobalResourceFormModal";
+import { OperationBanner } from "@/components/molecules/OperationBanner";
+import { ResourceCreatePage } from "@/components/organisms/ResourceCreatePage";
+import { ResourceListPage } from "@/components/organisms/ResourceListPage";
+import { ResourceShell } from "@/components/organisms/ResourceShell";
 import { contextApi } from "@/lib/context-store";
+import { REGISTRY } from "@/lib/resource-registry";
 import "@/typography.css";
 import "@/index.css";
 
@@ -15,6 +22,9 @@ export interface NlbPageProps {
   };
   navigate?: (path: string) => void | Promise<void>;
 }
+
+// NLB-домен: LoadBalancer / Listener / TargetGroup через единый REGISTRY.
+const NLB_SCOPED = ["load-balancers", "listeners", "target-groups"].map((id) => REGISTRY[id]).filter(Boolean);
 
 export const NlbPage: FC<NlbPageProps> = ({ context }) => {
   const queryClient = useMemo(
@@ -44,12 +54,33 @@ export const NlbPage: FC<NlbPageProps> = ({ context }) => {
     <ThemeProvider>
       <AntdApp>
         <QueryClientProvider client={queryClient}>
-          <NlbFrame>
-            <Routes>
-              <Route index element={<NlbPlaceholder />} />
-              <Route path="*" element={<NlbPlaceholder />} />
-            </Routes>
-          </NlbFrame>
+          <PageHeaderSlotProvider>
+            <NlbFrame>
+              <Routes>
+                <Route index element={<ProjectNlbDefaultRedirect />} />
+                {NLB_SCOPED.map((spec) => (
+                  <Route key={spec.id}>
+                    <Route
+                      path={spec.route}
+                      element={<ResourceListPage spec={spec} parentField="project_id" parentParam="projectId" />}
+                    />
+                    <Route
+                      path={`${spec.route}/create`}
+                      element={<ResourceCreatePage spec={spec} parentField="project_id" parentParam="projectId" />}
+                    />
+                    <Route path={`${spec.route}/:uid`} element={<ResourceShell spec={spec} />} />
+                    <Route path={`${spec.route}/:uid/edit`} element={<ResourceShell spec={spec} mode="edit" />} />
+                    <Route
+                      path={`${spec.route}/:uid/:childRoute/create`}
+                      element={<ResourceShell spec={spec} mode="child-create" />}
+                    />
+                    <Route path={`${spec.route}/:uid/:tab`} element={<ResourceShell spec={spec} />} />
+                  </Route>
+                ))}
+                <Route path="*" element={<ProjectNlbDefaultRedirect />} />
+              </Routes>
+            </NlbFrame>
+          </PageHeaderSlotProvider>
         </QueryClientProvider>
       </AntdApp>
     </ThemeProvider>
@@ -59,16 +90,22 @@ export const NlbPage: FC<NlbPageProps> = ({ context }) => {
 function NlbFrame({ children }: { children: ReactNode }) {
   return (
     <section className="nlb-remote-frame">
+      <div className="nlb-host-header-slots">
+        <div className="nlb-host-header-actions">
+          <HeaderRightSlot />
+        </div>
+      </div>
+
+      <OperationBanner />
       <div className="nlb-remote-content">{children}</div>
+      <GlobalResourceFormModal />
     </section>
   );
 }
 
-// Заглушка Phase 1 — реальные списки/детали ресурсов NLB (LoadBalancer /
-// Listener / TargetGroup) подключаются на следующих фазах через общий REGISTRY
-// и ResourceListPage, как в VPC-remote.
-function NlbPlaceholder() {
-  return <h2 className="nlb-remote-heading">Network Load Balancing</h2>;
+function ProjectNlbDefaultRedirect() {
+  const { projectId } = useParams();
+  return <Navigate to={`/projects/${projectId}/nlb/load-balancers`} replace />;
 }
 
 export default NlbPage;

@@ -322,3 +322,94 @@ export interface ComputeZoneList {
   zones: ComputeZone[];
   next_page_token?: string;
 }
+
+// ====== nlb (Network Load Balancer) ======
+// proto: kacho.cloud.nlb.v1. Ресурсы плоские; мутации async → Operation.
+
+// VIP address-spec (per-family oneof v4_source/v6_source). Ровно один кейс на
+// семейство: аллокация из подсети, привязка существующего Address, либо
+// платформенный публичный пул (для EXTERNAL).
+export interface NlbVipSource {
+  subnet_id?: string;
+  address_id?: string;
+  public?: Record<string, never>;
+}
+
+// NetworkLoadBalancer — плоский ресурс (публичная проекция, tenant-facing).
+export interface NetworkLoadBalancer {
+  id: string;
+  project_id: string;
+  created_at?: string;
+  name?: string;
+  description?: string;
+  labels?: Record<string, string>;
+  region_id: string;
+  // Схема VIP: INTERNAL (приватный) | EXTERNAL (публичный). Immutable.
+  type?: "INTERNAL" | "EXTERNAL";
+  // Размещение INTERNAL-VIP: ZONAL (unicast) | REGIONAL (anycast). Immutable.
+  placement_type?: "ZONAL" | "REGIONAL";
+  // Зоны, из которых anycast-VIP не анонсируется (drain, только REGIONAL).
+  disabled_announce_zones?: string[];
+  session_affinity?: "FIVE_TUPLE" | "CLIENT_IP_ONLY";
+  deletion_protection?: boolean;
+  // Аллоцированные VIP Address-ресурсы (output-only, резолв id → vpc Address).
+  v4_address_id?: string;
+  v6_address_id?: string;
+  // Снимок приаттаченных target-групп (pivot, output-only).
+  attached_target_groups?: { target_group_id: string; name?: string }[];
+  status?: string;
+}
+
+export interface NetworkLoadBalancerList {
+  network_load_balancers: NetworkLoadBalancer[];
+  next_page_token?: string;
+}
+
+// Listener — L4-обработчик балансировщика.
+export interface Listener {
+  id: string;
+  project_id: string;
+  created_at?: string;
+  name?: string;
+  description?: string;
+  labels?: Record<string, string>;
+  load_balancer_id: string;
+  protocol?: "TCP" | "UDP";
+  port?: number;
+  target_port?: number;
+  proxy_protocol_v2?: boolean;
+  default_target_group_id?: string;
+  status?: string;
+}
+
+export interface ListenerList {
+  listeners: Listener[];
+  next_page_token?: string;
+}
+
+// TargetGroup — набор target'ов + health-check.
+export interface NlbHealthCheck {
+  name: string;
+  tcp_options?: { port: number };
+  interval?: string;
+  timeout?: string;
+  unhealthy_threshold?: number;
+  healthy_threshold?: number;
+}
+
+export interface TargetGroup {
+  id: string;
+  project_id: string;
+  created_at?: string;
+  name?: string;
+  description?: string;
+  labels?: Record<string, string>;
+  region_id: string;
+  deregistration_delay_seconds?: number;
+  health_check?: NlbHealthCheck;
+}
+
+export interface TargetGroupList {
+  target_groups: TargetGroup[];
+  next_page_token?: string;
+}

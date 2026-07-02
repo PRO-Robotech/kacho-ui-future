@@ -32,6 +32,8 @@ jobs:
             image_suffix: vpc
           - project: iam
             image_suffix: iam
+          - project: nlb
+            image_suffix: nlb
 
     steps:
       - name: Checkout
@@ -105,6 +107,7 @@ jobs:
           echo "dashboard_image=${namespace}/kacho-ui-future-dashboard:${tag}" >> "$GITHUB_OUTPUT"
           echo "vpc_image=${namespace}/kacho-ui-future-vpc:${tag}" >> "$GITHUB_OUTPUT"
           echo "iam_image=${namespace}/kacho-ui-future-iam:${tag}" >> "$GITHUB_OUTPUT"
+          echo "nlb_image=${namespace}/kacho-ui-future-nlb:${tag}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
@@ -115,7 +118,8 @@ jobs:
             --set image="${{ steps.meta.outputs.host_image }}" \
             --set dashboard.image="${{ steps.meta.outputs.dashboard_image }}" \
             --set vpc.image="${{ steps.meta.outputs.vpc_image }}" \
-            --set iam.image="${{ steps.meta.outputs.iam_image }}"
+            --set iam.image="${{ steps.meta.outputs.iam_image }}" \
+            --set nlb.image="${{ steps.meta.outputs.nlb_image }}"
 
       - name: Render chart
         run: |
@@ -126,6 +130,7 @@ jobs:
             --set dashboard.image="${{ steps.meta.outputs.dashboard_image }}" \
             --set vpc.image="${{ steps.meta.outputs.vpc_image }}" \
             --set iam.image="${{ steps.meta.outputs.iam_image }}" \
+            --set nlb.image="${{ steps.meta.outputs.nlb_image }}" \
             > dist/kacho-ui-future.yaml
 
       - name: Package chart
