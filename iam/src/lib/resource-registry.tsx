@@ -3,6 +3,7 @@
 // apiPath содержит полный путь с доменным префиксом (verbatim из proto google.api.http annotations).
 
 import type { ReactNode } from "react";
+import { Tag } from "antd";
 import type { FormField } from "./form-schema";
 import { setByPath } from "./path";
 import { CopyableId } from "@/components/atoms/CopyableId";
@@ -333,6 +334,231 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       COL_ID,
     ],
     template: () => ({}),
+  },
+
+  // Group — account-scoped (ListGroups требует account_id). Generic список +
+  // деталь + create/edit (name/description/labels). Членство (group_members) —
+  // доменная extra-tab на детали через detailExtension (не registry-child).
+  groups: {
+    id: "groups",
+    route: "groups",
+    apiPath: "/iam/v1/groups",
+    payloadKey: "groups",
+    singular: "Группа",
+    plural: "Группы",
+    genitive: "Группы",
+    serviceTitle: "IAM",
+    scope: "account",
+    ops: { create: true, update: true, delete: true },
+    columns: [
+      COL_NAME,
+      {
+        header: "Аккаунт",
+        path: "account_id",
+        render: (row) => <IamRefLink specId="accounts" refId={row.account_id as string | undefined} />,
+      },
+      { header: "Описание", path: "description", format: "text" },
+      {
+        header: "Метки",
+        path: "labels",
+        render: (row) => <LabelsCell labels={row.labels as Record<string, string> | undefined} />,
+      },
+      COL_CREATED,
+    ],
+    fields: [FIELD_NAME, FIELD_ACCOUNT_ID, FIELD_LABELS, FIELD_DESCRIPTION],
+    docs: [
+      { label: "Группы и членство", href: "#" },
+      { label: "Управление доступом", href: "#" },
+    ],
+    emptyState: {
+      title: "Создайте первую группу",
+      body:
+        "Группа объединяет пользователей и сервисные аккаунты, чтобы выдавать им доступ одной привязкой. " +
+        "Назначьте группе роль на ресурс — и все её участники получат соответствующие права.",
+      docs: ["Группы и членство"],
+    },
+    template: ({ accountId }) => ({
+      name: "",
+      account_id: accountId ?? "",
+      description: "",
+      labels: {},
+    }),
+  },
+
+  // Role — RBAC: system (read-only catalog, is_system=true) + custom (account-
+  // scoped). Generic список + деталь; permissions редактируются доменной веткой
+  // (в generic fields их нет). Различие system/custom — колонка «Тип».
+  roles: {
+    id: "roles",
+    route: "roles",
+    apiPath: "/iam/v1/roles",
+    payloadKey: "roles",
+    singular: "Роль",
+    plural: "Роли",
+    genitive: "Роли",
+    serviceTitle: "IAM",
+    scope: "account",
+    ops: { create: true, update: true, delete: true },
+    columns: [
+      COL_NAME,
+      {
+        header: "Тип",
+        path: "is_system",
+        // gRPC-gateway отдаёт camelCase isSystem; api-клиент нормализует в
+        // snake_case, но читаем оба для устойчивости (см. api/iam.ts Role).
+        render: (row) =>
+          row.is_system === true || row.isSystem === true ? (
+            <Tag color="purple">system</Tag>
+          ) : (
+            <Tag color="default">custom</Tag>
+          ),
+      },
+      COL_ID,
+      {
+        header: "Аккаунт",
+        path: "account_id",
+        render: (row) => (
+          <IamRefLink specId="accounts" refId={(row.account_id ?? row.accountId) as string | undefined} />
+        ),
+      },
+      { header: "Описание", path: "description", format: "text" },
+      {
+        header: "Разрешения",
+        path: "permissions",
+        render: (row) => {
+          const perms = (row.permissions as string[] | undefined) ?? [];
+          if (perms.length === 0) return <span className="text-muted-foreground">—</span>;
+          const head = perms.slice(0, 3);
+          const more = perms.length - head.length;
+          return (
+            <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+              {head.map((p, i) => (
+                <code key={i} style={{ fontSize: 11, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>
+                  {p}
+                </code>
+              ))}
+              {more > 0 && <span style={{ fontSize: 11, color: "rgba(0,0,0,.45)" }}>+{more}</span>}
+            </span>
+          );
+        },
+      },
+      COL_CREATED,
+    ],
+    // generic-поля create/edit — name/description/account_id; permissions —
+    // доменная ветка, здесь его нет.
+    fields: [FIELD_NAME, FIELD_ACCOUNT_ID, FIELD_DESCRIPTION],
+    docs: [
+      { label: "Роли и разрешения", href: "#" },
+      { label: "Управление доступом", href: "#" },
+    ],
+    emptyState: {
+      title: "Создайте первую пользовательскую роль",
+      body:
+        "Роль — набор разрешений (`модуль.ресурс.имя.действие`), который выдаётся субъекту привязкой доступа. " +
+        "Системные роли поставляются платформой и доступны только для чтения; собственные роли вы создаёте под свои сценарии.",
+      docs: ["Роли и разрешения"],
+    },
+    template: ({ accountId }) => ({
+      name: "",
+      account_id: accountId ?? "",
+      description: "",
+      permissions: [],
+    }),
+  },
+
+  // AccessBinding — RBAC. Registry обеспечивает generic ДЕТАЛЬ (Обзор/Операции/
+  // JSON/Документация) + колонки + IamRefLink-резолв субъекта/роли/ресурса.
+  // Единого flat-List RPC у AccessBinding нет (list — by-resource/by-subject/
+  // by-account), поэтому СПИСОК остаётся bespoke (AccessBindingsPage). Create —
+  // bespoke AccessBindingCreatePage (/iam/access-bindings/create) → ops.create=false.
+  // revoke = Delete (ops.delete). Wire-поля сверены с api/iam.ts AccessBinding
+  // (granted_by/deletion_protection/status в future отсутствуют — не показываем).
+  "access-bindings": {
+    id: "access-bindings",
+    route: "access-bindings",
+    apiPath: "/iam/v1/accessBindings",
+    payloadKey: "access_bindings",
+    singular: "Привязка доступа",
+    plural: "Привязки доступа",
+    genitive: "привязки доступа",
+    serviceTitle: "IAM",
+    scope: "account",
+    ops: { create: false, update: false, delete: true },
+    columns: [
+      {
+        // Субъект: иконка-ссылка на IAM-ресурс субъекта (тип несёт иконка).
+        // subject_type → specId; неизвестный тип → CopyableId (forward-compat).
+        header: "Субъект",
+        path: "subject_id",
+        render: (row) => {
+          const subjType = String(row.subject_type ?? "");
+          const subjSpec =
+            subjType === "user"
+              ? "users"
+              : subjType === "group"
+              ? "groups"
+              : subjType === "service_account"
+              ? "service-accounts"
+              : undefined;
+          const subjId = (row.subject_id as string) ?? "";
+          return subjSpec ? (
+            <IamRefLink specId={subjSpec} refId={subjId} nameField={subjType === "user" ? "email" : "name"} />
+          ) : (
+            <CopyableId id={subjId} />
+          );
+        },
+      },
+      {
+        header: "Роль",
+        path: "role_id",
+        render: (row) => <IamRefLink specId="roles" refId={row.role_id as string | undefined} />,
+      },
+      {
+        // Ресурс: account/project → IamRefLink; cluster/unknown → CopyableId
+        // (нет IAM-ресурса cluster в REGISTRY).
+        header: "Ресурс",
+        path: "resource_id",
+        render: (row) => {
+          const resType = String(row.resource_type ?? "");
+          const resSpec = resType === "account" ? "accounts" : resType === "project" ? "projects" : undefined;
+          const resId = (row.resource_id as string) ?? "";
+          return resSpec ? <IamRefLink specId={resSpec} refId={resId} /> : <CopyableId id={resId} />;
+        },
+      },
+      {
+        // Область — output-only scope-tier (CLUSTER/ACCOUNT/PROJECT). Цвет инлайн
+        // (в future нет общего scopeColor-хелпера).
+        header: "Область",
+        path: "scope",
+        render: (row) => {
+          const s = String(row.scope ?? "");
+          if (!s || s === "SCOPE_UNSPECIFIED") return <span className="text-muted-foreground">—</span>;
+          const color = s === "CLUSTER" ? "red" : s === "ACCOUNT" ? "blue" : s === "PROJECT" ? "green" : "default";
+          return <Tag color={color}>{s}</Tag>;
+        },
+      },
+      COL_CREATED,
+    ],
+    docs: [
+      { label: "Привязки доступа", href: "#" },
+      { label: "Управление доступом", href: "#" },
+    ],
+    emptyState: {
+      title: "Нет привязок доступа",
+      body:
+        "Привязка доступа назначает субъекту (пользователю, сервисному аккаунту или группе) роль на ресурсе " +
+        "(Account, Project или кластер). Создайте привязку, чтобы выдать доступ.",
+      docs: ["Привязки доступа"],
+    },
+    // create — bespoke AccessBindingCreatePage; template лишь удовлетворяет
+    // обязательному полю ResourceSpec.template + поддерживает URL-preset.
+    template: ({ accountId }) => ({
+      subject_type: "user",
+      subject_id: "",
+      role_id: "",
+      resource_type: "account",
+      resource_id: accountId ?? "",
+    }),
   },
 
   // ====== vpc ======

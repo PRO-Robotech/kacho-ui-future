@@ -17,6 +17,7 @@ import { AccessBindingCreatePage, AccessBindingsPage } from "@/pages/iam/AccessB
 import { AccessGrantPage, AccessPage } from "@/pages/iam/AccessPage";
 import { GroupCreatePage, GroupEditPage, GroupsPage } from "@/pages/iam/GroupsPage";
 import { RoleCreatePage, RoleEditPage, RolesPage } from "@/pages/iam/RolesPage";
+import { IamOperationsPage } from "@/pages/iam/IamOperationsPage";
 import { InviteUserPage, UsersPage } from "@/pages/iam/UsersPage";
 import { contextApi, useContext as useIamContext } from "@/lib/context-store";
 import { REGISTRY } from "@/lib/resource-registry";
@@ -102,14 +103,23 @@ export const IamPage: FC<IamPageProps> = ({ context }) => {
                   />
                   <Route path="users" element={<UsersPage />} />
                   <Route path="users/invite" element={<InviteUserPage />} />
+                  <Route path="users/:uid" element={<ResourceShell spec={REGISTRY.users} />} />
+                  <Route path="users/:uid/:tab" element={<ResourceShell spec={REGISTRY.users} />} />
                   <Route path="groups" element={<GroupsPage />} />
                   <Route path="groups/create" element={<GroupCreatePage />} />
                   <Route path="groups/:uid/edit" element={<GroupEditPage />} />
+                  <Route path="groups/:uid" element={<ResourceShell spec={REGISTRY.groups} />} />
+                  <Route path="groups/:uid/:tab" element={<ResourceShell spec={REGISTRY.groups} />} />
                   <Route path="roles" element={<RolesPage />} />
                   <Route path="roles/create" element={<RoleCreatePage />} />
                   <Route path="roles/:uid/edit" element={<RoleEditPage />} />
+                  <Route path="roles/:uid" element={<ResourceShell spec={REGISTRY.roles} />} />
+                  <Route path="roles/:uid/:tab" element={<ResourceShell spec={REGISTRY.roles} />} />
                   <Route path="access-bindings" element={<AccessBindingsPage />} />
                   <Route path="access-bindings/create" element={<AccessBindingCreatePage />} />
+                  <Route path="access-bindings/:uid" element={<ResourceShell spec={REGISTRY["access-bindings"]} />} />
+                  <Route path="access-bindings/:uid/:tab" element={<ResourceShell spec={REGISTRY["access-bindings"]} />} />
+                  <Route path="operations" element={<IamOperationsPage />} />
                   <Route path="access" element={<AccessPage />} />
                   <Route path="access/grant" element={<AccessGrantPage />} />
                   <Route path="*" element={<Navigate to="/iam/accounts" replace />} />
