@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { HeaderRightSlot, PageHeaderSlotProvider } from "@/components/molecules/PageHeaderSlot";
 import { GlobalResourceFormModal } from "@/components/organisms/GlobalResourceFormModal";
 import { OperationBanner } from "@/components/molecules/OperationBanner";
+import { Toaster } from "@/components/molecules/Toaster";
 import { ResourceCreatePage } from "@/components/organisms/ResourceCreatePage";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
 import { ResourceShell } from "@/components/organisms/ResourceShell";
@@ -123,6 +124,7 @@ function NlbFrame({ children }: { children: ReactNode }) {
       <OperationBanner />
       <div className="vpc-remote-content">{children}</div>
       <GlobalResourceFormModal />
+      <Toaster />
     </section>
   );
 }

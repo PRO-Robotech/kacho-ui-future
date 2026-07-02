@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { StepUpModal } from "@/components/molecules/auth/StepUpModal";
 import { HeaderRightSlot, PageHeaderSlotProvider } from "@/components/molecules/PageHeaderSlot";
 import { OperationBanner } from "@/components/molecules/OperationBanner";
+import { Toaster } from "@/components/molecules/Toaster";
 import { GlobalResourceFormModal } from "@/components/organisms/GlobalResourceFormModal";
 import { ResourceCreatePage } from "@/components/organisms/ResourceCreatePage";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
@@ -134,6 +135,7 @@ function IamFrame({ children }: { children: ReactNode }) {
       <OperationBanner />
       <div className="vpc-remote-content">{children}</div>
       <GlobalResourceFormModal />
+      <Toaster />
     </section>
   );
 }
