@@ -18,6 +18,7 @@ import { getResource } from "@/lib/resource-registry";
 import { useProjectStore } from "@/lib/context-store";
 import { ErrorResult } from "@/components/molecules/ErrorResult";
 import { InlineResourceCreateForm } from "@/components/organisms/InlineResourceCreateForm";
+import { FormBareProvider } from "@/components/organisms/form/FormShell";
 
 interface Props {
   refResource: string;
@@ -143,11 +144,13 @@ export function RefSelect({
           open
           footer={null}
           onCancel={() => setCreating(false)}
-          width={640}
+          width={720}
           destroyOnClose
-          title={createTitle ?? `Создать ${createSpec.singular.toLowerCase()}`}
+          title={null}
+          styles={{ body: { padding: "12px 24px 20px" } }}
         >
-          <InlineResourceCreateForm
+          <FormBareProvider>
+            <InlineResourceCreateForm
             spec={createSpec}
             ctx={{
               projectId: project?.id,
@@ -170,7 +173,8 @@ export function RefSelect({
                 if (fresh) onChange(fresh.id);
               });
             }}
-          />
+            />
+          </FormBareProvider>
         </Modal>
       )}
     </div>
