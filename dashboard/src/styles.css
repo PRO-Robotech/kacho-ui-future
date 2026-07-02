@@ -27,11 +27,18 @@ body,
   background: #f5f7fb;
 }
 
-/* Консольный лендинг: слева навигация (аккаунты + проекты), по центру плашки услуг. */
+/* Консольный лендинг: белая подложка фиксированного размера (как detail-страницы,
+   .kc-surface) — слева дерево-навигация (аккаунты/проекты), по центру плашки услуг.
+   Заполняет область до футера; скроллится только контент, не вся страница. */
 .dashboard-console {
   display: flex;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
+  background: var(--kc-container, #fff);
+  border: 1px solid var(--kc-border-secondary, rgb(127 127 127 / 0.18));
+  border-radius: 12px;
+  box-shadow: var(--kc-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.05));
 }
 
 .dashboard-nav {
