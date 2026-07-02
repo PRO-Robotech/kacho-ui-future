@@ -9,7 +9,6 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { getByPath } from "@/lib/resource-registry";
-import { ResourceIcon } from "@/components/organisms/form/ResourceIcon";
 
 export interface NlbVipCellProps {
   v4AddressId?: string;
@@ -28,25 +27,25 @@ function addressIp(data: Record<string, unknown> | undefined): string {
   );
 }
 
-// VipAddressLink — резолвит Address по id (TanStack-дедуп) и рендерит
-// «иконка + имя · IP» ссылкой на detail адреса в модуле VPC.
+// VipAddressLink — резолвит Address по id и рендерит сам IP (моноширинно)
+// ссылкой на detail адреса в модуле VPC. Резолв через ОДНУ общую LIST-выборку
+// адресов проекта (queryKey per-project, TanStack-дедуп) — не per-id GET: все
+// ячейки списка LB делят один запрос → мгновенно. Пока не загрузилось — id.
 const VipAddressLink: FC<{ id: string }> = ({ id }) => {
   const { projectId } = useParams();
   const { data } = useQuery({
-    queryKey: ["ref-address", id],
-    queryFn: () => api.get<Record<string, unknown>>(`/vpc/v1/addresses/${id}`),
-    enabled: !!id,
+    queryKey: ["addresses-by-project", projectId],
+    queryFn: () =>
+      api.list<{ addresses: Array<Record<string, unknown>> }>("/vpc/v1/addresses", {
+        project_id: projectId ?? "",
+        pageSize: "1000",
+      }),
+    enabled: !!projectId,
     staleTime: 30_000,
   });
-  const name = (data ? getByPath<string>(data, "name") : "") || id.slice(0, 12);
-  const ip = addressIp(data);
-  const content = (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      <ResourceIcon specId="addresses" />
-      {name}
-      {ip && <span style={{ fontFamily: "ui-monospace, monospace", opacity: 0.85 }}> · {ip}</span>}
-    </span>
-  );
+  const addr = (data?.addresses ?? []).find((a) => (a.id as string) === id);
+  const label = addressIp(addr) || id.slice(0, 12);
+  const content = <span style={{ fontFamily: "ui-monospace, monospace" }}>{label}</span>;
   return projectId ? (
     <Link
       to={`/projects/${projectId}/vpc/addresses/${id}`}

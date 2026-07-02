@@ -78,7 +78,7 @@ export function OperationsTab({ spec, resourceId }: Props) {
   }
 
   return (
-    <div>
+    <div style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
       {/* Фильтры операций — на уровень имени ресурса (зона 3, правый слот). */}
       <HeaderSlotPortal>
         <Input

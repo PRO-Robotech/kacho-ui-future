@@ -233,6 +233,21 @@ function extraInfoFor(refResource: string, row: Record<string, unknown>): string
       const net = (row.network_id as string | undefined) ?? "";
       return net ? `net:${net.slice(0, 8)}` : "";
     }
+    // NLB-типы: показываем регион (+ схему) — как «адресную» инфу vpc-ресурсов.
+    case "load-balancers":
+    case "network-load-balancers": {
+      const region = (row.region_id as string | undefined) ?? "";
+      const scheme = (row.type as string | undefined) ?? "";
+      return [region, scheme].filter(Boolean).join(" · ");
+    }
+    case "target-groups": {
+      return (row.region_id as string | undefined) ?? "";
+    }
+    // Geo Region: name — head-label, id (ru-central1) — полезный extra.
+    case "regions":
+    case "compute-regions": {
+      return (row.id as string | undefined) ?? "";
+    }
     default:
       return "";
   }

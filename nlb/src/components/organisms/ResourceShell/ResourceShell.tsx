@@ -354,6 +354,7 @@ export function ResourceShell({
     tabs.push({
       id: "operations",
       label: "Операции",
+      fill: true,
       render: () => <OperationsTab spec={spec} resourceId={getByPath<string>(data, "id") ?? uid ?? ""} />,
     });
   }
