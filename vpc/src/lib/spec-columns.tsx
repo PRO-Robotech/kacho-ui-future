@@ -23,6 +23,9 @@ const REFERRER_SPEC: Record<string, string> = {
   compute_snapshot: "compute-snapshots",
   nlb_target_group: "target-groups",
   network_interface: "network-interfaces",
+  network_load_balancer: "load-balancers",
+  nlb_load_balancer: "load-balancers",
+  load_balancer: "load-balancers",
 };
 
 // Опции для рендеринга generic-форматов, которым нужен контекст вокруг ячейки.

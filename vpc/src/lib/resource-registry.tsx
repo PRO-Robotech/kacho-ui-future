@@ -658,16 +658,6 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         },
       },
       {
-        header: "Защита от DDoS-атак",
-        path: "external_ipv4_address.requirements.ddos_protection_provider",
-        render: (row) => {
-          const ext = row.external_ipv4_address as { requirements?: { ddos_protection_provider?: string } } | undefined;
-          const provider = ext?.requirements?.ddos_protection_provider;
-          if (!provider) return <span className="text-muted-foreground">—</span>;
-          return provider;
-        },
-      },
-      {
         header: "Защита от удаления",
         path: "deletion_protection",
         render: (row) => (row.deletion_protection ? "Да" : <span className="text-muted-foreground">Нет</span>),

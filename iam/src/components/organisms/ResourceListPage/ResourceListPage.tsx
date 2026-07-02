@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Input, Select, Typography, Space, Tag } from "antd";
+import { Button, Input, Select, Typography, Tag } from "antd";
 import { ErrorResult } from "@/components/molecules/ErrorResult";
 import { PlusOutlined } from "@ant-design/icons";
 import { api } from "@/api/client";
@@ -25,13 +25,12 @@ interface Props {
   spec: ResourceSpec;
   parentField?: string;
   parentParam?: string;
-  disableChildRoute?: boolean;
   /** Явное значение scope-фильтра (account-scoped IAM-ресурсы берут account
    *  из context-store, а не из URL-параметра). Имеет приоритет над parentParam. */
   parentValue?: string | null;
 }
 
-export function ResourceListPage({ spec, parentField, parentParam, parentValue, disableChildRoute = false }: Props) {
+export function ResourceListPage({ spec, parentField, parentParam, parentValue }: Props) {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -59,7 +58,7 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
   // KAC-231: модалки упразднены в пользу формы-страницы/панели (логика Network)
   // у модулей с полноценными panel/page-формами: VPC (ResourceShell edit-панель,
   // ResourceCreatePage) + admin (ResourceCreatePage/ResourceEditPage страницы).
-  // Compute/NLB остаются на модалках до своей раскатки (их detail ещё не
+  // Compute/NLB/IAM остаются на модалках до своей раскатки (их detail ещё не
   // ResourceShell, /edit редиректит в модалку). panelForms — этот гейт.
   const panelForms =
     resourceServicePrefix(spec.id) === "vpc" ||
@@ -152,14 +151,12 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
     projectId: params.projectId,
   });
 
-  const actionSpec = disableChildRoute ? { ...spec, childRoute: undefined } : spec;
-
   columns.push({
     header: "",
     className: "text-right whitespace-nowrap",
     cell: (row) => (
       <RowActionsMenu
-        spec={actionSpec}
+        spec={spec}
         row={row}
         basePath={basePath}
         projectId={filterValue ?? null}
@@ -225,9 +222,13 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
   }
 
   return (
-    <div className="kc-surface" style={{ padding: 20, height: "100%", overflow: "auto" }}>
-      <Space direction="vertical" size={0} style={{ width: "100%" }}>
-        {/* Шапка списка: иконка + «Список» + plural + счётчик слева, фильтры справа. */}
+    <div
+      className="kc-surface"
+      style={{ padding: 20, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}
+    >
+      {/* Шапка списка (иконка + «Список» + plural + счётчик + фильтры) —
+          фиксирована сверху, НЕ скроллится вместе с телом таблицы. */}
+      <div style={{ flexShrink: 0, marginBottom: 12 }}>
         {listHeader(
           <>
             <Input.Search
@@ -240,7 +241,11 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
             {hasZoneFilter && <Select value={zone} onChange={setZone} options={zoneOptions} style={{ width: 220 }} />}
           </>,
         )}
+      </div>
 
+      {/* Тело таблицы заполняет остаток белой поверхности и скроллится внутри
+          (горизонтально при широких колонках, вертикально при длинном списке). */}
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
         {isError ? (
           <ErrorResult error={error} />
         ) : (
@@ -253,13 +258,12 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
               const id = getByPath<string>(row, "id");
               if (!id) return;
               // childRoute шаблон: /projects/:id, ...
-              const target =
-                !disableChildRoute && spec.childRoute ? spec.childRoute.replace(":id", id) : `${basePath}/${id}`;
+              const target = spec.childRoute ? spec.childRoute.replace(":id", id) : `${basePath}/${id}`;
               navigate(target);
             }}
           />
         )}
-      </Space>
+      </div>
     </div>
   );
 }

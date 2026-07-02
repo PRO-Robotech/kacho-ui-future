@@ -3,7 +3,7 @@
 // Сохраняет старый API (Column<T>, sortKey) для совместимости с
 // ResourceListPage и тестами, но делегирует рендер в antd.
 
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useRef, useState, useEffect } from "react";
 import { Table } from "antd";
 import type { ColumnType, TableProps } from "antd/es/table";
 import { getByPath } from "@/lib/path";
@@ -65,17 +65,40 @@ export function ResourceTable<T extends object>({
     [columns, defaultSort],
   );
 
+  // Тело таблицы скроллится внутри белой поверхности (h+v), а шапка колонок
+  // (thead) фиксирована сверху. scroll.y = высота доступной области минус thead;
+  // пересчитывается ResizeObserver'ом при изменении размеров окна/области.
+  // Пока область не измерена (первый рендер) — y=undefined (обычный поток).
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scrollY, setScrollY] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const recompute = () => {
+      const thead = el.querySelector(".ant-table-thead") as HTMLElement | null;
+      const theadH = thead?.offsetHeight ?? 40;
+      const avail = el.clientHeight - theadH;
+      setScrollY(avail > 48 ? avail : undefined);
+    };
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    recompute();
+    return () => ro.disconnect();
+  }, []);
+
   const tableProps: TableProps<T> = {
     columns: antColumns,
     dataSource: rows,
     rowKey: (row) => rowKey(row),
     pagination: false,
     size: "small",
-    // KAC-246: kc-table — zebra-striping + контрастный header + комфортный
-    // row-height + чёткий hover (стили в index.css, theme-aware через vars).
+    // kc-table — zebra-striping + контрастный header + комфортный row-height +
+    // чёткий hover (стили в index.css, theme-aware через vars).
     className: "kc-table",
-    // NB: sticky header убран (KAC-246) — без scroll={{x}} он расширял таблицу по
-    // контенту и она уползала за пределы контейнера во flex-layout.
+    // scroll.x=max-content — колонки держат натуральную ширину, широкая таблица
+    // получает СВОЙ горизонтальный скролл (не тянет страницу). scroll.y — тело
+    // скроллится вертикально под фиксированной шапкой колонок.
+    scroll: { x: "max-content", y: scrollY },
     loading,
     locale: {
       emptyText: empty ?? "Ресурсов не найдено",
@@ -97,5 +120,11 @@ export function ResourceTable<T extends object>({
       : undefined,
   };
 
-  return <Table<T> {...tableProps} />;
+  // Обёртка заполняет доступную высоту (flex:1 родителя) — от неё считается
+  // scroll.y, чтобы тело таблицы скроллилось внутри белой поверхности.
+  return (
+    <div ref={wrapRef} className="kc-table-fill" style={{ height: "100%", minHeight: 0, minWidth: 0 }}>
+      <Table<T> {...tableProps} />
+    </div>
+  );
 }

@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Input, Select, Typography, Space, Tag } from "antd";
+import { Button, Input, Select, Typography, Tag } from "antd";
 import { ErrorResult } from "@/components/molecules/ErrorResult";
 import { PlusOutlined } from "@ant-design/icons";
 import { api } from "@/api/client";
@@ -55,9 +55,11 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue }
   );
   useBreadcrumb(breadcrumb);
 
-  // NLB-ресурсы используют panel/page-формы (ResourceShell edit-панель +
-  // ResourceCreatePage), как VPC-эталон: create → страница /create,
-  // edit → панель в зоне 3 detail. panelForms — этот гейт.
+  // KAC-231: модалки упразднены в пользу формы-страницы/панели (логика Network)
+  // у модулей с полноценными panel/page-формами: VPC (ResourceShell edit-панель,
+  // ResourceCreatePage) + admin (ResourceCreatePage/ResourceEditPage страницы).
+  // Compute/NLB/IAM остаются на модалках до своей раскатки (их detail ещё не
+  // ResourceShell, /edit редиректит в модалку). panelForms — этот гейт.
   const panelForms = resourceServicePrefix(spec.id) === "nlb";
   const listBase = location.pathname.endsWith("/") ? location.pathname.slice(0, -1) : location.pathname;
   const createTarget = panelForms ? `${listBase}/create` : `${listBase}?modal=${spec.id}-create`;
@@ -215,9 +217,13 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue }
   }
 
   return (
-    <div className="kc-surface" style={{ padding: 20, height: "100%", overflow: "auto" }}>
-      <Space direction="vertical" size={0} style={{ width: "100%" }}>
-        {/* Шапка списка: иконка + «Список» + plural + счётчик слева, фильтры справа. */}
+    <div
+      className="kc-surface"
+      style={{ padding: 20, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}
+    >
+      {/* Шапка списка (иконка + «Список» + plural + счётчик + фильтры) —
+          фиксирована сверху, НЕ скроллится вместе с телом таблицы. */}
+      <div style={{ flexShrink: 0, marginBottom: 12 }}>
         {listHeader(
           <>
             <Input.Search
@@ -230,7 +236,11 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue }
             {hasZoneFilter && <Select value={zone} onChange={setZone} options={zoneOptions} style={{ width: 220 }} />}
           </>,
         )}
+      </div>
 
+      {/* Тело таблицы заполняет остаток белой поверхности и скроллится внутри
+          (горизонтально при широких колонках, вертикально при длинном списке). */}
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
         {isError ? (
           <ErrorResult error={error} />
         ) : (
@@ -248,7 +258,7 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue }
             }}
           />
         )}
-      </Space>
+      </div>
     </div>
   );
 }

@@ -247,8 +247,23 @@ body {
   padding: 16px;
   /* Content-область ограничена по высоте (header + content + footer в 100vh);
      сама НЕ скроллится — белая поверхность (.kc-surface) фиксированного размера
-     заполняет её и скроллит контент внутри себя. */
+     заполняет её и скроллит контент внутри себя. flex-column — чтобы дочерний
+     remote-frame заполнял высоту через flex:1 (percentage-height через
+     block-границу в Chrome не резолвится → поверхность «висела» короткой). */
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+}
+
+/* Обёртка antd <App> (`.ant-app`) каждого remote рендерится прямым ребёнком
+   .app-content, но по умолчанию display:block/height:auto — рвёт flex-цепочку
+   заполнения высоты (remote-frame flex:1 не срабатывал, поверхность «висела»
+   короткой над футером). Делаем её flex-fill звеном. */
+.app-content > .ant-app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .app-footer {

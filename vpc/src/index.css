@@ -245,10 +245,11 @@ body.ant-modal-open {
  */
 .vpc-remote-frame {
   display: flex;
-  min-width: 0;
-  height: 100%;
-  overflow: hidden;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .vpc-host-header-slots {
@@ -271,6 +272,8 @@ body.ant-modal-open {
 }
 
 .vpc-remote-content {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   flex: 1;
   min-height: 0;
