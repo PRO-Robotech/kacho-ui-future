@@ -129,11 +129,11 @@ export function OperationsPage() {
         }),
       enabled: true,
       staleTime: 5_000,
-      refetchInterval: 10_000,
+      // Реже поллим весь per-resource фан-аут (сотни запросов) — снижаем
+      // постоянную сетевую нагрузку; in-flight операции обновятся за ~20с.
+      refetchInterval: 20_000,
     })),
   });
-
-  const isLoading = listQueries.some((q) => q.isLoading) || opsQueries.some((q) => q.isLoading);
 
   // 4) merge + sort.
   const allOps = useMemo(() => {
@@ -151,6 +151,13 @@ export function OperationsPage() {
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opsQueries.map((q) => q.dataUpdatedAt).join(","), targets.length]);
+
+  // Спиннер — только пока грузятся списки ресурсов (быстрая первая волна) ИЛИ
+  // пока НЕ пришла ни одна операция. Как только первые операции есть — стримим
+  // их в таблицу, не дожидаясь завершения всего per-resource фан-аута (сотни
+  // запросов): «сбор» ощущается мгновенным, остальные операции дотекают.
+  const isLoading =
+    listQueries.some((q) => q.isLoading) || (allOps.length === 0 && opsQueries.some((q) => q.isLoading));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
