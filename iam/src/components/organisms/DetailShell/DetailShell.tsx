@@ -46,6 +46,10 @@ export interface DetailTab {
   /** Зона-2 иконка предмета таба. Default: иконка мастер-ресурса (ctxIcon).
    *  Напр. связанный таб → иконка дочернего ресурса. */
   headerIcon?: ReactNode;
+  /** true — контент таба заполняет область зоны-3 и скроллит СЕБЯ (таблица с
+   *  фиксированной шапкой колонок + h/v-скролл тела), а не всю зону-3. Для
+   *  related-таблиц. Content-табы (Обзор/JSON) — false: скроллится вся зона-3. */
+  fill?: boolean;
 }
 
 export interface DocLink {
@@ -375,28 +379,41 @@ export function DetailShell({
           </div>
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "auto" }}>
-        {mainOverride ? (
-          mainOverride
-        ) : (
-          <>
-            {secondaryActions && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  marginBottom: 16,
-                  paddingBottom: 12,
-                  borderBottom: "1px solid var(--kc-border-secondary)",
-                }}
-              >
-                {secondaryActions}
-              </div>
-            )}
-            <HeaderSlotContext.Provider value={slotEl}>{active?.render()}</HeaderSlotContext.Provider>
-          </>
-        )}
+        {/* Зона-3 контент: fill-таб (related-таблица) заполняет область и
+            скроллит СЕБЯ (thead фиксирован), content-таб (Обзор/JSON/форма) —
+            скроллится целиком. Внешний контейнер overflow:hidden + flex-column,
+            скролл живёт во внутренней обёртке per-case. */}
+        <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {mainOverride ? (
+            <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: "auto" }}>{mainOverride}</div>
+          ) : (
+            <>
+              {secondaryActions && (
+                <div
+                  style={{
+                    flexShrink: 0,
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginBottom: 16,
+                    paddingBottom: 12,
+                    borderBottom: "1px solid var(--kc-border-secondary)",
+                  }}
+                >
+                  {secondaryActions}
+                </div>
+              )}
+              <HeaderSlotContext.Provider value={slotEl}>
+                {active?.fill ? (
+                  <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                    {active.render()}
+                  </div>
+                ) : (
+                  <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: "auto" }}>{active?.render()}</div>
+                )}
+              </HeaderSlotContext.Provider>
+            </>
+          )}
         </div>
       </main>
     </div>

@@ -130,7 +130,7 @@ function RelatedTable({
   }
 
   return (
-    <div>
+    <div style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
       {/* Фильтры (поиск/колонки) поднимаются на уровень имени ресурса (зона 3,
           правый слот) через HeaderSlotPortal — req3. */}
       <HeaderSlotPortal>
@@ -318,6 +318,8 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
       eyebrow: "Список",
       headerTitle: childSpec.plural,
       headerIcon: <ResourceIcon specId={childSpec.id} />,
+      // related-таблица заполняет зону-3 и скроллит себя (фикс. шапка колонок).
+      fill: true,
       render: () => (
         <RelatedTable
           childSpec={childSpec}
