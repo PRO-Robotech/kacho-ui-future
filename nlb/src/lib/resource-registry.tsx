@@ -232,6 +232,10 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     singular: "Балансировщик нагрузки",
     plural: "Балансировщики нагрузки",
     genitive: "Балансировщика нагрузки",
+    docs: [
+      { label: "Балансировщики нагрузки", href: "#" },
+      { label: "Обработчики и целевые группы", href: "#" },
+    ],
     serviceTitle: "Network Load Balancer",
     scope: "project",
     // Start/Stop намеренно НЕ в ops — lifecycle-действия балансировщика в UI не
@@ -427,6 +431,10 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     payloadKey: "listeners",
     singular: "Обработчик",
     plural: "Listeners",
+    docs: [
+      { label: "Обработчики (Listeners)", href: "#" },
+      { label: "Балансировщики нагрузки", href: "#" },
+    ],
     serviceTitle: "Network Load Balancer",
     scope: "project",
     ops: { create: true, update: true, delete: true },
@@ -540,6 +548,10 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     payloadKey: "target_groups",
     singular: "Целевая группа",
     plural: "Target Groups",
+    docs: [
+      { label: "Целевые группы (Target Groups)", href: "#" },
+      { label: "Балансировщики нагрузки", href: "#" },
+    ],
     genitive: "Целевой группы",
     serviceTitle: "Network Load Balancer",
     scope: "project",
