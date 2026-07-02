@@ -15,7 +15,7 @@ import { NlbVipCell } from "@/components/molecules/NlbVipCell";
 import {
   NlbVipSourceField,
   NlbDisabledZonesField,
-  buildVipSource,
+  buildVipSourceOrNull,
 } from "@/components/organisms/form/NlbVipSourceField";
 
 export interface ResourceColumn {
@@ -372,52 +372,43 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       deletion_protection: false,
       disabled_announce_zones: [],
       // vip_source — UI-представление источника VIP per-family (NlbVipSourceField).
-      // По умолчанию включён IPv4 в режиме «из подсети». sanitize собирает wire
-      // oneof v4_source/v6_source (ровно один кейс на семейство) и опускает
-      // невключённое семейство целиком.
+      // По умолчанию оба семейства в режиме «из подсети» с пустым выбором:
+      // семейство уходит в wire, только если у него задан источник. sanitize
+      // собирает oneof v4_source/v6_source (ровно один кейс на непустое семейство).
       vip_source: {
-        _v4_enabled: true,
         _v4_mode: "subnet",
         v4: { subnet_id: "", address_id: "" },
-        _v6_enabled: false,
         _v6_mode: "subnet",
         v6: { subnet_id: "", address_id: "" },
       },
       labels: {},
     }),
-    // Клиент-валидация ДО submit: хотя бы одно семейство VIP (IPv4/IPv6) должно
-    // быть включено — иначе backend отвергнет InvalidArgument через 1-2с.
+    // Клиент-валидация ДО submit: источник VIP должен быть задан хотя бы для
+    // одного семейства (IPv4/IPv6) — иначе backend отвергнет InvalidArgument.
     validate: (obj) => {
+      const type = (obj.type as string) || "INTERNAL";
       const vs = (obj.vip_source as Record<string, unknown> | undefined) ?? {};
-      if (!vs._v4_enabled && !vs._v6_enabled) {
-        return "Включите хотя бы одно семейство VIP: IPv4 или IPv6.";
+      const v4 = buildVipSourceOrNull(type, vs._v4_mode as string | undefined, vs.v4 as Record<string, unknown> | undefined);
+      const v6 = buildVipSourceOrNull(type, vs._v6_mode as string | undefined, vs.v6 as Record<string, unknown> | undefined);
+      if (!v4 && !v6) {
+        return "Укажите источник VIP хотя бы для одного семейства (IPv4 или IPv6).";
       }
       return null;
     },
     // Собирает per-family oneof v4_source/v6_source из UI-представления
-    // (NlbVipSourceField): для каждого включённого семейства строится ровно один
-    // кейс oneof (subnet_id / address_id / public {}), служебные `_*` вычищаются.
-    // placement_type шлётся только для INTERNAL, disabled_announce_zones — только
-    // для REGIONAL (иначе backend отклонит).
+    // (NlbVipSourceField): семейство эмитится, только если у активного режима
+    // есть значение (buildVipSourceOrNull ≠ null) — пустой addressId/subnetId
+    // никогда не уходит на бэкенд. placement_type шлётся только для INTERNAL,
+    // disabled_announce_zones — только для REGIONAL (иначе backend отклонит).
     sanitize: (obj) => {
       const out: Record<string, unknown> = { ...obj };
       const type = (out.type as string) || "INTERNAL";
 
       const vs = (out.vip_source as Record<string, unknown> | undefined) ?? {};
-      if (vs._v4_enabled) {
-        out.v4_source = buildVipSource(
-          type,
-          vs._v4_mode as string | undefined,
-          vs.v4 as Record<string, unknown> | undefined,
-        );
-      }
-      if (vs._v6_enabled) {
-        out.v6_source = buildVipSource(
-          type,
-          vs._v6_mode as string | undefined,
-          vs.v6 as Record<string, unknown> | undefined,
-        );
-      }
+      const v4 = buildVipSourceOrNull(type, vs._v4_mode as string | undefined, vs.v4 as Record<string, unknown> | undefined);
+      const v6 = buildVipSourceOrNull(type, vs._v6_mode as string | undefined, vs.v6 as Record<string, unknown> | undefined);
+      if (v4) out.v4_source = v4;
+      if (v6) out.v6_source = v6;
       delete out.vip_source;
 
       // placement_type — INTERNAL only.

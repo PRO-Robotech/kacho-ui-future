@@ -4,8 +4,14 @@ import { jest } from "@jest/globals";
 // теста хелперов мокаем RefSelect (в этом тесте компонент не рендерится).
 jest.unstable_mockModule("@/components/organisms/form/RefSelect", () => ({ RefSelect: () => null }));
 
-const { effectiveVipMode, buildVipSource, familyIpVersion, subnetPlacementMatches, linkAddressFilter } =
-  await import("./NlbVipSourceField");
+const {
+  effectiveVipMode,
+  buildVipSource,
+  buildVipSourceOrNull,
+  familyIpVersion,
+  subnetPlacementMatches,
+  linkAddressFilter,
+} = await import("./NlbVipSourceField");
 
 describe("NlbVipSourceField helpers", () => {
   it("effectiveVipMode — нормализует режим под схему", () => {
@@ -25,6 +31,18 @@ describe("NlbVipSourceField helpers", () => {
     expect(buildVipSource("EXTERNAL", "public", {})).toEqual({ public: {} });
     // Устаревший режим схлопывается в валидный дефолт схемы.
     expect(buildVipSource("EXTERNAL", "subnet", {})).toEqual({ public: {} });
+  });
+
+  it("buildVipSourceOrNull — пустое значение семейства → null (не шлём пустой id)", () => {
+    // Задано значение → oneof, как buildVipSource.
+    expect(buildVipSourceOrNull("INTERNAL", "subnet", { subnet_id: "sub-1" })).toEqual({ subnet_id: "sub-1" });
+    expect(buildVipSourceOrNull("INTERNAL", "address", { address_id: "adr-1" })).toEqual({ address_id: "adr-1" });
+    // Пустой выбор → null (семейство опускается, а не уходит как {address_id:""}).
+    expect(buildVipSourceOrNull("INTERNAL", "address", { address_id: "" })).toBeNull();
+    expect(buildVipSourceOrNull("INTERNAL", "subnet", { subnet_id: "" })).toBeNull();
+    expect(buildVipSourceOrNull("INTERNAL", "address", undefined)).toBeNull();
+    // public всегда валиден (VIP выделяет платформа).
+    expect(buildVipSourceOrNull("EXTERNAL", "public", {})).toEqual({ public: {} });
   });
 
   it("familyIpVersion — семейство → enum IpVersion", () => {

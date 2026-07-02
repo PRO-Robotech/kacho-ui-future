@@ -1,6 +1,6 @@
-// NlbVipSourceField — выбор источника VIP балансировщика пофамильно (per-family
-// v4/v6). Балансировщик несёт один VIP на семейство; источник задаётся как
-// oneof на каждое включённое семейство:
+// NlbVipSourceField — выбор источника VIP балансировщика пофамильно (v4/v6).
+// Балансировщик несёт один VIP на семейство; источник каждого семейства —
+// oneof:
 //   • INTERNAL:
 //       — «Из подсети (авто)»  → subnet_id: VIP выделяется из подсети (placement
 //          подсети обязан совпадать с placement балансировщика);
@@ -9,25 +9,28 @@
 //       — «Публичный (авто)»   → public {}: платформенный public IP;
 //       — «Линк адреса»        → address_id: линк заранее созданного public Address.
 //
-// Раскладка — горизонтальная (label слева 200px, контрол справа), как в общей
-// ResourceFormBody; каждое под-поле семейства читается слева-направо. Дропдауны —
-// RefSelect (единый вид с прочими ref-полями формы).
+// Раскладка — одна строка на семейство: слева единый label («IPv4 Адрес» /
+// «IPv6 Адрес»), справа — переключатель режима (segmented) и соответствующий
+// селектор (без собственных под-лейблов). Отдельного enable-тоглера семейства
+// НЕТ: семейство считается заданным, если у активного режима есть значение
+// (subnet_id / address_id непусты, либо режим public). Пустое семейство целиком
+// опускается в wire — так пустой addressId/subnetId никогда не уходит на бэкенд.
 //
 // Кандидаты фильтруются по placement балансировщика:
 //   • подсеть-источник — только подсети совпадающего placement_type;
 //   • Address-линк (INTERNAL) — только адреса, чья internal-подсеть того же
 //     placement (family-совпадение + subnet_id ∈ множества подсетей placement).
 //
-// UI-представление хранится в obj.vip_source (с дискриминаторами `_*`); sanitize
-// ресурса load-balancers собирает wire-форму v4_source/v6_source (ровно один
-// кейс oneof на семейство) и опускает семейство целиком, если оно не включено.
+// UI-представление хранится в obj.vip_source (с дискриминатором режима `_*_mode`);
+// sanitize ресурса load-balancers собирает wire-форму v4_source/v6_source через
+// buildVipSourceOrNull (ровно один кейс oneof на непустое семейство).
 //
 // NlbDisabledZonesField — deny-list зон REGIONAL-балансировщика (drain): зоны,
 // из которых anycast-VIP не анонсируется. Multi-select зон региона балансировщика.
 
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Form, Segmented, Select, Switch, Typography } from "antd";
+import { Form, Segmented, Select, Typography } from "antd";
 import { api } from "@/api/client";
 import { RefSelect } from "@/components/organisms/form/RefSelect";
 import { ImmutableField } from "@/components/organisms/form/ImmutableField";
@@ -47,7 +50,7 @@ interface Props {
   editMode?: boolean;
 }
 
-const FAMILY_LABEL: Record<Family, string> = { v4: "IPv4 VIP", v6: "IPv6 VIP" };
+const FAMILY_LABEL: Record<Family, string> = { v4: "IPv4 Адрес", v6: "IPv6 Адрес" };
 
 // Единый layout горизонтальных строк секции «Источник VIP»: label слева 200px,
 // контрол справа — паритет с ResourceFormBody.
@@ -77,6 +80,7 @@ export function effectiveVipMode(type: string, mode: string | undefined): VipMod
 
 // buildVipSource — собирает wire-oneof одного семейства из UI-представления:
 // ровно один из subnet_id / address_id / public {}. Режим нормализуется под type.
+// Не проверяет непустоту значения (см. buildVipSourceOrNull для guard).
 export function buildVipSource(
   type: string,
   mode: string | undefined,
@@ -86,6 +90,22 @@ export function buildVipSource(
   if (em === "public") return { public: {} };
   if (em === "address") return { address_id: (fam?.address_id as string) || "" };
   return { subnet_id: (fam?.subnet_id as string) || "" };
+}
+
+// buildVipSourceOrNull — как buildVipSource, но возвращает null, если активный
+// режим не заполнен (пустой subnet_id / address_id). Так семейство без выбора
+// целиком опускается в wire, а не уходит как {address_id:""} / {subnet_id:""},
+// который бэкенд отвергает («Illegal argument addressId»). Режим public всегда
+// валиден (VIP выделяется платформой).
+export function buildVipSourceOrNull(
+  type: string,
+  mode: string | undefined,
+  fam: Record<string, unknown> | undefined,
+): Record<string, unknown> | null {
+  const em = effectiveVipMode(type, mode);
+  if (em === "public") return { public: {} };
+  if (em === "address") return (fam?.address_id as string) ? { address_id: fam!.address_id } : null;
+  return (fam?.subnet_id as string) ? { subnet_id: fam!.subnet_id } : null;
 }
 
 // subnetPlacementMatches — кандидат-подсеть подходит для источника VIP, только
@@ -144,12 +164,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-// FamilyRows — строки одного семейства (v4/v6): переключатель включения, режим
-// источника и соответствующий picker. Все строки — горизонтальные (label слева).
-function FamilyRows({ value, onChange, family }: Props & { family: Family }) {
+// FamilyRow — одна строка семейства (v4/v6): единый label слева, справа — режим
+// источника (segmented) и соответствующий селектор без своих под-лейблов.
+function FamilyRow({ value, onChange, family }: Props & { family: Family }) {
   const project = useProjectStore((s) => s.project);
   const base = `vip_source.${family}`;
-  const enabled = Boolean(getByPath(value, `vip_source._${family}_enabled`));
   const type = (getByPath(value, "type") as string) || "INTERNAL";
   const placement = (getByPath(value, "placement_type") as string) || "ZONAL";
   const rawMode = getByPath(value, `vip_source._${family}_mode`) as string | undefined;
@@ -174,7 +193,7 @@ function FamilyRows({ value, onChange, family }: Props & { family: Family }) {
 
   // Для линка INTERNAL-адреса нужен набор подсетей совпадающего placement —
   // адрес допустим, только если его internal-подсеть входит в этот набор.
-  const needSubnetSet = enabled && mode === "address" && type === "INTERNAL";
+  const needSubnetSet = mode === "address" && type === "INTERNAL";
   const { data: subnetData } = useQuery({
     queryKey: ["ref", "subnets", "placement-set", project?.id ?? null, placement],
     queryFn: () =>
@@ -200,57 +219,43 @@ function FamilyRows({ value, onChange, family }: Props & { family: Family }) {
   };
 
   return (
-    <>
-      <Form.Item label={FAMILY_LABEL[family]} style={{ marginBottom: enabled ? 8 : 12 }}>
-        <Switch checked={enabled} onChange={(on) => set(`vip_source._${family}_enabled`, on)} />
-      </Form.Item>
+    <Form.Item label={FAMILY_LABEL[family]} style={{ marginBottom: family === "v4" ? 12 : 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <Segmented
+          value={mode}
+          onChange={(m) => set(`vip_source._${family}_mode`, String(m))}
+          options={modeOptions}
+        />
 
-      {enabled && (
-        <>
-          <Form.Item label="Режим" style={{ marginBottom: 8 }}>
-            <Segmented
-              value={mode}
-              onChange={(m) => set(`vip_source._${family}_mode`, String(m))}
-              options={modeOptions}
-            />
-          </Form.Item>
+        {mode === "subnet" && (
+          <RefSelect
+            refResource="subnets"
+            refProjectScoped
+            refFilter={subnetPlacementMatches(placement)}
+            value={getByPath(value, `${base}.subnet_id`) as string | undefined}
+            onChange={(uid) => set(`${base}.subnet_id`, uid || undefined)}
+            placeholder={`Подсеть (${placement}) для авто-аллокации VIP — оставьте пустым, чтобы не задавать ${FAMILY_LABEL[family]}`}
+          />
+        )}
 
-          {mode === "subnet" && (
-            <Form.Item label="Подсеть" style={{ marginBottom: 12 }}>
-              <RefSelect
-                refResource="subnets"
-                refProjectScoped
-                refFilter={subnetPlacementMatches(placement)}
-                value={getByPath(value, `${base}.subnet_id`) as string | undefined}
-                onChange={(uid) => set(`${base}.subnet_id`, uid || undefined)}
-                placeholder={`Подсеть (${placement}) для авто-аллокации VIP`}
-              />
-            </Form.Item>
-          )}
+        {mode === "address" && (
+          <RefSelect
+            refResource="addresses"
+            refProjectScoped
+            refFilter={addressFilter}
+            value={getByPath(value, `${base}.address_id`) as string | undefined}
+            onChange={(uid) => set(`${base}.address_id`, uid || undefined)}
+            placeholder={`Заранее созданный Address — оставьте пустым, чтобы не задавать ${FAMILY_LABEL[family]}`}
+          />
+        )}
 
-          {mode === "address" && (
-            <Form.Item label="Адрес" style={{ marginBottom: 12 }}>
-              <RefSelect
-                refResource="addresses"
-                refProjectScoped
-                refFilter={addressFilter}
-                value={getByPath(value, `${base}.address_id`) as string | undefined}
-                onChange={(uid) => set(`${base}.address_id`, uid || undefined)}
-                placeholder="Заранее созданный Address"
-              />
-            </Form.Item>
-          )}
-
-          {mode === "public" && (
-            <Form.Item label="Адрес" style={{ marginBottom: 12 }}>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Публичный VIP выделяется платформой автоматически.
-              </Typography.Text>
-            </Form.Item>
-          )}
-        </>
-      )}
-    </>
+        {mode === "public" && (
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            Публичный VIP выделяется платформой автоматически.
+          </Typography.Text>
+        )}
+      </div>
+    </Form.Item>
   );
 }
 
@@ -279,12 +284,12 @@ export function NlbVipSourceField({ value, onChange, editMode }: Props) {
   return (
     <Section title="Источник VIP">
       <Form {...ROW_FORM_PROPS}>
-        <FamilyRows value={value} onChange={onChange} family="v4" />
-        <FamilyRows value={value} onChange={onChange} family="v6" />
+        <FamilyRow value={value} onChange={onChange} family="v4" />
+        <FamilyRow value={value} onChange={onChange} family="v6" />
       </Form>
       <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-        <span style={{ color: "#ff4d4f" }}>*</span> Хотя бы одно семейство обязательно. Сам VIP-адрес назначается после
-        создания (резолвится в связанный Address) — здесь задаётся только источник.
+        <span style={{ color: "#ff4d4f" }}>*</span> Задайте источник хотя бы для одного семейства (IPv4 или IPv6). Сам
+        VIP-адрес назначается после создания (резолвится в связанный Address) — здесь задаётся только источник.
       </Typography.Text>
     </Section>
   );
