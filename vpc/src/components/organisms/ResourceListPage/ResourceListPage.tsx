@@ -19,6 +19,7 @@ import { ResourceEmptyState } from "@/components/molecules/ResourceEmptyState";
 import { ProjectRequiredEmpty } from "@/components/molecules/ProjectRequiredEmpty";
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
 import { buildSpecColumns } from "@/lib/spec-columns";
+import { ColumnSettings, useHiddenColumns, type ToggleCol } from "@/components/molecules/TableToolbar";
 import { useResourceList } from "@/lib/use-resource-list";
 
 interface Props {
@@ -36,6 +37,10 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue }
   const navigate = useNavigate();
   const filterValue = parentValue ?? (parentParam ? (params[parentParam] ?? null) : null);
   const [query, setQuery] = useState("");
+  // Конфигуратор видимости колонок (⚙ рядом с поиском) — persist в localStorage
+  // по specId; те же toggles, что у related-таблиц detail-страниц.
+  const [hidden, toggleHidden] = useHiddenColumns(`cols:${spec.id}`);
+  const toggleCols: ToggleCol[] = spec.columns.map((c) => ({ key: c.header, label: c.header }));
 
   const { data, isLoading, isError, error } = useResourceList(spec, parentField ?? null, filterValue);
 
@@ -148,7 +153,7 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue }
   // отрендерить ссылку на /projects/<projectId>/compute/instances/<id> и т.п.
   const columns: Column<Record<string, unknown>>[] = buildSpecColumns(spec, {
     projectId: params.projectId,
-  });
+  }).filter((c) => !hidden.has(c.header));
 
   columns.push({
     header: "",
@@ -238,6 +243,7 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue }
               allowClear
             />
             {hasZoneFilter && <Select value={zone} onChange={setZone} options={zoneOptions} style={{ width: 220 }} />}
+            <ColumnSettings columns={toggleCols} hidden={hidden} onToggle={toggleHidden} />
           </>,
         )}
       </div>
