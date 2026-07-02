@@ -9,6 +9,7 @@ import { CopyableId } from "@/components/atoms/CopyableId";
 import { RoutesEditor, type RouteEntry } from "@/components/organisms/RoutesEditor";
 import { CopyableName } from "@/components/atoms/CopyableName";
 import { RefNameLink } from "@/components/molecules/RefNameLink";
+import { IamRefLink } from "@/components/molecules/IamRefLink";
 import { LabelsCell } from "@/components/atoms/LabelsCell";
 import { NicSpecFields } from "@/components/organisms/form/NicSpecFields";
 
@@ -200,7 +201,16 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     serviceTitle: "IAM",
     scope: "global",
     ops: { create: true, update: true, delete: true },
-    columns: [COL_NAME, { header: "Владелец", path: "owner_user_id", format: "uid-short" }, COL_CREATED, COL_ID],
+    columns: [
+      COL_NAME,
+      {
+        header: "Владелец",
+        path: "owner_user_id",
+        render: (row) => <IamRefLink specId="users" refId={row.owner_user_id as string} nameField="email" />,
+      },
+      COL_CREATED,
+      COL_ID,
+    ],
     fields: [
       FIELD_NAME,
       {
@@ -231,7 +241,16 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     serviceTitle: "IAM",
     scope: "account",
     ops: { create: true, update: true, delete: true },
-    columns: [COL_NAME, { header: "Аккаунт", path: "account_id", format: "uid-short" }, COL_CREATED, COL_ID],
+    columns: [
+      COL_NAME,
+      {
+        header: "Аккаунт",
+        path: "account_id",
+        render: (row) => <IamRefLink specId="accounts" refId={row.account_id as string} />,
+      },
+      COL_CREATED,
+      COL_ID,
+    ],
     fields: [FIELD_NAME, FIELD_ACCOUNT_ID, FIELD_LABELS, FIELD_DESCRIPTION],
     // Project drill-down → /projects/:id; ProjectDefaultRedirect перебрасывает
     // дальше на /projects/:id/dashboard.
@@ -254,7 +273,16 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     serviceTitle: "IAM",
     scope: "account",
     ops: { create: true, update: true, delete: true },
-    columns: [COL_NAME, { header: "Аккаунт", path: "account_id", format: "uid-short" }, COL_CREATED, COL_ID],
+    columns: [
+      COL_NAME,
+      {
+        header: "Аккаунт",
+        path: "account_id",
+        render: (row) => <IamRefLink specId="accounts" refId={row.account_id as string} />,
+      },
+      COL_CREATED,
+      COL_ID,
+    ],
     fields: [FIELD_NAME, FIELD_ACCOUNT_ID, FIELD_DESCRIPTION],
     template: ({ accountId }) => ({
       name: "",
