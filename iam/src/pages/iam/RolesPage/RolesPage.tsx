@@ -194,6 +194,13 @@ export function RolesPage() {
           columns={columns}
           pagination={false}
           scroll={{ x: "max-content", y: scrollY }}
+          onRow={(row) => ({
+            onClick: (e) => {
+              if ((e.target as HTMLElement)?.closest("button, a, .ant-dropdown, .ant-popover, .ant-select")) return;
+              navigate(`/iam/roles/${row.id}`);
+            },
+            style: { cursor: "pointer" },
+          })}
           locale={{
             emptyText: q ? "Ничего не найдено." : "Ролей нет.",
           }}

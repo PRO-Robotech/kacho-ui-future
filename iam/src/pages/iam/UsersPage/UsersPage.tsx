@@ -150,6 +150,13 @@ export function UsersPage() {
           columns={columns}
           pagination={false}
           scroll={{ x: "max-content", y: scrollY }}
+          onRow={(row) => ({
+            onClick: (e) => {
+              if ((e.target as HTMLElement)?.closest("button, a, .ant-dropdown, .ant-popover, .ant-select")) return;
+              navigate(`/iam/users/${row.id}`);
+            },
+            style: { cursor: "pointer" },
+          })}
           locale={{ emptyText: "User'ов нет." }}
         />
       </div>

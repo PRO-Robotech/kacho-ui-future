@@ -122,6 +122,18 @@ export function GroupsPage() {
             columns={columns}
             pagination={false}
             scroll={{ x: "max-content", y: scrollY }}
+            onRow={(row) => ({
+              onClick: (e) => {
+                if (
+                  (e.target as HTMLElement)?.closest(
+                    "button, a, .ant-dropdown, .ant-popover, .ant-select, .ant-table-row-expand-icon",
+                  )
+                )
+                  return;
+                navigate(`/iam/groups/${row.id}`);
+              },
+              style: { cursor: "pointer" },
+            })}
             expandable={{
               expandedRowRender: (row) => <GroupMembersPanel group={row} accountId={accountId} />,
             }}

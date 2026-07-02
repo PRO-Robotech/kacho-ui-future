@@ -448,6 +448,13 @@ export function AccessBindingsPage() {
             columns={columns}
             pagination={false}
             scroll={{ x: "max-content", y: scrollY }}
+            onRow={(row) => ({
+              onClick: (e) => {
+                if ((e.target as HTMLElement)?.closest("button, a, .ant-dropdown, .ant-popover, .ant-select")) return;
+                navigate(`/iam/access-bindings/${row.id}`);
+              },
+              style: { cursor: "pointer" },
+            })}
             locale={{ emptyText: "AccessBinding'ов нет." }}
             data-testid="access-bindings-table"
           />
