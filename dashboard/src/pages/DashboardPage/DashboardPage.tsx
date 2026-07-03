@@ -185,19 +185,41 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
 
   return (
     <section className="dashboard-console" data-testid="dashboard-page">
-      <aside className="dashboard-nav">
-        <Input
-          allowClear
-          size="small"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Поиск аккаунта или проекта"
-          prefix={<Search size={13} style={{ opacity: 0.5 }} />}
-          className="dash-tree-search"
-        />
-        {treeData.length === 0 ? (
-          <div className="dash-nav-empty">{!accountsLoaded ? "Загрузка…" : "Ничего не найдено"}</div>
-        ) : (
+      {/* Верхняя панель (шапка): слева — поиск по дереву аккаунтов/проектов,
+          справа — пилюли выбранного контекста (аккаунт / проект). */}
+      <div className="dashboard-topbar">
+        <div className="dashboard-topbar-nav">
+          <Input
+            allowClear
+            size="small"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск аккаунта или проекта"
+            prefix={<Search size={13} style={{ opacity: 0.5 }} />}
+            className="dash-tree-search"
+          />
+        </div>
+        <div className="dashboard-topbar-context">
+          {ctx.account ? (
+            <span className="dashboard-ctx-pill" title="Выбранный аккаунт">
+              <Building2 size={13} />
+              {ctx.account.name || ctx.account.id}
+            </span>
+          ) : null}
+          {ctx.project ? (
+            <span className="dashboard-ctx-pill" title="Выбранный проект">
+              <FolderClosed size={13} />
+              {ctx.project.name || ctx.project.id}
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="dashboard-body">
+        <aside className="dashboard-nav">
+          {treeData.length === 0 ? (
+            <div className="dash-nav-empty">{!accountsLoaded ? "Загрузка…" : "Ничего не найдено"}</div>
+          ) : (
           <Tree
             showIcon
             blockNode
@@ -296,7 +318,8 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
             );
           })}
         </Row>
-      </main>
+        </main>
+      </div>
     </section>
   );
 };

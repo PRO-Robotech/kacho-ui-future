@@ -32,6 +32,7 @@ body,
    Заполняет область до футера; скроллится только контент, не вся страница. */
 .dashboard-console {
   display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -39,6 +40,61 @@ body,
   border: 1px solid var(--kc-border-secondary, rgb(127 127 127 / 0.18));
   border-radius: 12px;
   box-shadow: var(--kc-shadow-sm, 0 1px 2px rgb(0 0 0 / 0.05));
+}
+
+/* Верхняя панель (шапка) на всю ширину: слева поиск по дереву (в ширину
+   nav-колонки), справа — пилюли выбранного контекста. */
+.dashboard-topbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 16px 0 10px;
+  border-bottom: 1px solid var(--kc-border-secondary, rgb(127 127 127 / 0.18));
+}
+
+.dashboard-topbar-nav {
+  flex-shrink: 0;
+  width: 226px;
+}
+
+.dashboard-topbar-context {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-ctx-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  padding: 3px 10px;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--kc-text-secondary, rgb(127 127 127 / 0.9));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--kc-hover-fill, rgb(127 127 127 / 0.07));
+  border: 1px solid var(--kc-border-secondary, rgb(127 127 127 / 0.16));
+  border-radius: 999px;
+}
+
+.dashboard-ctx-pill svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* Тело: древо слева + контент справа, заполняет остаток высоты. */
+.dashboard-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .dashboard-nav {
