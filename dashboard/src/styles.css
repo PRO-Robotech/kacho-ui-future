@@ -229,6 +229,35 @@ body,
   box-shadow: 0 2px 8px rgb(16 24 40 / 0.06);
 }
 
+/* Активный вид (выбранная «вкладка» main-области). */
+.dashboard-quick-btn-active,
+.dashboard-quick-btn-active:hover {
+  color: #3d8df5;
+  background: rgb(61 141 245 / 0.1);
+  border-color: rgb(61 141 245 / 0.55);
+}
+
+.dashboard-quick-btn-active .dashboard-quick-icon {
+  color: #3d8df5;
+}
+
+/* Обёртка таблицы IAM-ресурса в main-области (заголовок + счётчик + таблица). */
+.dashboard-table-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dashboard-table-count {
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kc-text-secondary, rgb(127 127 127 / 0.9));
+  background: var(--kc-hover-fill, rgb(127 127 127 / 0.1));
+  border-radius: 999px;
+}
+
 .dashboard-quick-icon {
   display: inline-flex;
   align-items: center;

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { SERVICE_MODULES } from "../../lib/service-modules";
 import type { ServiceModule } from "../../lib/service-modules";
+import { IamResourceTable, type TableView } from "./IamResourceTable";
 import { useModuleCounts } from "../../hooks/use-module-counts";
 import { apiList, loadHostContext } from "../../utils";
 import type { AccountRef, HostContext, ProjectRef } from "../../utils";
@@ -40,6 +41,10 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
   const [expanded, setExpanded] = useState<string[]>([]);
   // Поиск по сервисам (плашки «Ресурсы») — фильтр по названию/короткому имени.
   const [serviceQuery, setServiceQuery] = useState("");
+  // Активный вид main-области: "services" — плашки сервисов, остальные —
+  // таблицы account-scoped IAM-ресурсов (аккаунты/проекты/привязки/операции),
+  // логика как у дочерних таблиц в зоне-3 деталей.
+  const [view, setView] = useState<"services" | TableView>("accounts");
 
   // loadProjects — догружает проекты одного аккаунта (идемпотентно: повторно не
   // ходит). Вызывается из loadData (раскрытие) и при поиске (догрузка всех).
@@ -168,13 +173,15 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
     ? `Проект: ${ctx.project.name || ctx.project.id}`
     : "Выберите проект в дереве слева, чтобы открыть VPC / Compute / NLB. IAM доступен всегда.";
 
-  // Быстрые действия — верхнеуровневые входы IAM (как ряд быстрых действий на
-  // консольном дашборде). Ведут в разделы IAM независимо от выбранного проекта.
-  const quickActions: { key: string; label: string; icon: ReactNode; path: string }[] = [
-    { key: "accounts", label: "Аккаунты", icon: <Building2 size={16} />, path: "/iam/accounts" },
-    { key: "projects", label: "Проекты", icon: <FolderKanban size={16} />, path: "/iam/projects" },
-    { key: "access", label: "Права доступа", icon: <ShieldCheck size={16} />, path: "/iam/access-bindings" },
-    { key: "operations", label: "Операции", icon: <History size={16} />, path: "/iam/operations" },
+  // Селектор вида main-области: «Сервисы» (плашки VPC/Compute/NLB/IAM) + таблицы
+  // account-scoped IAM-ресурсов. Клик переключает содержимое справа (не уводит со
+  // страницы) — логика как у табов зоны-3 деталей, только селектор — эти кнопки.
+  const viewTabs: { key: "services" | TableView; label: string; icon: ReactNode }[] = [
+    { key: "services", label: "Сервисы", icon: <Boxes size={16} /> },
+    { key: "accounts", label: "Аккаунты", icon: <Building2 size={16} /> },
+    { key: "projects", label: "Проекты", icon: <FolderKanban size={16} /> },
+    { key: "access-bindings", label: "Права доступа", icon: <ShieldCheck size={16} /> },
+    { key: "operations", label: "Операции", icon: <History size={16} /> },
   ];
 
   // Фильтр плашек по поиску сервисов (название или короткое имя).
@@ -243,45 +250,50 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
           <Typography.Text type="secondary">{caption}</Typography.Text>
         </div>
 
-        {/* Ряд быстрых действий IAM (аккаунты / проекты / права доступа / операции). */}
+        {/* Селектор вида: «Сервисы» (плашки) + таблицы IAM-ресурсов. Клик
+            переключает контент справа, не уводя со страницы. */}
         <div className="dashboard-quicknav">
-          {quickActions.map((a) => (
+          {viewTabs.map((t) => (
             <button
-              key={a.key}
+              key={t.key}
               type="button"
-              className="dashboard-quick-btn"
-              onClick={() => void navigate(a.path)}
-              data-testid={`dashboard-quick-${a.key}`}
+              className={view === t.key ? "dashboard-quick-btn dashboard-quick-btn-active" : "dashboard-quick-btn"}
+              onClick={() => setView(t.key)}
+              data-testid={`dashboard-view-${t.key}`}
             >
-              <span className="dashboard-quick-icon">{a.icon}</span>
-              <span>{a.label}</span>
+              <span className="dashboard-quick-icon">{t.icon}</span>
+              <span>{t.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Поиск по сервисам — фильтрует плашки ресурсов ниже. */}
-        <Input
-          allowClear
-          value={serviceQuery}
-          onChange={(e) => setServiceQuery(e.target.value)}
-          placeholder="Поиск сервисов"
-          prefix={<Search size={15} style={{ opacity: 0.5 }} />}
-          className="dashboard-service-search"
-        />
+        {view !== "services" ? (
+          <IamResourceTable view={view} accountId={accountId} navigate={navigate} />
+        ) : (
+          <>
+            {/* Поиск по сервисам — фильтрует плашки ресурсов ниже. */}
+            <Input
+              allowClear
+              value={serviceQuery}
+              onChange={(e) => setServiceQuery(e.target.value)}
+              placeholder="Поиск сервисов"
+              prefix={<Search size={15} style={{ opacity: 0.5 }} />}
+              className="dashboard-service-search"
+            />
 
-        <div className="dashboard-section-head">
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            Ресурсы
-          </Typography.Title>
-        </div>
+            <div className="dashboard-section-head">
+              <Typography.Title level={4} style={{ margin: 0 }}>
+                Ресурсы
+              </Typography.Title>
+            </div>
 
-        {treeData.length === 0 && accountsLoaded && accounts.length > 0 && q === "" ? (
-          <Card>
-            <Empty image={<Boxes size={40} color="#8b8f99" />} description="Нет доступных проектов" />
-          </Card>
-        ) : null}
+            {treeData.length === 0 && accountsLoaded && accounts.length > 0 && q === "" ? (
+              <Card>
+                <Empty image={<Boxes size={40} color="#8b8f99" />} description="Нет доступных проектов" />
+              </Card>
+            ) : null}
 
-        <Row gutter={[16, 16]}>
+            <Row gutter={[16, 16]}>
           {shownModules.map((module) => {
             const disabled = tileDisabled(module);
             return (
@@ -317,7 +329,9 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
               </Col>
             );
           })}
-        </Row>
+            </Row>
+          </>
+        )}
         </main>
       </div>
     </section>
