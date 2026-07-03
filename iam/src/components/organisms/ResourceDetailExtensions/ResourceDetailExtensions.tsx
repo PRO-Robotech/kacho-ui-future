@@ -583,6 +583,76 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
     },
   },
 
+  // AccessBinding — сводка биндинга в Обзоре: субъект/роль/ресурс (IamRefLink) +
+  // статус/область/условие/защита. Резолв через те же specId, что list-колонки.
+  "access-bindings": {
+    overviewExtra: ({ data }) => {
+      const subjType = String(getByPath<string>(data, "subject_type") ?? "");
+      const subjSpec =
+        subjType === "user"
+          ? "users"
+          : subjType === "group"
+            ? "groups"
+            : subjType === "service_account"
+              ? "service-accounts"
+              : undefined;
+      const subjId = getByPath<string>(data, "subject_id") ?? "";
+      const resType = String(getByPath<string>(data, "resource_type") ?? "");
+      const resSpec = resType === "account" ? "accounts" : resType === "project" ? "projects" : undefined;
+      const resId = getByPath<string>(data, "resource_id") ?? "";
+      const scope = String(getByPath<string>(data, "scope") ?? "");
+      const scopeColor = scope === "CLUSTER" ? "red" : scope === "ACCOUNT" ? "blue" : scope === "PROJECT" ? "green" : "default";
+      const cond = getByPath<string>(data, "builtin_condition");
+      return [
+        {
+          label: "Субъект",
+          value: (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <Tag>{subjType || "—"}</Tag>
+              {subjSpec ? (
+                <IamRefLink specId={subjSpec} refId={subjId} nameField={subjType === "user" ? "email" : "name"} />
+              ) : (
+                <CopyableId id={subjId} />
+              )}
+            </span>
+          ),
+        },
+        { label: "Роль", value: <IamRefLink specId="roles" refId={getByPath<string>(data, "role_id")} /> },
+        {
+          label: "Ресурс",
+          value: (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <Tag>{resType || "—"}</Tag>
+              {resSpec ? <IamRefLink specId={resSpec} refId={resId} /> : <CopyableId id={resId} />}
+            </span>
+          ),
+        },
+        { label: "Статус", value: <StatusBadge state={getByPath<string>(data, "status")} /> },
+        {
+          label: "Область",
+          value:
+            scope && scope !== "SCOPE_UNSPECIFIED" ? (
+              <Tag color={scopeColor}>{scope}</Tag>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            ),
+        },
+        {
+          label: "Встроенное условие",
+          value: <span style={{ fontFamily: "ui-monospace, SFMono-Regular, monospace", fontSize: 12 }}>{cond || "—"}</span>,
+        },
+        {
+          label: "Защита от удаления",
+          value: getByPath<boolean>(data, "deletion_protection") ? (
+            <Tag color="gold">Да</Tag>
+          ) : (
+            <span className="text-muted-foreground">Нет</span>
+          ),
+        },
+      ];
+    },
+  },
+
   networks: {
     overviewExtra: ({ data }) => [
       {
