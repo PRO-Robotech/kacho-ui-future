@@ -605,27 +605,19 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
       const cond = getByPath<string>(data, "builtin_condition");
       return [
         {
+          // Тип субъекта несёт иконка IamRefLink — тип-тег не дублируем.
           label: "Субъект",
-          value: (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <Tag>{subjType || "—"}</Tag>
-              {subjSpec ? (
-                <IamRefLink specId={subjSpec} refId={subjId} nameField={subjType === "user" ? "email" : "name"} />
-              ) : (
-                <CopyableId id={subjId} />
-              )}
-            </span>
+          value: subjSpec ? (
+            <IamRefLink specId={subjSpec} refId={subjId} nameField={subjType === "user" ? "email" : "name"} />
+          ) : (
+            <CopyableId id={subjId} />
           ),
         },
         { label: "Роль", value: <IamRefLink specId="roles" refId={getByPath<string>(data, "role_id")} /> },
         {
+          // Тип ресурса несёт иконка IamRefLink — тип-тег не дублируем.
           label: "Ресурс",
-          value: (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <Tag>{resType || "—"}</Tag>
-              {resSpec ? <IamRefLink specId={resSpec} refId={resId} /> : <CopyableId id={resId} />}
-            </span>
-          ),
+          value: resSpec ? <IamRefLink specId={resSpec} refId={resId} /> : <CopyableId id={resId} />,
         },
         { label: "Статус", value: <StatusBadge state={getByPath<string>(data, "status")} /> },
         {
