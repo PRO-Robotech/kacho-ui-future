@@ -15,6 +15,64 @@ import {
   type ProjectRef,
 } from "../../../utils";
 
+// Метки модулей и ресурсов для хлебных крошек в шапке (как в kacho-ui):
+// «<Модуль> / <ресурс>» выводится из URL. Хост держит собственную карту, т.к. по
+// Module Federation не импортирует реестры remote'ов.
+const MODULE_LABELS: Record<string, string> = {
+  iam: "IAM",
+  vpc: "VPC",
+  compute: "Compute",
+  nlb: "NLB",
+  system: "Администрирование",
+};
+
+const RESOURCE_LABELS: Record<string, string> = {
+  // iam
+  accounts: "Аккаунты",
+  projects: "Проекты",
+  "service-accounts": "Сервисные аккаунты",
+  users: "Пользователи",
+  groups: "Группы",
+  roles: "Роли",
+  "access-bindings": "Привязки доступа",
+  operations: "Операции",
+  access: "Управление доступом",
+  // vpc
+  networks: "Облачные сети",
+  subnets: "Подсети",
+  "security-groups": "Группы безопасности",
+  "route-tables": "Таблицы маршрутов",
+  addresses: "Адреса",
+  gateways: "Шлюзы",
+  "network-interfaces": "Сетевые интерфейсы",
+  "address-pools": "Пулы адресов",
+  "anycast-address-pools": "Anycast-пулы",
+  // compute
+  instances: "Инстансы",
+  disks: "Диски",
+  images: "Образы",
+  snapshots: "Снимки",
+  "disk-types": "Типы дисков",
+  regions: "Регионы",
+  zones: "Зоны",
+  // nlb
+  "load-balancers": "Балансировщики",
+  listeners: "Слушатели",
+  "target-groups": "Целевые группы",
+};
+
+// deriveCrumb — «<Модуль> / <ресурс>» из pathname. Поддержаны /iam/<res>,
+// /projects/<pid>/<module>/<res>, /system/<res>. Иначе null → «Все сервисы».
+function deriveCrumb(path: string): { module: string; resource: string } | null {
+  let m = path.match(/^\/iam\/([^/]+)/);
+  if (m) return { module: "IAM", resource: RESOURCE_LABELS[m[1]] ?? "Раздел" };
+  m = path.match(/^\/projects\/[^/]+\/([^/]+)\/([^/]+)/);
+  if (m) return { module: MODULE_LABELS[m[1]] ?? m[1].toUpperCase(), resource: RESOURCE_LABELS[m[2]] ?? "Раздел" };
+  m = path.match(/^\/system\/([^/]+)/);
+  if (m) return { module: "Администрирование", resource: RESOURCE_LABELS[m[1]] ?? "Раздел" };
+  return null;
+}
+
 export const HostBreadcrumb: FC<{
   context: HostContext;
   onChange: Dispatch<SetStateAction<HostContext>>;
@@ -146,21 +204,9 @@ export const HostBreadcrumb: FC<{
   // связки/операции), проекта у этих ресурсов нет → project-пилюля не показывается
   // (иначе селектор выглядит «не до конца заполненным»). Остаётся аккаунт.
   const onIam = /^\/iam(\/|$)/.test(path);
-  // Хлебные крошки раздела IAM в самой шапке (как в kacho-ui): «IAM / <ресурс>».
-  // Ресурс выводим из URL — второй сегмент /iam/<segment>/…
-  const iamSection = onIam
-    ? (({
-        accounts: "Аккаунты",
-        projects: "Проекты",
-        "service-accounts": "Сервисные аккаунты",
-        users: "Пользователи",
-        groups: "Группы",
-        roles: "Роли",
-        "access-bindings": "Привязки доступа",
-        operations: "Операции",
-        access: "Управление доступом",
-      } as Record<string, string>)[path.split("/")[2] ?? ""] ?? "Раздел")
-    : null;
+  // Хлебные крошки в самой шапке (как в kacho-ui): «<Модуль> / <ресурс>» для всех
+  // модулей (IAM / VPC / Compute / NLB / Администрирование), выведено из URL.
+  const crumb = deriveCrumb(path);
 
   return (
     <div className="context-breadcrumb" style={{ color: token.colorTextSecondary }}>
@@ -192,11 +238,11 @@ export const HostBreadcrumb: FC<{
           )}
         </>
       )}
-      {onIam ? (
+      {crumb ? (
         <>
-          <Typography.Text type="secondary">IAM</Typography.Text>
+          <Typography.Text type="secondary">{crumb.module}</Typography.Text>
           {sep}
-          <Typography.Text className="breadcrumb-current">{iamSection}</Typography.Text>
+          <Typography.Text className="breadcrumb-current">{crumb.resource}</Typography.Text>
         </>
       ) : (
         <Typography.Text className="breadcrumb-current">Все сервисы</Typography.Text>
