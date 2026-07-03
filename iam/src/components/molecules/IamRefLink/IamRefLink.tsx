@@ -10,8 +10,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { ResourceIcon } from "@/components/organisms/form/ResourceIcon";
-import { REGISTRY } from "@/lib/resource-registry";
-import { getByPath } from "@/lib/path";
+import { REGISTRY, getByPath } from "@/lib/resource-registry";
 
 interface Props {
   /** plural-ключ IAM-ресурса в REGISTRY: accounts/projects/users/service-accounts/roles/groups. */

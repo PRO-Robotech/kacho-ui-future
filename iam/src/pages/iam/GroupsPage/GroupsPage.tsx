@@ -9,7 +9,7 @@ import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
 import { api } from "@/api/client";
-import { iamApi, IAM, type Group, type GroupMember, type User, type ServiceAccount } from "@/api/iam";
+import { iamApi, IAM, type Group, type User, type ServiceAccount } from "@/api/iam";
 import { useIamMutation, fmtTs, CopyableMonoId } from "@/components/organisms/iam/IamCommon";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { ResourceIcon } from "@/components/organisms/form/ResourceIcon";

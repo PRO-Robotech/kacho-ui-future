@@ -32,9 +32,20 @@ interface Props {
   /** page_size запроса списка (Role — 1000: клиентский system/custom-фильтр
    *  требует всю страницу, иначе custom-роли на 2-й странице выпадут). */
   pageSize?: string;
+  /** Игнорировать spec.childRoute при drill (клик по строке ведёт на
+   *  `${basePath}/${id}` detail, а не на childRoute). Projects внутри IAM-секции
+   *  открывают IAM-деталь проекта, а не project-dashboard. */
+  disableChildRoute?: boolean;
 }
 
-export function ResourceListPage({ spec, parentField, parentParam, parentValue, pageSize }: Props) {
+export function ResourceListPage({
+  spec,
+  parentField,
+  parentParam,
+  parentValue,
+  pageSize,
+  disableChildRoute = false,
+}: Props) {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -288,8 +299,10 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
             onRowClick={(row) => {
               const id = getByPath<string>(row, "id");
               if (!id) return;
-              // childRoute шаблон: /projects/:id, ...
-              const target = spec.childRoute ? spec.childRoute.replace(":id", id) : `${basePath}/${id}`;
+              // childRoute шаблон: /projects/:id, ...; disableChildRoute → detail
+              // в текущей секции (`${basePath}/${id}`).
+              const target =
+                spec.childRoute && !disableChildRoute ? spec.childRoute.replace(":id", id) : `${basePath}/${id}`;
               navigate(target);
             }}
           />

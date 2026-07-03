@@ -536,6 +536,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
           return resSpec ? <IamRefLink specId={resSpec} refId={resId} /> : <CopyableId id={resId} />;
         },
       },
+      { header: "Статус", path: "status", format: "status" },
       {
         // Область — output-only scope-tier (CLUSTER/ACCOUNT/PROJECT). Цвет инлайн
         // (в future нет общего scopeColor-хелпера).
@@ -547,6 +548,34 @@ export const REGISTRY: Record<string, ResourceSpec> = {
           const color = s === "CLUSTER" ? "red" : s === "ACCOUNT" ? "blue" : s === "PROJECT" ? "green" : "default";
           return <Tag color={color}>{s}</Tag>;
         },
+      },
+      {
+        // Кто выдал привязку (granted_by_user_id, output-only) — ссылка на
+        // пользователя (email); пусто → «—».
+        header: "Кто выдал",
+        path: "granted_by_user_id",
+        render: (row) => {
+          const grantedBy = (row.granted_by_user_id as string | undefined) ?? "";
+          return grantedBy ? (
+            <IamRefLink specId="users" refId={grantedBy} nameField="email" maxChars={24} />
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
+      },
+      {
+        // Owner-auto-binding несёт deletion_protection=true → системная
+        // привязка-владелец (нельзя отозвать без снятия защиты). Метка «Owner».
+        header: "Защита",
+        path: "deletion_protection",
+        render: (row) =>
+          row.deletion_protection ? (
+            <Tag color="gold" title="Защита от удаления (owner-привязка)">
+              Owner
+            </Tag>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
       },
       COL_CREATED,
     ],
