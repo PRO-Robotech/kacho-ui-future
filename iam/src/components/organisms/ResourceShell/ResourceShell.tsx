@@ -193,6 +193,10 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
   const listHref = resourceProjectPath(spec.id, projectId);
   const breadcrumb = useMemo(() => {
     const childSpec = mode === "child-create" && childRoute ? specByRoute(childRoute) : undefined;
+    // Локализованная метка для кастомных child-create-роутов без REGISTRY-spec
+    // (privileges → «Привилегии»), чтобы breadcrumb не показывал raw route.
+    const CHILD_LABELS: Record<string, string> = { privileges: "Привилегии" };
+    const childLabel = childSpec?.plural ?? (childRoute ? CHILD_LABELS[childRoute] ?? childRoute : "");
     const sec = (txt: string) => <Typography.Text type="secondary">{txt}</Typography.Text>;
     const sep = <Typography.Text type="secondary">/</Typography.Text>;
     return (
@@ -213,7 +217,7 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
               <Typography.Text strong>Редактирование</Typography.Text>
             ) : (
               <>
-                <Link to={`${detailBase}/${childRoute}`}>{sec(childSpec?.plural ?? childRoute ?? "")}</Link>
+                <Link to={`${detailBase}/${childRoute}`}>{sec(childLabel)}</Link>
                 {sep}
                 <Typography.Text strong>Создание</Typography.Text>
               </>
@@ -424,6 +428,11 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
           onSuccess={() => navigate(back)}
         />
       );
+    } else {
+      // childRoute не в REGISTRY → кастомная embedded create-форма расширения
+      // (напр. «privileges» → AccessBinding с залоченным субъектом). Форма сама
+      // навигирует через onSuccess/onCancel (extCtx.navigate).
+      mainOverride = ext?.childCreate?.(childRoute, extCtx) ?? undefined;
     }
   }
 
@@ -445,10 +454,27 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
   // Зона-2 шапка для форм (edit/child-create): действие + тип + иконка ресурса
   // формы — контекст переезжает в блок табов, форма в зоне 3 свою шапку не дублирует.
   const childForHeader = mode === "child-create" && childRoute ? specByRoute(childRoute) : undefined;
+  // Кастомные child-create-роуты (нет в REGISTRY): тип/иконка из небольшой карты,
+  // чтобы зона-2 не падала и показывала осмысленный заголовок (напр. privileges →
+  // «Привязка доступа» + иконка access-bindings).
+  const CUSTOM_CHILD_HEADER: Record<string, { title: string; specId: string }> = {
+    privileges: { title: "Привязка доступа", specId: "access-bindings" },
+  };
+  const customChild =
+    mode === "child-create" && childRoute && !childForHeader ? CUSTOM_CHILD_HEADER[childRoute] : undefined;
   const headerEyebrow = mode === "edit" ? "Редактирование" : mode === "child-create" ? "Создание" : undefined;
-  const headerTitle = mode === "edit" ? spec.plural : mode === "child-create" ? childForHeader?.plural : undefined;
+  const headerTitle =
+    mode === "edit"
+      ? spec.plural
+      : mode === "child-create"
+        ? childForHeader?.plural ?? customChild?.title
+        : undefined;
   const headerIcon =
-    mode === "child-create" && childForHeader ? <ResourceIcon specId={childForHeader.id} /> : undefined;
+    mode === "child-create" && childForHeader ? (
+      <ResourceIcon specId={childForHeader.id} />
+    ) : mode === "child-create" && customChild ? (
+      <ResourceIcon specId={customChild.specId} />
+    ) : undefined;
 
   return (
     // Прокидываем иконку ресурса вниз — все SectionHeader табов получают её

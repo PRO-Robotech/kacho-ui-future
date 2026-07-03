@@ -230,6 +230,81 @@ export interface AccessBindingList {
   next_page_token?: string;
 }
 
+// ====== AssignableRole ======
+// Lean public-safe проекция Role для scope-first grant-формы. Сервер вычисляет
+// scope_group (SYSTEM/ACCOUNT/PROJECT) из scope-полей роли — UI группирует picker
+// РОВНО по этому полю, без клиентской scope-логики. `permissions` НЕ возвращаются
+// (picker ≠ role-detail). Wire — camelCase; api.list прогоняет ответ через
+// camelToSnake → в UI ключи snake_case (role_id/scope_group/…).
+export type ScopeGroup = "SYSTEM" | "ACCOUNT" | "PROJECT" | "SCOPE_GROUP_UNSPECIFIED";
+
+export interface AssignableRole {
+  role_id: string;
+  name: string;
+  description?: string;
+  is_system?: boolean;
+  // Серверно-вычисленный групп-маркер: UI рисует секции «Системные / Account-роли
+  // / Project-роли» напрямую по этому полю.
+  scope_group?: ScopeGroup;
+  created_at?: string;
+}
+export interface AssignableRolesList {
+  roles: AssignableRole[];
+  next_page_token?: string;
+}
+
+// AccessBinding.Status (proto enum): PENDING / ACTIVE / REVOKED. Output-only.
+export type AccessBindingStatus = "PENDING" | "ACTIVE" | "REVOKED";
+
+// ====== Canonical scope + subjects (thin-binding) ======
+// ScopeRef — единый anchor-tier binding'а {tier, id}. GLOBAL на UI ≡ tier CLUSTER
+// (anchor cluster_kacho_root). Форма шлёт canonical scope_ref.
+export interface ScopeRef {
+  tier: Scope; // CLUSTER | ACCOUNT | PROJECT (reuse AccessBinding.Scope enum)
+  id: string; // anchor id (cluster_kacho_root | acc… | prj…)
+}
+
+// Subject — один грантополучатель thin-биндинга. `type` — proto enum SubjectType
+// (на проводе enum-имя SUBJECT_TYPE_USER/…); `id` — usr…/sva…/grp…. Биндинг несёт
+// subjects[] (1..32); per-subject независимый tuple-set / revoke.
+export interface Subject {
+  type: SubjectType;
+  id: string;
+}
+
+// UpdateAccessBindingBody — единственное mutable-поле AccessBinding —
+// `deletion_protection`. Шлётся с update_mask=["deletion_protection"] для снятия
+// защиты перед удалением protected (owner-auto) binding'а.
+export interface UpdateAccessBindingBody {
+  deletion_protection: boolean;
+  update_mask: string;
+}
+
+// ====== SubjectPrivilege ======
+// Обогащённая public-safe проекция AccessBinding для вкладки «Привилегии».
+// role_name резолвится сервером (dangling role → пусто, UI fallback на role_id).
+// derivation: DIRECT (прямая привязка) vs GROUP (через членство в группе).
+export type Derivation = "DIRECT" | "GROUP" | "DERIVATION_UNSPECIFIED";
+
+export interface SubjectPrivilege {
+  binding_id: string;
+  role_id: string;
+  // resolved сервером (пусто для удалённой роли — UI fallback на role_id).
+  role_name?: string;
+  resource_type?: string;
+  resource_id?: string;
+  scope?: Scope;
+  status?: AccessBindingStatus;
+  created_at?: string;
+  granted_by_user_id?: string;
+  expires_at?: string;
+  derivation?: Derivation;
+}
+export interface SubjectPrivilegeList {
+  privileges: SubjectPrivilege[];
+  next_page_token?: string;
+}
+
 // ====== Endpoints map ======
 export const IAM = {
   accounts: "/iam/v1/accounts",
@@ -281,6 +356,41 @@ export const iamApi = {
       subject_id,
       ...(q ?? {}),
     }),
+  /**
+   * GET /iam/v1/accessBindings:listAssignableRoles — backend-driven набор ролей,
+   * валидных для (resource_type, resource_id). Сервер применяет тот же предикат
+   * isRoleAssignable, что энфорсит AccessBinding.Create, и аннотирует каждую роль
+   * scope_group (SYSTEM/ACCOUNT/PROJECT). Grant-форма рендерит РОВНО этот набор,
+   * сгруппированный по scope_group — без клиентской scope-логики. Read sync.
+   */
+  listAssignableRoles: (resource_type: string, resource_id: string, pageSize = "1000") =>
+    api.list<AssignableRolesList>(`${IAM.accessBindings}:listAssignableRoles`, {
+      resource_type,
+      resource_id,
+      page_size: pageSize,
+    }),
+  /**
+   * GET /iam/v1/accessBindings:listSubjectPrivileges — обогащённые привилегии
+   * (resolved role_name + scope) субъекта. subject_type ∈
+   * {"user","service_account","group"}. Cursor-pagination через page_size /
+   * page_token. Read sync.
+   */
+  listSubjectPrivileges: (subject_type: string, subject_id: string, q?: Record<string, string>) =>
+    api.list<SubjectPrivilegeList>(`${IAM.accessBindings}:listSubjectPrivileges`, {
+      subject_type,
+      subject_id,
+      ...(q ?? {}),
+    }),
+  /**
+   * PATCH /iam/v1/accessBindings/{id} — снять/поставить `deletion_protection`
+   * (единственное mutable-поле). Используется, чтобы СНЯТЬ защиту с protected
+   * (owner-auto) binding перед удалением. Async через Operation.
+   */
+  updateAccessBindingDeletionProtection: (id: string, deletionProtection: boolean) =>
+    api.update(`${IAM.accessBindings}/${encodeURIComponent(id)}`, {
+      deletion_protection: deletionProtection,
+      update_mask: "deletion_protection",
+    } satisfies UpdateAccessBindingBody),
   /**
    * KAC item #1: GET /iam/v1/accounts/{account_id}/accessBindings — все
    * AccessBinding'и видимые админу в account'е (включает project-scoped + account-scoped).

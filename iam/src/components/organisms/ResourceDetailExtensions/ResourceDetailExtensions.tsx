@@ -35,6 +35,7 @@ import { useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { ReferrerLink } from "@/lib/spec-columns";
 import { api } from "@/api/client";
 import { iamApi, type AccessBinding, type User } from "@/api/iam";
+import { AccessBindingCreateForm, type SubjectType } from "@/components/organisms/iam/AccessBindingCreateForm";
 import { getByPath } from "@/lib/resource-registry";
 
 export interface DescItem {
@@ -57,6 +58,11 @@ export interface DetailExtension {
   overviewBelow?: (ctx: DetailExtCtx) => ReactNode;
   headerActions?: (ctx: DetailExtCtx) => ReactNode;
   extraTabs?: (ctx: DetailExtCtx) => DetailTab[];
+  /** Кастомная embedded create-форма для child-create-роута, которого НЕТ в
+   *  REGISTRY (напр. "privileges" → AccessBindingCreateForm с залоченным
+   *  субъектом). ResourceShell зовёт это в child-create branch, когда REGISTRY-spec
+   *  для childRoute не найден. Форма сама навигирует через onSuccess/onCancel. */
+  childCreate?: (childRoute: string, ctx: DetailExtCtx) => ReactNode;
   hideOperations?: boolean;
   title?: (data: Record<string, unknown>) => string | undefined;
 }
@@ -355,33 +361,70 @@ function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
 }
 
 // GrantPrivilegeButton — CTA «Выдать доступ» в ШАПКЕ страницы (header-slot) на
-// табе «Привилегии»: переход на форму создания AccessBinding с залоченным
-// субъектом (или ресурс-скоупом для account) через URL-preset.
-function GrantPrivilegeButton({ mode }: { mode: PrivilegesMode }) {
+// табе «Привилегии»: разворачивает embedded create-форму в зоне-3 detail-страницы
+// (`${detailBase}/privileges/create`) с залоченным субъектом — контекст ресурса
+// сохраняется (не уходим на standalone-страницу).
+function GrantPrivilegeButton({ detailBase }: { detailBase: string }) {
   const navigate = useNavigate();
-  const grantUrl =
-    mode.kind === "subject"
-      ? `/iam/access-bindings/create?subject_type=${mode.subjectType}&subject_id=${mode.subjectId}`
-      : `/iam/access-bindings/create?resource_type=${mode.resourceType}&resource_id=${mode.resourceId}`;
   return (
-    <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(grantUrl)}>
+    <Button
+      type="primary"
+      icon={<PlusOutlined />}
+      onClick={() => navigate(`${detailBase}/privileges/create`)}
+    >
       Выдать доступ
     </Button>
   );
 }
 
 // privilegesTab — DetailTab «Привилегии» для detail-страницы субъекта/скоупа.
-// CTA «Выдать доступ» — в шапке страницы (headerAction → useHeaderRight).
-function privilegesTab(mode: PrivilegesMode): DetailTab {
+// CTA «Выдать доступ» — в шапке страницы (headerAction → useHeaderRight); клик →
+// embedded create в зоне-3 (childCreate).
+function privilegesTab(mode: PrivilegesMode, detailBase: string): DetailTab {
   return {
     id: "privileges",
     label: "Привилегии",
     eyebrow: "Список",
     headerTitle: "Привилегии",
     headerIcon: <ResourceIcon specId="access-bindings" />,
-    headerAction: <GrantPrivilegeButton mode={mode} />,
+    headerAction: <GrantPrivilegeButton detailBase={detailBase} />,
     fill: true,
     render: () => <SubjectPrivilegesTab mode={mode} />,
+  };
+}
+
+// privilegesChildCreate — билдер childCreate: embedded AccessBindingCreateForm в
+// зоне-3 (mainOverride). subject-режим → субъект ЗАЛОЧЕН (реконсайл, subjectAccountId
+// = home-account субъекта для scope по умолчанию); resource-режим (account-скоуп) →
+// субъект НЕ залочен, форма стартует с preset-областью account:<id> (additive-only,
+// multi-subject). На success/cancel — обратно на вкладку «Привилегии».
+function privilegesChildCreate(
+  spec:
+    | { kind: "subject"; subjectType: SubjectType }
+    | { kind: "resource"; resourceType: "account" | "project" | "cluster" },
+): (childRoute: string, ctx: DetailExtCtx) => ReactNode {
+  return (childRoute, { data, detailBase, navigate }) => {
+    if (childRoute !== "privileges") return null;
+    const id = getByPath<string>(data, "id") ?? "";
+    const back = `${detailBase}/privileges`;
+    if (spec.kind === "subject") {
+      const subjectAccountId = getByPath<string>(data, "account_id") ?? null;
+      return (
+        <AccessBindingCreateForm
+          lockedSubject={{ type: spec.subjectType, id }}
+          subjectAccountId={subjectAccountId}
+          onSuccess={() => navigate(back)}
+          onCancel={() => navigate(back)}
+        />
+      );
+    }
+    return (
+      <AccessBindingCreateForm
+        preset={{ resource_type: spec.resourceType, resource_id: id }}
+        onSuccess={() => navigate(back)}
+        onCancel={() => navigate(back)}
+      />
+    );
   };
 }
 
@@ -525,10 +568,11 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
         value: <IamRefLink specId="users" refId={getByPath<string>(data, "owner_user_id")} nameField="email" />,
       },
     ],
-    extraTabs: ({ data }) => {
+    extraTabs: ({ data, detailBase }) => {
       const id = getByPath<string>(data, "id") ?? "";
-      return id ? [privilegesTab({ kind: "resource", resourceType: "account", resourceId: id })] : [];
+      return id ? [privilegesTab({ kind: "resource", resourceType: "account", resourceId: id }, detailBase)] : [];
     },
+    childCreate: privilegesChildCreate({ kind: "resource", resourceType: "account" }),
   },
 
   // ServiceAccount — субъект типа service_account (listBySubject).
@@ -536,10 +580,13 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
     overviewExtra: ({ data }) => [
       { label: "Аккаунт", value: <IamRefLink specId="accounts" refId={getByPath<string>(data, "account_id")} /> },
     ],
-    extraTabs: ({ data }) => {
+    extraTabs: ({ data, detailBase }) => {
       const id = getByPath<string>(data, "id") ?? "";
-      return id ? [privilegesTab({ kind: "subject", subjectType: "service_account", subjectId: id })] : [];
+      return id
+        ? [privilegesTab({ kind: "subject", subjectType: "service_account", subjectId: id }, detailBase)]
+        : [];
     },
+    childCreate: privilegesChildCreate({ kind: "subject", subjectType: "service_account" }),
   },
 
   // User — субъект типа user (listBySubject). Обзор: статус приглашения, external
@@ -561,10 +608,11 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
         value: <IamRefLink specId="users" refId={getByPath<string>(data, "invited_by")} nameField="email" />,
       },
     ],
-    extraTabs: ({ data }) => {
+    extraTabs: ({ data, detailBase }) => {
       const id = getByPath<string>(data, "id") ?? "";
-      return id ? [privilegesTab({ kind: "subject", subjectType: "user", subjectId: id })] : [];
+      return id ? [privilegesTab({ kind: "subject", subjectType: "user", subjectId: id }, detailBase)] : [];
     },
+    childCreate: privilegesChildCreate({ kind: "subject", subjectType: "user" }),
   },
 
   // Group — субъект типа group (listBySubject). Обзор: ссылка «Аккаунт»;
@@ -577,10 +625,11 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
     overviewBelow: ({ data }) => (
       <GroupMembersPanel group={data as unknown as Group} accountId={getByPath<string>(data, "account_id") ?? null} />
     ),
-    extraTabs: ({ data }) => {
+    extraTabs: ({ data, detailBase }) => {
       const id = getByPath<string>(data, "id") ?? "";
-      return id ? [privilegesTab({ kind: "subject", subjectType: "group", subjectId: id })] : [];
+      return id ? [privilegesTab({ kind: "subject", subjectType: "group", subjectId: id }, detailBase)] : [];
     },
+    childCreate: privilegesChildCreate({ kind: "subject", subjectType: "group" }),
   },
 
   // AccessBinding — сводка биндинга в Обзоре: субъект/роль/ресурс (IamRefLink) +
