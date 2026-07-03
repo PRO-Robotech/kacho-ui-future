@@ -21,6 +21,7 @@ import { toast } from "@/lib/toast";
 import type { DetailTab } from "@/components/organisms/DetailShell";
 
 import { RefNameLink } from "@/components/molecules/RefNameLink";
+import { IamRefLink } from "@/components/molecules/IamRefLink";
 import { SgRulesPanel, type SgRule } from "@/components/organisms/SgRulesPanel";
 import { RoutesPanel } from "@/components/organisms/RoutesPanel";
 import { SubnetCidrPanel } from "@/components/organisms/SubnetCidrPanel";
@@ -379,7 +380,132 @@ function privilegesTab(mode: PrivilegesMode): DetailTab {
 
 // ─────────────────────────── реестр ───────────────────────────
 
+// RoleRule — правило RBAC-модели (rules[]): один module + наборы resources/verbs,
+// опц. resource_names (ARM_NAMES) / match_labels (ARM_LABELS).
+interface RoleRule {
+  module?: string;
+  resources?: string[];
+  verbs?: string[];
+  resource_names?: string[];
+  match_labels?: Record<string, string>;
+}
+
+// arm выводится из формы правила (наличие resource_names / match_labels).
+function roleRuleArm(rule: RoleRule): "ARM_NAMES" | "ARM_LABELS" | "ARM_ANCHOR" {
+  if ((rule.resource_names ?? []).length > 0) return "ARM_NAMES";
+  if (Object.keys(rule.match_labels ?? {}).length > 0) return "ARM_LABELS";
+  return "ARM_ANCHOR";
+}
+
+// roleRulesView — рендер rules[] роли: карточка на правило с arm-бейджем
+// (Все инстансы / По именам / По меткам) + module/resources/verbs (+ resourceNames/
+// matchLabels для соответствующего arm).
+function roleRulesView(rules: RoleRule[] | undefined): ReactNode {
+  if (!rules || rules.length === 0) return dash;
+  const chips = (xs: string[]) =>
+    xs.map((x) => (
+      <Tag key={x} style={{ margin: 0, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+        {x}
+      </Tag>
+    ));
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 8, alignItems: "stretch" }}>
+      {rules.map((rule, i) => {
+        const arm = roleRuleArm(rule);
+        const armLabel =
+          arm === "ARM_NAMES"
+            ? "По именам (resourceNames)"
+            : arm === "ARM_LABELS"
+              ? "По меткам (matchLabels)"
+              : "Все инстансы в scope";
+        const armColor = arm === "ARM_NAMES" ? "geekblue" : arm === "ARM_LABELS" ? "purple" : "default";
+        return (
+          <div
+            key={i}
+            style={{
+              border: "1px solid var(--kc-border)",
+              borderRadius: 6,
+              padding: "8px 10px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <Tag color={armColor} style={{ alignSelf: "flex-start" }}>
+              {armLabel}
+            </Tag>
+            <span style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+              <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                module:
+              </Typography.Text>
+              <Tag style={{ margin: 0, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>{rule.module || "—"}</Tag>
+            </span>
+            <span style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+              <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                resources:
+              </Typography.Text>
+              {chips(rule.resources ?? [])}
+            </span>
+            <span style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+              <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                verbs:
+              </Typography.Text>
+              {chips(rule.verbs ?? [])}
+            </span>
+            {arm === "ARM_NAMES" && (
+              <span style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+                <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                  resourceNames:
+                </Typography.Text>
+                {chips(rule.resource_names ?? [])}
+              </span>
+            )}
+            {arm === "ARM_LABELS" && (
+              <span style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+                <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                  matchLabels:
+                </Typography.Text>
+                {Object.entries(rule.match_labels ?? {}).map(([k, v]) => (
+                  <Tag key={k} color="purple" style={{ margin: 0, fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                    {k}={v}
+                  </Tag>
+                ))}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </span>
+  );
+}
+
 export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
+  // Role (RBAC rules-model): Тип (system/custom) + Правила (rules[]) + Область
+  // (кластер/account/проект) в overview. permissions не показываются (рендер из rules[]).
+  roles: {
+    overviewExtra: ({ data }) => {
+      const rows: DescItem[] = [
+        {
+          label: "Тип",
+          value:
+            getByPath<boolean>(data, "is_system") === true || getByPath<boolean>(data, "isSystem") === true ? (
+              <Tag color="purple">system</Tag>
+            ) : (
+              <Tag>custom</Tag>
+            ),
+        },
+        { label: "Правила", value: roleRulesView(getByPath<RoleRule[]>(data, "rules")) },
+      ];
+      const acc = getByPath<string>(data, "account_id");
+      const cluster = getByPath<string>(data, "cluster_id");
+      const project = getByPath<string>(data, "project_id");
+      if (acc) rows.push({ label: "Область (Account)", value: <IamRefLink specId="accounts" refId={acc} /> });
+      if (cluster) rows.push({ label: "Область (кластер)", value: mono(cluster) });
+      if (project) rows.push({ label: "Область (проект)", value: <IamRefLink specId="projects" refId={project} /> });
+      return rows;
+    },
+  },
+
   // ─────────────────────────── IAM ───────────────────────────
 
   // Account — не субъект AccessBinding'а, а ресурс-скоуп: таб показывает
