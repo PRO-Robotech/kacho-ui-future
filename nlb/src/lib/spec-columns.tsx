@@ -132,10 +132,13 @@ export function ReferrerLink({
 // первым (graceful). Идемпотентно для ресурсов, где порядок уже верный (VPC/compute).
 export function reorderNameIdFirst(columns: ResourceColumn[]): ResourceColumn[] {
   const nameCol = columns.find((c) => c.path === "name");
+  // Без name-колонки (системные справочники, IAM users) — НЕ выносим id
+  // принудительно вперёд: сохраняем авторский порядок. У users первичный
+  // идентификатор — email, он должен оставаться первой колонкой. Хойстинг id
+  // имеет смысл только чтобы держать его рядом с Name.
+  if (!nameCol) return columns;
   const idCol = columns.find((c) => c.path === "id");
-  if (!nameCol && !idCol) return columns;
-  const lead: ResourceColumn[] = [];
-  if (nameCol) lead.push(nameCol);
+  const lead: ResourceColumn[] = [nameCol];
   if (idCol) lead.push(idCol);
   const rest = columns.filter((c) => c !== nameCol && c !== idCol);
   return [...lead, ...rest];
