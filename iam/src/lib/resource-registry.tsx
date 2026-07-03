@@ -436,21 +436,26 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       },
       { header: "Описание", path: "description", format: "text" },
       {
-        header: "Разрешения",
-        path: "permissions",
+        // RBAC rules-model: роль описывается rules[] (module/resources/verbs),
+        // permissions[] в Get/List пуст (compiled-форма не отдаётся). Показываем
+        // module-чипы правил + счётчик.
+        header: "Правила",
+        path: "rules",
         render: (row) => {
-          const perms = (row.permissions as string[] | undefined) ?? [];
-          if (perms.length === 0) return <span className="text-muted-foreground">—</span>;
-          const head = perms.slice(0, 3);
-          const more = perms.length - head.length;
+          const rules = (row.rules as Array<{ module?: string }> | undefined) ?? [];
+          if (rules.length === 0) return <span className="text-muted-foreground">—</span>;
+          const modules = Array.from(new Set(rules.map((r) => r.module || "*")));
+          const head = modules.slice(0, 3);
+          const more = modules.length - head.length;
           return (
             <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
-              {head.map((p, i) => (
+              {head.map((m, i) => (
                 <code key={i} style={{ fontSize: 11, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>
-                  {p}
+                  {m}
                 </code>
               ))}
               {more > 0 && <span style={{ fontSize: 11, color: "rgba(0,0,0,.45)" }}>+{more}</span>}
+              <span style={{ fontSize: 11, color: "rgba(0,0,0,.45)" }}>· {rules.length}</span>
             </span>
           );
         },
