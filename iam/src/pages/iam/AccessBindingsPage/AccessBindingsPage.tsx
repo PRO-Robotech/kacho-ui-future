@@ -9,7 +9,7 @@
 import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Empty, Select, Space, Typography } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { FilterOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { ResourceTable, type Column } from "@/components/organisms/ResourceTable";
 import { RowActionsMenu } from "@/components/molecules/RowActionsMenu";
@@ -148,7 +148,8 @@ export function AccessBindingsPage() {
       title={abSpec.plural}
       count={bindings.length}
       right={
-        <Space size={8} wrap>
+        <Space size={8} align="center" wrap>
+          <FilterOutlined style={{ opacity: 0.4, fontSize: 14 }} />
           <Select
             value={includeRevoked ? "true" : "false"}
             onChange={(v) => setIncludeRevoked(v === "true")}
@@ -156,16 +157,20 @@ export function AccessBindingsPage() {
               { value: "false", label: "Только активные" },
               { value: "true", label: "Включая отозванные" },
             ]}
-            style={{ width: 200 }}
+            style={{ width: 190 }}
             data-testid="access-bindings-revoked-filter"
           />
           <Select
-            placeholder="subject_type (все)"
+            placeholder="Тип субъекта: все"
             value={subjectTypeFilter || undefined}
             onChange={(v) => setSubjectTypeFilter(v ?? "")}
             allowClear
-            options={(["user", "service_account", "group"] as const).map((t) => ({ value: t, label: t }))}
-            style={{ width: 200 }}
+            options={[
+              { value: "user", label: "Пользователь" },
+              { value: "service_account", label: "Сервисный аккаунт" },
+              { value: "group", label: "Группа" },
+            ]}
+            style={{ width: 190 }}
             data-testid="access-bindings-subject-filter"
           />
         </Space>

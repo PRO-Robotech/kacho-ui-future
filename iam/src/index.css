@@ -280,6 +280,19 @@ body.ant-modal-open {
   overflow: auto;
 }
 
+/* Хлебные крошки страницы (useBreadcrumb → HeaderBreadcrumbSlot): компактная
+   строка над контентом iam-фрейма, не скроллится. Пусто → скрыта. */
+.iam-page-breadcrumb {
+  flex-shrink: 0;
+  padding: 10px 2px 6px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.iam-page-breadcrumb:empty {
+  display: none;
+}
+
 @media (width <= 900px) {
   .vpc-host-header-actions {
     right: 44px;

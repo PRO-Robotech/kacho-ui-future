@@ -5,7 +5,7 @@ import { App as AntdApp } from "antd";
 import { ThemeProvider } from "@/lib/theme-context";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { StepUpModal } from "@/components/molecules/auth/StepUpModal";
-import { HeaderRightSlot, PageHeaderSlotProvider } from "@/components/molecules/PageHeaderSlot";
+import { HeaderBreadcrumbSlot, HeaderRightSlot, PageHeaderSlotProvider } from "@/components/molecules/PageHeaderSlot";
 import { OperationBanner } from "@/components/molecules/OperationBanner";
 import { Toaster } from "@/components/molecules/Toaster";
 import { GlobalResourceFormModal } from "@/components/organisms/GlobalResourceFormModal";
@@ -158,6 +158,12 @@ function IamFrame({ children }: { children: ReactNode }) {
         <div className="vpc-host-header-actions">
           <HeaderRightSlot />
         </div>
+      </div>
+
+      {/* Хлебные крошки страницы (useBreadcrumb): «IAM / <ресурс>», как в kacho-ui.
+          Пусто → :empty скрывает строку. */}
+      <div className="iam-page-breadcrumb">
+        <HeaderBreadcrumbSlot />
       </div>
 
       <OperationBanner />
