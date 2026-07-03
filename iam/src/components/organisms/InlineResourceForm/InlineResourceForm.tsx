@@ -20,6 +20,8 @@ import { InlineAddressPoolCreateForm } from "@/components/organisms/InlineAddres
 import { InlineAddressPoolEditForm } from "@/components/organisms/InlineAddressPoolEditForm";
 import { InlineNetworkInterfaceEditForm } from "@/components/organisms/InlineNetworkInterfaceEditForm";
 import { InlineNetworkInterfaceCreateForm } from "@/components/organisms/InlineNetworkInterfaceCreateForm";
+import { InlineRoleCreateForm } from "@/components/organisms/iam/InlineRoleCreateForm";
+import { InlineRoleEditForm } from "@/components/organisms/iam/InlineRoleEditForm";
 import type { ResourceSpec } from "@/lib/resource-registry";
 
 export interface InlineResourceFormProps {
@@ -63,6 +65,16 @@ export function InlineResourceForm(props: InlineResourceFormProps): ReactNode {
     onSuccess,
   } = props;
   const specId = spec.id;
+
+  // ── Role: RBAC rules-model форма (rules[] через RulesEditor + backend
+  //    permissionCatalog), а не legacy permissions[] JSON. Create — account-scoped
+  //    custom-роль; Edit — грузит роль по id сам. ──
+  if (specId === "roles" && action === "create") {
+    return <InlineRoleCreateForm accountId={accountId} onCancel={onCancel} onSuccess={onSuccess} />;
+  }
+  if (specId === "roles" && action === "edit" && id) {
+    return <InlineRoleEditForm roleId={id} onCancel={onCancel} onSuccess={onSuccess} />;
+  }
 
   // ── Custom YC-style формы по spec.id ──
   if (specId === "subnets" && action === "create") {

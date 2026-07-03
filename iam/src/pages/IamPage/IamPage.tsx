@@ -18,7 +18,7 @@ import { IamUsersListShell } from "@/components/organisms/iam/IamUsersListShell"
 import { AccessBindingCreatePage, AccessBindingsPage } from "@/pages/iam/AccessBindingsPage";
 import { AccessGrantPage, AccessPage } from "@/pages/iam/AccessPage";
 import { GroupCreatePage } from "@/pages/iam/GroupsPage";
-import { RoleCreatePage, RoleEditPage } from "@/pages/iam/RolesPage";
+import { RoleCreatePage } from "@/pages/iam/RolesPage";
 import { IamOperationsPage } from "@/pages/iam/IamOperationsPage";
 import { InviteUserPage } from "@/pages/iam/UsersPage";
 import { contextApi, useContext as useIamContext } from "@/lib/context-store";
@@ -118,7 +118,7 @@ export const IamPage: FC<IamPageProps> = ({ context }) => {
                   <Route path="groups/:uid/:tab" element={<ResourceShell spec={REGISTRY.groups} />} />
                   <Route path="roles" element={<RolesListShell />} />
                   <Route path="roles/create" element={<RoleCreatePage />} />
-                  <Route path="roles/:uid/edit" element={<RoleEditPage />} />
+                  <Route path="roles/:uid/edit" element={<ResourceShell spec={REGISTRY.roles} mode="edit" />} />
                   <Route path="roles/:uid" element={<ResourceShell spec={REGISTRY.roles} />} />
                   <Route path="roles/:uid/:tab" element={<ResourceShell spec={REGISTRY.roles} />} />
                   <Route path="access-bindings" element={<AccessBindingsPage />} />

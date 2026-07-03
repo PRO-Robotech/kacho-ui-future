@@ -1,30 +1,24 @@
 // RolesPage — список Role.
 // - System roles (is_system=true) read-only;
-// - custom roles (account_id !== "") — editable: name/description/permissions.
+// - custom roles (account_id !== "") — editable: name/description/rules.
 //
-// Permissions editor — JSON-paste textarea с regex-validation
-// `<module>.<resource>.<verb>` (E0 acceptance §2.3).
+// Роль описывается RBAC rules-model (rules[]: module/resources/verbs +
+// resource_names XOR match_labels). Формы создания/редактирования — RulesEditor
+// поверх backend permissionCatalog (InlineRoleCreateForm / InlineRoleEditForm);
+// редактирование открывается в зоне 3 (ResourceShell mode=edit).
 
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { Button, Form, Input, Popconfirm, Segmented, Space, Table, Tag, Typography, Alert } from "antd";
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button, Input, Popconfirm, Segmented, Space, Table, Tag, Typography } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { api } from "@/api/client";
 import { iamApi, IAM, type Role } from "@/api/iam";
 import { useIamMutation, fmtTs, CopyableMonoId, SystemTag } from "@/components/organisms/iam/IamCommon";
-import { FormFooter } from "@/components/organisms/form/FormFooter";
-import { FormShell } from "@/components/organisms/form/FormShell";
+import { InlineRoleCreateForm } from "@/components/organisms/iam/InlineRoleCreateForm";
 import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
 import { IamListShell, useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { useContext } from "@/lib/context-store";
-
-// Regex per E0 acceptance §2.3 — permission string format
-// kacho.<module>.<resource>.<verb> (allowing * wildcards in 3rd and 4th part).
-// Доп. tolerated: модуль может быть просто `<module>` без префикса `kacho.`
-// (как в seed-roles в БД: "compute.instances.*" вместо "kacho.compute.instances.*").
-const PERM_RE = /^[a-z_]+(\.[a-z_*]+){2}$/;
 
 export function RolesPage() {
   const navigate = useNavigate();
@@ -210,57 +204,15 @@ export function RolesPage() {
   );
 }
 
-function PermissionsEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const lines = useMemo(
-    () =>
-      value
-        .split(/\n/)
-        .map((s) => s.trim())
-        .filter(Boolean),
-    [value],
-  );
-
-  const invalid = useMemo(() => lines.filter((l) => !PERM_RE.test(l)), [lines]);
-
-  return (
-    <div>
-      <Input.TextArea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={8}
-        placeholder={"compute.instances.*\nvpc.networks.read\niam.access_bindings.list"}
-        style={{ fontFamily: "monospace", fontSize: 12 }}
-      />
-      <div style={{ fontSize: 12, marginTop: 6, color: "rgba(255,255,255,0.45)" }}>
-        Один permission на строку. Формат: <code>module.resource.verb</code> (e.g. <code>compute.instances.*</code>).
-      </div>
-      {invalid.length > 0 && (
-        <Alert
-          type="error"
-          showIcon
-          style={{ marginTop: 8 }}
-          message={`Невалидных строк: ${invalid.length}`}
-          description={
-            <ul style={{ margin: 0, paddingLeft: 18, fontFamily: "monospace", fontSize: 12 }}>
-              {invalid.slice(0, 5).map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ul>
-          }
-        />
-      )}
-      {lines.length > 0 && invalid.length === 0 && (
-        <div style={{ fontSize: 12, marginTop: 6, color: "#52c41a" }}>{lines.length} permissions OK</div>
-      )}
-    </div>
-  );
-}
-
+// RoleCreatePage — standalone-страница создания пользовательской роли
+// (маршрут /iam/roles/create). Тело формы — RBAC rules-model через
+// InlineRoleCreateForm (RulesEditor + backend permissionCatalog). Account
+// выбирается в самой форме (account_id Select), контекст лишь пресетит его.
+// Редактирование роли открывается в зоне 3 detail-страницы (ResourceShell
+// mode=edit → InlineRoleEditForm), отдельной страницы у него нет.
 export function RoleCreatePage() {
   const navigate = useNavigate();
   const account = useContext((s) => s.account);
-  const [form] = Form.useForm();
-  const [perms, setPerms] = useState("");
   useHeaderRight(useMemo(() => null, []));
   useBreadcrumb(
     useMemo(
@@ -278,206 +230,12 @@ export function RoleCreatePage() {
       [],
     ),
   );
-  const mut = useIamMutation({
-    method: "POST",
-    path: IAM.roles,
-    invalidateKeys: [["iam", "roles", "list"]],
-    successText: "Role создана",
-    onSuccess: () => {
-      form.resetFields();
-      setPerms("");
-      navigate("/iam/roles");
-    },
-  });
 
   return (
-    <FormShell specId="roles" mode="create" singular="Role" title="Пользовательская роль">
-      {!account && (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message="Выберите Account"
-          description="Чтобы создать пользовательскую роль, сначала выберите Account в шапке."
-        />
-      )}
-      <Form
-        form={form}
-        layout="horizontal"
-        labelCol={{ flex: "200px" }}
-        wrapperCol={{ flex: "auto" }}
-        labelAlign="left"
-        colon={false}
-        onFinish={(v) => {
-          const perm_list = perms
-            .split(/\n/)
-            .map((s) => s.trim())
-            .filter(Boolean);
-          const invalid = perm_list.filter((p) => !PERM_RE.test(p));
-          if (invalid.length > 0) {
-            return;
-          }
-          if (perm_list.length === 0) {
-            return;
-          }
-          const body: Record<string, unknown> = {
-            account_id: account?.id,
-            name: v.name,
-            permissions: perm_list,
-          };
-          if (v.description) body.description = v.description;
-          void mut.run(body);
-        }}
-      >
-        <Form.Item label="Account">
-          <Typography.Text>
-            {account?.name || account?.id || "—"}
-            {account?.id && (
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {" "}
-                · {account.id}
-              </Typography.Text>
-            )}
-          </Typography.Text>
-        </Form.Item>
-        <Form.Item
-          label="Имя"
-          name="name"
-          required
-          rules={[
-            {
-              required: true,
-              // Backend: custom-role name ^[a-z][a-z0-9_]{0,40}$ — БЕЗ дефиса
-              // (дефис только в system-ролях roles/<mod>.<name>). UI-regex
-              // обязан совпадать, иначе backend отвергает с INVALID_ARGUMENT.
-              pattern: /^[a-z][a-z0-9_]{0,40}$/,
-              message: "строчные латинские буквы, цифры, подчёркивания; начинается с буквы; до 41 символа",
-            },
-          ]}
-        >
-          <Input placeholder="my_role" />
-        </Form.Item>
-        <Form.Item label="Описание" name="description">
-          <Input.TextArea rows={2} />
-        </Form.Item>
-        <Form.Item label="Permissions" required>
-          <PermissionsEditor value={perms} onChange={setPerms} />
-        </Form.Item>
-        <FormFooter
-          submitLabel="Создать"
-          submitting={mut.submitting}
-          submitDisabled={!account}
-          onSubmit={() => form.submit()}
-          onCancel={() => navigate("/iam/roles")}
-        />
-      </Form>
-    </FormShell>
-  );
-}
-
-export function RoleEditPage() {
-  const { uid } = useParams();
-  const navigate = useNavigate();
-  const [form] = Form.useForm();
-  const [perms, setPerms] = useState("");
-  const { data: role } = useQuery({
-    queryKey: ["iam", "roles", "detail", uid],
-    queryFn: () => api.get<Role>(`${IAM.roles}/${uid}`),
-    enabled: !!uid,
-  });
-  useHeaderRight(useMemo(() => null, []));
-  useBreadcrumb(
-    useMemo(
-      () => (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <Typography.Text type="secondary">IAM</Typography.Text>
-          <Typography.Text type="secondary">/</Typography.Text>
-          <Link to="/iam/roles">
-            <Typography.Text type="secondary">Roles</Typography.Text>
-          </Link>
-          <Typography.Text type="secondary">/</Typography.Text>
-          <Typography.Text strong>Редактирование</Typography.Text>
-        </span>
-      ),
-      [],
-    ),
-  );
-
-  // Sync perms из role при открытии
-  useEffect(() => {
-    if (role) {
-      setPerms((role.permissions ?? []).join("\n"));
-      form.setFieldsValue({
-        name: role.name,
-        description: role.description ?? "",
-      });
-    }
-  }, [role, form]);
-
-  const mut = useIamMutation({
-    method: "PATCH",
-    path: () => `${IAM.roles}/${uid}`,
-    invalidateKeys: [["iam", "roles", "list"]],
-    successText: "Role обновлена",
-    onSuccess: () => navigate("/iam/roles"),
-  });
-
-  return (
-    <FormShell specId="roles" mode="edit" singular="Role">
-      <Form
-        form={form}
-        layout="horizontal"
-        labelCol={{ flex: "200px" }}
-        wrapperCol={{ flex: "auto" }}
-        labelAlign="left"
-        colon={false}
-        onFinish={(v) => {
-          const update_mask: string[] = [];
-          const body: Record<string, unknown> = {};
-          if ((v.name ?? "") !== (role?.name ?? "")) {
-            update_mask.push("name");
-            body.name = v.name;
-          }
-          if ((v.description ?? "") !== (role?.description ?? "")) {
-            update_mask.push("description");
-            body.description = v.description;
-          }
-          const perm_list = perms
-            .split(/\n/)
-            .map((s) => s.trim())
-            .filter(Boolean);
-          const invalid = perm_list.filter((p) => !PERM_RE.test(p));
-          const origPerms = role?.permissions ?? [];
-          const permsChanged = perm_list.length !== origPerms.length || perm_list.some((p, i) => p !== origPerms[i]);
-          if (permsChanged) {
-            if (invalid.length > 0) return;
-            update_mask.push("permissions");
-            body.permissions = perm_list;
-          }
-          if (update_mask.length === 0) {
-            navigate("/iam/roles");
-            return;
-          }
-          body.update_mask = update_mask.join(",");
-          void mut.run(body);
-        }}
-      >
-        <Form.Item label="Имя" name="name">
-          <Input />
-        </Form.Item>
-        <Form.Item label="Описание" name="description">
-          <Input.TextArea rows={2} />
-        </Form.Item>
-        <Form.Item label="Permissions">
-          <PermissionsEditor value={perms} onChange={setPerms} />
-        </Form.Item>
-        <FormFooter
-          submitLabel="Сохранить"
-          submitting={mut.submitting}
-          onSubmit={() => form.submit()}
-          onCancel={() => navigate("/iam/roles")}
-        />
-      </Form>
-    </FormShell>
+    <InlineRoleCreateForm
+      accountId={account?.id}
+      onCancel={() => navigate("/iam/roles")}
+      onSuccess={() => navigate("/iam/roles")}
+    />
   );
 }

@@ -107,6 +107,29 @@ export interface GroupMemberList {
   next_page_token?: string;
 }
 
+// ====== Rule (RBAC rules-model) ======
+// Публичная поверхность роли — набор правил `rules[]` (источник истины для UI).
+// Каждое Rule — однородный грант глаголов `verbs` над декартовым произведением
+// `module × resources`, опц. суженный `resource_names[]` (pin-by-id) XOR
+// `match_labels{}` (AND-equality). На проводе после конверсии ключи camelCase
+// (`resourceNames`/`matchLabels`); `module` — scalar (ровно один модуль на правило).
+export interface Rule {
+  module: string;
+  resources: string[];
+  verbs: string[];
+  resource_names?: string[];
+  match_labels?: Record<string, string>;
+}
+
+export type RuleArm = "ARM_ANCHOR" | "ARM_NAMES" | "ARM_LABELS";
+
+/** Выводит арм правила из его формы (наличие resource_names XOR match_labels). */
+export function ruleArm(rule: Rule): RuleArm {
+  if (rule.resource_names && rule.resource_names.length > 0) return "ARM_NAMES";
+  if (rule.match_labels && Object.keys(rule.match_labels).length > 0) return "ARM_LABELS";
+  return "ARM_ANCHOR";
+}
+
 // ====== Role ======
 // Backend gRPC-gateway emit'ит JSON camelCase by default — поэтому в API ответе
 // будут `isSystem`/`accountId`/`createdAt`. Старые snake_case оставлены для
@@ -119,9 +142,15 @@ export interface Role {
   accountId?: string;
   name: string;
   description?: string;
+  // RBAC rules-model: публичная поверхность роли. UI рендерит и редактирует из неё.
+  rules?: Rule[];
+  // INTERNAL compiled-форма — в Get/List для rules-ролей пустая, на входе НЕ
+  // отправляется. Оставлено только для forward-compat чтения; UI её НЕ рендерит.
   permissions?: string[];
   is_system?: boolean;
   isSystem?: boolean;
+  // OCC-токен для Role.Update под конкуренцией (публичный Get его возвращает).
+  resource_version?: string;
   created_at?: string;
   createdAt?: string;
 }
@@ -129,6 +158,49 @@ export interface RoleList {
   roles: Role[];
   next_page_token?: string;
 }
+
+// ====== PermissionCatalog (RBAC rules-model, backend-driven) ======
+// Grantable-token каталог для RulesEditor dropdown'ов. Источник истины — backend
+// (`authzmap.objectTypes` + closed verbs), отдаётся публичным sync read-RPC
+// GET /iam/v1/permissionCatalog. Каталог immutable-в-рантайме (платформенная
+// метаданность) — UI кэширует через react-query.
+//
+// Wire — camelCase (`hasVerbRelations`/`hasListEndpoint`/`closedVerbs`/
+// `labelSelectable`/`wildcardPolicy.*`); api-клиент прогоняет ответ через
+// camelToSnake → в UI ключи snake_case.
+export interface CatalogResource {
+  // 2-й сегмент токена (camelCase singular `securityGroup`/`routeTable`/…, либо
+  // pluralized для loadbalancer).
+  resource: string;
+  // verb-bearing leaf (true) vs tier-only ancestor (iam.account/iam.project → false).
+  has_verb_relations?: boolean;
+  // публичный per-object filtered List на external-листенере есть (true) →
+  // resource_names-picker рендерит Select инстансов; false → free-text fallback.
+  has_list_endpoint?: boolean;
+  // тип label-selectable (есть resource-feed для match_labels-реконсайла). false →
+  // match_labels по этому типу запрещён backend'ом; RulesEditor блокирует submit.
+  label_selectable?: boolean;
+}
+export interface CatalogModule {
+  module: string; // 1-й сегмент токена (iam/vpc/compute/loadbalancer)
+  resources?: CatalogResource[];
+}
+export interface WildcardPolicy {
+  // verb-`*` grantable в custom-роли (bounded).
+  verb_wildcard_allowed_custom?: boolean;
+  // module-`*`/resource-`*` — system-only (custom → INVALID_ARGUMENT).
+  module_resource_wildcard_system_only?: boolean;
+}
+export interface PermissionCatalog {
+  modules?: CatalogModule[];
+  closed_verbs?: string[];
+  wildcard_policy?: WildcardPolicy;
+}
+
+// GET /iam/v1/permissionCatalog — публичный sync read grantable-таксономии
+// (модули → ресурсы + флаги + closed_verbs + wildcard-политика). Read sync, НЕ
+// Operation. UI кэширует через react-query (usePermissionCatalog).
+export const PERMISSION_CATALOG_PATH = "/iam/v1/permissionCatalog";
 
 // ====== AccessBinding ======
 export type SubjectType = "user" | "service_account" | "group";
@@ -194,6 +266,8 @@ export const iamApi = {
     api.list<GroupMemberList>(`${IAM.groups}/${groupId}:listMembers`, q),
   // Roles
   listRoles: (q?: Record<string, string>) => api.list<RoleList>(IAM.roles, q),
+  // Permission-каталог (RBAC rules-model) — grantable-таксономия для RulesEditor.
+  fetchPermissionCatalog: () => api.get<PermissionCatalog>(PERMISSION_CATALOG_PATH),
   // AccessBindings: list-by-resource + list-by-subject (custom verbs)
   listAccessBindingsByResource: (resource_type: string, resource_id: string, q?: Record<string, string>) =>
     api.list<AccessBindingList>(`${IAM.accessBindings}:listByResource`, {
