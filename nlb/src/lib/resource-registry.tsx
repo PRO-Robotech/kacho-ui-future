@@ -146,6 +146,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     singular: "Виртуальная машина",
     plural: "Виртуальные машины",
     serviceTitle: "Compute Cloud",
+    scope: "project",
     ops: { create: false, update: false, delete: false },
     columns: [
       { header: "Имя", path: "name", format: "text" },
@@ -161,6 +162,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     singular: "Сетевой интерфейс",
     plural: "Сетевые интерфейсы",
     serviceTitle: "Virtual Private Cloud",
+    scope: "project",
     ops: { create: false, update: false, delete: false },
     columns: [
       { header: "Имя", path: "name", format: "text" },
@@ -535,10 +537,23 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       protocol: "TCP",
       // port / target_port НЕ дефолтим в 0 — API отвергает порт 0 (диапазон
       // [1,65535]). Пусто → пользователь обязан ввести (port), либо опущено
-      // (target_port → равен port). Диапазон валидируется InputNumber min/max.
+      // (target_port → равен port через sanitize). Диапазон валидируется InputNumber.
       default_target_group_id: "",
       labels: {},
     }),
+    // target_port по умолчанию равен port (конвенция LB). Backend требует
+    // target_port в [1,65535]: пустой/0 → 400 "port must be in range". Без этого
+    // sanitize пользователь, оставив «Порт на target» пустым, получал скрытую
+    // ошибку create (listener не создавался).
+    sanitize: (obj) => {
+      const o = { ...obj } as Record<string, unknown>;
+      const tp = o.target_port;
+      const port = o.port;
+      const portSet = typeof port === "number" ? port > 0 : typeof port === "string" && port !== "";
+      const tpUnset = tp === undefined || tp === null || tp === "" || tp === 0;
+      if (tpUnset && portSet) o.target_port = port;
+      return o;
+    },
   },
 
   "target-groups": {
