@@ -268,6 +268,14 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
         </Button>
       );
     }
+    // Активный extra-таб (напр. «Привилегии») может нести собственный header-CTA
+    // («Выдать доступ») — рендерим его в шапке страницы, как у related-табов.
+    if (data) {
+      const activeExtra = (ext?.extraTabs?.({ data, projectId: projectId ?? null, detailBase, navigate }) ?? []).find(
+        (t) => t.id === headerTabId,
+      );
+      if (activeExtra?.headerAction) return activeExtra.headerAction;
+    }
     return null;
   }, [mode, headerTabId, data, spec, projectId, detailBase, ext, navigate]);
   useHeaderRight(headerActions);

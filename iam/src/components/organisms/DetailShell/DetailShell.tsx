@@ -50,6 +50,10 @@ export interface DetailTab {
    *  фиксированной шапкой колонок + h/v-скролл тела), а не всю зону-3. Для
    *  related-таблиц. Content-табы (Обзор/JSON) — false: скроллится вся зона-3. */
   fill?: boolean;
+  /** CTA в ШАПКЕ страницы (правый верхний угол), показывается когда этот таб
+   *  активен. Напр. таб «Привилегии» → кнопка «Выдать доступ». Рендерится через
+   *  useHeaderRight в ResourceShell, не в зоне-2. */
+  headerAction?: ReactNode;
 }
 
 export interface DocLink {

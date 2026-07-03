@@ -223,14 +223,6 @@ function scopeColor(s: string): string {
 // страницу «Привязки доступа»; фиксированная строка «своей» оси (субъект или
 // ресурс) скрывается, т.к. она одинакова для всех строк.
 function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
-  const navigate = useNavigate();
-  // «Выдать доступ» — переход на форму создания AccessBinding с залоченным
-  // субъектом (или ресурс-скоупом для account) через URL-preset. Сама выдача
-  // делается на странице «Привязки доступа»; здесь — быстрый вход с этого detail.
-  const grantUrl =
-    mode.kind === "subject"
-      ? `/iam/access-bindings/create?subject_type=${mode.subjectType}&subject_id=${mode.subjectId}`
-      : `/iam/access-bindings/create?resource_type=${mode.resourceType}&resource_id=${mode.resourceId}`;
   const list = useQuery({
     queryKey:
       mode.kind === "subject"
@@ -344,11 +336,6 @@ function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
 
   return (
     <div style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12, flexShrink: 0 }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(grantUrl)}>
-          Выдать доступ
-        </Button>
-      </div>
       <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
         <Table<AccessBinding>
           rowKey="id"
@@ -367,7 +354,24 @@ function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
   );
 }
 
+// GrantPrivilegeButton — CTA «Выдать доступ» в ШАПКЕ страницы (header-slot) на
+// табе «Привилегии»: переход на форму создания AccessBinding с залоченным
+// субъектом (или ресурс-скоупом для account) через URL-preset.
+function GrantPrivilegeButton({ mode }: { mode: PrivilegesMode }) {
+  const navigate = useNavigate();
+  const grantUrl =
+    mode.kind === "subject"
+      ? `/iam/access-bindings/create?subject_type=${mode.subjectType}&subject_id=${mode.subjectId}`
+      : `/iam/access-bindings/create?resource_type=${mode.resourceType}&resource_id=${mode.resourceId}`;
+  return (
+    <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(grantUrl)}>
+      Выдать доступ
+    </Button>
+  );
+}
+
 // privilegesTab — DetailTab «Привилегии» для detail-страницы субъекта/скоупа.
+// CTA «Выдать доступ» — в шапке страницы (headerAction → useHeaderRight).
 function privilegesTab(mode: PrivilegesMode): DetailTab {
   return {
     id: "privileges",
@@ -375,6 +379,7 @@ function privilegesTab(mode: PrivilegesMode): DetailTab {
     eyebrow: "Список",
     headerTitle: "Привилегии",
     headerIcon: <ResourceIcon specId="access-bindings" />,
+    headerAction: <GrantPrivilegeButton mode={mode} />,
     fill: true,
     render: () => <SubjectPrivilegesTab mode={mode} />,
   };
