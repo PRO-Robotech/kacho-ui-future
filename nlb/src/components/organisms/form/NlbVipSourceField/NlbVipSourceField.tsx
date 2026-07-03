@@ -33,6 +33,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Form, Segmented, Select, Typography } from "antd";
 import { api } from "@/api/client";
 import { RefSelect } from "@/components/organisms/form/RefSelect";
+import { AddressVpcCascader } from "@/components/organisms/form/AddressVpcCascader";
 import { ImmutableField } from "@/components/organisms/form/ImmutableField";
 import { useProjectStore } from "@/lib/context-store";
 import { getByPath, setByPath } from "@/lib/path";
@@ -239,13 +240,13 @@ function FamilyRow({ value, onChange, family }: Props & { family: Family }) {
         )}
 
         {mode === "address" && (
-          <RefSelect
-            refResource="addresses"
-            refProjectScoped
-            refFilter={addressFilter}
+          <AddressVpcCascader
+            family={family}
+            type={type}
+            addressFilter={addressFilter}
             value={getByPath(value, `${base}.address_id`) as string | undefined}
             onChange={(uid) => set(`${base}.address_id`, uid || undefined)}
-            placeholder={`Заранее созданный Address — оставьте пустым, чтобы не задавать ${FAMILY_LABEL[family]}`}
+            placeholder={`Сеть (VPC) → адрес — оставьте пустым, чтобы не задавать ${FAMILY_LABEL[family]}`}
           />
         )}
 

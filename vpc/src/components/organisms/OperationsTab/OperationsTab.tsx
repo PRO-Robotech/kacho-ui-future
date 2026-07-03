@@ -37,7 +37,11 @@ export function OperationsTab({ spec, resourceId }: Props) {
         pageSize: "200",
       }),
     enabled: !!resourceId,
-    refetchInterval: 5_000,
+    // Поллинг только пока запрос успешен. При ошибке (403 без доступа / 404 / 501
+    // не реализовано) поллинг и retry выключаются — иначе endpoint переспрашивается
+    // каждые 5с и состояние ошибки мигает.
+    refetchInterval: (q) => (q.state.status === "error" ? false : 5_000),
+    retry: (count, err) => !(err instanceof ApiError && err.status >= 400 && err.status < 500) && count < 1,
     staleTime: 0,
   });
 
@@ -66,7 +70,18 @@ export function OperationsTab({ spec, resourceId }: Props) {
   }, [ops, query, status]);
 
   if (isError) {
-    const httpStatus = error instanceof ApiError && error.status === 501 ? "404" : undefined;
+    const st = error instanceof ApiError ? error.status : undefined;
+    if (st === 403) {
+      return (
+        <ErrorResult
+          error={error}
+          status="403"
+          title="403"
+          subTitle="Недостаточно прав для просмотра операций этого ресурса."
+        />
+      );
+    }
+    const httpStatus = st === 501 ? "404" : undefined;
     return (
       <ErrorResult
         error={error}
