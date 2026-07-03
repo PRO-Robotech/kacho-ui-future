@@ -142,6 +142,10 @@ export const HostBreadcrumb: FC<{
   // способом сменить контекст. (re-render на навигации — pathname актуален.)
   const path = typeof window !== "undefined" ? window.location.pathname : "";
   const onDashboard = path === "/dashboard" || /^\/projects\/[^/]+\/dashboard\/?$/.test(path);
+  // Раздел IAM — account-scoped (аккаунты/проекты/SA/пользователи/группы/роли/
+  // связки/операции), проекта у этих ресурсов нет → project-пилюля не показывается
+  // (иначе селектор выглядит «не до конца заполненным»). Остаётся аккаунт.
+  const onIam = /^\/iam(\/|$)/.test(path);
 
   return (
     <div className="context-breadcrumb" style={{ color: token.colorTextSecondary }}>
@@ -153,20 +157,24 @@ export const HostBreadcrumb: FC<{
             </BreadcrumbPill>
           </Dropdown>
           {sep}
-          <Dropdown
-            menu={projectMenu}
-            trigger={["click"]}
-            placement="bottomLeft"
-            disabled={!account}
-            onOpenChange={(open) => {
-              if (open && account) loadProjects(account.id);
-            }}
-          >
-            <BreadcrumbPill token={token} active={!!project} placeholder="Проект" chevron>
-              {project?.name || project?.id}
-            </BreadcrumbPill>
-          </Dropdown>
-          {sep}
+          {!onIam && (
+            <>
+              <Dropdown
+                menu={projectMenu}
+                trigger={["click"]}
+                placement="bottomLeft"
+                disabled={!account}
+                onOpenChange={(open) => {
+                  if (open && account) loadProjects(account.id);
+                }}
+              >
+                <BreadcrumbPill token={token} active={!!project} placeholder="Проект" chevron>
+                  {project?.name || project?.id}
+                </BreadcrumbPill>
+              </Dropdown>
+              {sep}
+            </>
+          )}
         </>
       )}
       <Typography.Text className="breadcrumb-current">Все сервисы</Typography.Text>
