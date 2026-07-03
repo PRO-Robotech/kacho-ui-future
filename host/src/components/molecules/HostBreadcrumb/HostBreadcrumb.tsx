@@ -146,6 +146,21 @@ export const HostBreadcrumb: FC<{
   // связки/операции), проекта у этих ресурсов нет → project-пилюля не показывается
   // (иначе селектор выглядит «не до конца заполненным»). Остаётся аккаунт.
   const onIam = /^\/iam(\/|$)/.test(path);
+  // Хлебные крошки раздела IAM в самой шапке (как в kacho-ui): «IAM / <ресурс>».
+  // Ресурс выводим из URL — второй сегмент /iam/<segment>/…
+  const iamSection = onIam
+    ? (({
+        accounts: "Аккаунты",
+        projects: "Проекты",
+        "service-accounts": "Сервисные аккаунты",
+        users: "Пользователи",
+        groups: "Группы",
+        roles: "Роли",
+        "access-bindings": "Привязки доступа",
+        operations: "Операции",
+        access: "Управление доступом",
+      } as Record<string, string>)[path.split("/")[2] ?? ""] ?? "Раздел")
+    : null;
 
   return (
     <div className="context-breadcrumb" style={{ color: token.colorTextSecondary }}>
@@ -177,7 +192,15 @@ export const HostBreadcrumb: FC<{
           )}
         </>
       )}
-      <Typography.Text className="breadcrumb-current">Все сервисы</Typography.Text>
+      {onIam ? (
+        <>
+          <Typography.Text type="secondary">IAM</Typography.Text>
+          {sep}
+          <Typography.Text className="breadcrumb-current">{iamSection}</Typography.Text>
+        </>
+      ) : (
+        <Typography.Text className="breadcrumb-current">Все сервисы</Typography.Text>
+      )}
     </div>
   );
 };
