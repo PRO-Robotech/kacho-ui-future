@@ -1,20 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
 import { Card, Col, Empty, Input, Row, Space, Tree, Typography } from "antd";
 import type { DataNode } from "antd/es/tree";
-import {
-  ArrowRight,
-  Boxes,
-  Building2,
-  FolderClosed,
-  FolderKanban,
-  History,
-  LockKeyhole,
-  Search,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, Boxes, FolderClosed, LockKeyhole, Search } from "lucide-react";
 import { SERVICE_MODULES } from "../../lib/service-modules";
 import type { ServiceModule } from "../../lib/service-modules";
-import { IamResourceTable, type TableView } from "./IamResourceTable";
 import { useModuleCounts } from "../../hooks/use-module-counts";
 import { apiList, loadHostContext } from "../../utils";
 import type { AccountRef, HostContext, ProjectRef } from "../../utils";
@@ -39,12 +28,6 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
   const loadedAccounts = useRef<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
-  // Поиск по сервисам (плашки «Ресурсы») — фильтр по названию/короткому имени.
-  const [serviceQuery, setServiceQuery] = useState("");
-  // Активный вид main-области: "services" — плашки сервисов, остальные —
-  // таблицы account-scoped IAM-ресурсов (аккаунты/проекты/привязки/операции),
-  // логика как у дочерних таблиц в зоне-3 деталей.
-  const [view, setView] = useState<"services" | TableView>("accounts");
 
   // loadProjects — догружает проекты одного аккаунта (идемпотентно: повторно не
   // ходит). Вызывается из loadData (раскрытие) и при поиске (догрузка всех).
@@ -173,60 +156,21 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
     ? `Проект: ${ctx.project.name || ctx.project.id}`
     : "Выберите проект в дереве слева, чтобы открыть VPC / Compute / NLB. IAM доступен всегда.";
 
-  // Селектор вида main-области: «Сервисы» (плашки VPC/Compute/NLB/IAM) + таблицы
-  // account-scoped IAM-ресурсов. Клик переключает содержимое справа (не уводит со
-  // страницы) — логика как у табов зоны-3 деталей, только селектор — эти кнопки.
-  const viewTabs: { key: "services" | TableView; label: string; icon: ReactNode }[] = [
-    { key: "services", label: "Сервисы", icon: <Boxes size={16} /> },
-    { key: "accounts", label: "Аккаунты", icon: <Building2 size={16} /> },
-    { key: "projects", label: "Проекты", icon: <FolderKanban size={16} /> },
-    { key: "access-bindings", label: "Права доступа", icon: <ShieldCheck size={16} /> },
-    { key: "operations", label: "Операции", icon: <History size={16} /> },
-  ];
-
-  // Фильтр плашек по поиску сервисов (название или короткое имя).
-  const sq = serviceQuery.trim().toLowerCase();
-  const shownModules = SERVICE_MODULES.filter(
-    (m) => !sq || m.label.toLowerCase().includes(sq) || (m.short ?? "").toLowerCase().includes(sq),
-  );
-
   return (
     <section className="dashboard-console" data-testid="dashboard-page">
-      {/* Верхняя панель (шапка): слева — поиск по дереву аккаунтов/проектов,
-          справа — пилюли выбранного контекста (аккаунт / проект). */}
-      <div className="dashboard-topbar">
-        <div className="dashboard-topbar-nav">
-          <Input
-            allowClear
-            size="small"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск аккаунта или проекта"
-            prefix={<Search size={13} style={{ opacity: 0.5 }} />}
-            className="dash-tree-search"
-          />
-        </div>
-        <div className="dashboard-topbar-context">
-          {ctx.account ? (
-            <span className="dashboard-ctx-pill" title="Выбранный аккаунт">
-              <Building2 size={13} />
-              {ctx.account.name || ctx.account.id}
-            </span>
-          ) : null}
-          {ctx.project ? (
-            <span className="dashboard-ctx-pill" title="Выбранный проект">
-              <FolderClosed size={13} />
-              {ctx.project.name || ctx.project.id}
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="dashboard-body">
-        <aside className="dashboard-nav">
-          {treeData.length === 0 ? (
-            <div className="dash-nav-empty">{!accountsLoaded ? "Загрузка…" : "Ничего не найдено"}</div>
-          ) : (
+      <aside className="dashboard-nav">
+        <Input
+          allowClear
+          size="small"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск аккаунта или проекта"
+          prefix={<Search size={13} style={{ opacity: 0.5 }} />}
+          className="dash-tree-search"
+        />
+        {treeData.length === 0 ? (
+          <div className="dash-nav-empty">{!accountsLoaded ? "Загрузка…" : "Ничего не найдено"}</div>
+        ) : (
           <Tree
             showIcon
             blockNode
@@ -246,55 +190,18 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
 
       <main className="dashboard-main">
         <div className="dashboard-heading">
-          <Typography.Title level={3}>Дашборд Kachō</Typography.Title>
+          <Typography.Title level={3}>Сервисы облака</Typography.Title>
           <Typography.Text type="secondary">{caption}</Typography.Text>
         </div>
 
-        {/* Селектор вида: «Сервисы» (плашки) + таблицы IAM-ресурсов. Клик
-            переключает контент справа, не уводя со страницы. */}
-        <div className="dashboard-quicknav">
-          {viewTabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              className={view === t.key ? "dashboard-quick-btn dashboard-quick-btn-active" : "dashboard-quick-btn"}
-              onClick={() => setView(t.key)}
-              data-testid={`dashboard-view-${t.key}`}
-            >
-              <span className="dashboard-quick-icon">{t.icon}</span>
-              <span>{t.label}</span>
-            </button>
-          ))}
-        </div>
+        {treeData.length === 0 && accountsLoaded && accounts.length > 0 && q === "" ? (
+          <Card>
+            <Empty image={<Boxes size={40} color="#8b8f99" />} description="Нет доступных проектов" />
+          </Card>
+        ) : null}
 
-        {view !== "services" ? (
-          <IamResourceTable view={view} accountId={accountId} navigate={navigate} />
-        ) : (
-          <>
-            {/* Поиск по сервисам — фильтрует плашки ресурсов ниже. */}
-            <Input
-              allowClear
-              value={serviceQuery}
-              onChange={(e) => setServiceQuery(e.target.value)}
-              placeholder="Поиск сервисов"
-              prefix={<Search size={15} style={{ opacity: 0.5 }} />}
-              className="dashboard-service-search"
-            />
-
-            <div className="dashboard-section-head">
-              <Typography.Title level={4} style={{ margin: 0 }}>
-                Ресурсы
-              </Typography.Title>
-            </div>
-
-            {treeData.length === 0 && accountsLoaded && accounts.length > 0 && q === "" ? (
-              <Card>
-                <Empty image={<Boxes size={40} color="#8b8f99" />} description="Нет доступных проектов" />
-              </Card>
-            ) : null}
-
-            <Row gutter={[16, 16]}>
-          {shownModules.map((module) => {
+        <Row gutter={[16, 16]}>
+          {SERVICE_MODULES.map((module) => {
             const disabled = tileDisabled(module);
             return (
               <Col key={module.key} xs={24} sm={24} md={12} lg={12} style={{ display: "flex" }}>
@@ -329,11 +236,8 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
               </Col>
             );
           })}
-            </Row>
-          </>
-        )}
-        </main>
-      </div>
+        </Row>
+      </main>
     </section>
   );
 };
