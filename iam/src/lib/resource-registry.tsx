@@ -229,6 +229,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     related: [
       { childId: "projects", filterField: "account_id", label: "Проекты" },
       { childId: "service-accounts", filterField: "account_id", label: "Сервисные аккаунты" },
+      { childId: "groups", filterField: "account_id", label: "Группы" },
     ],
     docs: [
       { label: "Аккаунты и организации", href: "#" },
@@ -368,13 +369,14 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         path: "account_id",
         render: (row) => <IamRefLink specId="accounts" refId={row.account_id as string | undefined} />,
       },
+      COL_ID,
       { header: "Описание", path: "description", format: "text" },
+      COL_CREATED,
       {
         header: "Метки",
         path: "labels",
         render: (row) => <LabelsCell labels={row.labels as Record<string, string> | undefined} />,
       },
-      COL_CREATED,
     ],
     fields: [FIELD_NAME, FIELD_ACCOUNT_ID, FIELD_LABELS, FIELD_DESCRIPTION],
     docs: [

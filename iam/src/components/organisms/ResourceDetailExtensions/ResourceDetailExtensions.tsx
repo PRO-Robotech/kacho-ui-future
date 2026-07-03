@@ -22,6 +22,8 @@ import type { DetailTab } from "@/components/organisms/DetailShell";
 
 import { RefNameLink } from "@/components/molecules/RefNameLink";
 import { IamRefLink } from "@/components/molecules/IamRefLink";
+import { StatusBadge } from "@/components/atoms/StatusBadge";
+import { CopyableId } from "@/components/atoms/CopyableId";
 import { SgRulesPanel, type SgRule } from "@/components/organisms/SgRulesPanel";
 import { RoutesPanel } from "@/components/organisms/RoutesPanel";
 import { SubnetCidrPanel } from "@/components/organisms/SubnetCidrPanel";
@@ -511,6 +513,13 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
   // Account — не субъект AccessBinding'а, а ресурс-скоуп: таб показывает
   // привязки, выданные НА этот account (listByResource account).
   accounts: {
+    // Обзор: ссылка «Владелец» (owner_user_id → user email).
+    overviewExtra: ({ data }) => [
+      {
+        label: "Владелец",
+        value: <IamRefLink specId="users" refId={getByPath<string>(data, "owner_user_id")} nameField="email" />,
+      },
+    ],
     extraTabs: ({ data }) => {
       const id = getByPath<string>(data, "id") ?? "";
       return id ? [privilegesTab({ kind: "resource", resourceType: "account", resourceId: id })] : [];
@@ -519,23 +528,47 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
 
   // ServiceAccount — субъект типа service_account (listBySubject).
   "service-accounts": {
+    overviewExtra: ({ data }) => [
+      { label: "Аккаунт", value: <IamRefLink specId="accounts" refId={getByPath<string>(data, "account_id")} /> },
+    ],
     extraTabs: ({ data }) => {
       const id = getByPath<string>(data, "id") ?? "";
       return id ? [privilegesTab({ kind: "subject", subjectType: "service_account", subjectId: id })] : [];
     },
   },
 
-  // User — субъект типа user (listBySubject).
+  // User — субъект типа user (listBySubject). Обзор: статус приглашения, external
+  // id, аккаунт и пригласивший пользователь (все output-only).
   users: {
+    overviewExtra: ({ data }) => [
+      { label: "Статус приглашения", value: <StatusBadge state={getByPath<string>(data, "invite_status")} /> },
+      {
+        label: "External ID",
+        value: getByPath<string>(data, "external_id") ? (
+          <CopyableId id={getByPath<string>(data, "external_id")!} />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+      },
+      { label: "Аккаунт", value: <IamRefLink specId="accounts" refId={getByPath<string>(data, "account_id")} /> },
+      {
+        label: "Пригласил",
+        value: <IamRefLink specId="users" refId={getByPath<string>(data, "invited_by")} nameField="email" />,
+      },
+    ],
     extraTabs: ({ data }) => {
       const id = getByPath<string>(data, "id") ?? "";
       return id ? [privilegesTab({ kind: "subject", subjectType: "user", subjectId: id })] : [];
     },
   },
 
-  // Group — субъект типа group (listBySubject). «Участники» — секция под Обзором
-  // (GroupMembersPanel, add/remove членов); «Привилегии» — отдельный таб.
+  // Group — субъект типа group (listBySubject). Обзор: ссылка «Аккаунт»;
+  // «Участники» — секция под Обзором (GroupMembersPanel, add/remove членов);
+  // «Привилегии» — отдельный таб.
   groups: {
+    overviewExtra: ({ data }) => [
+      { label: "Аккаунт", value: <IamRefLink specId="accounts" refId={getByPath<string>(data, "account_id")} /> },
+    ],
     overviewBelow: ({ data }) => (
       <GroupMembersPanel group={data as unknown as Group} accountId={getByPath<string>(data, "account_id") ?? null} />
     ),
