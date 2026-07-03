@@ -138,6 +138,63 @@ body,
   margin: 0 0 4px;
 }
 
+/* Ряд быстрых действий — 4 равные кнопки (иконка + подпись), как на консольном
+   дашборде. На узком экране сжимается в 2 колонки. */
+.dashboard-quicknav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dashboard-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--kc-text, inherit);
+  cursor: pointer;
+  background: var(--kc-container, #fff);
+  border: 1px solid var(--kc-border, rgb(127 127 127 / 0.2));
+  border-radius: 10px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.dashboard-quick-btn:hover {
+  border-color: rgb(61 141 245 / 0.45);
+  background: var(--kc-hover-fill, rgb(61 141 245 / 0.06));
+  box-shadow: 0 2px 8px rgb(16 24 40 / 0.06);
+}
+
+.dashboard-quick-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--kc-text-tertiary, rgb(127 127 127 / 0.8));
+}
+
+/* Поиск по сервисам — широкая строка над секцией «Ресурсы». */
+.dashboard-service-search {
+  margin-bottom: 20px;
+}
+
+/* Заголовок секции «Ресурсы». */
+.dashboard-section-head {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-quicknav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* Плашки одного размера: фиксированная высота, заголовок + метрики. Приподняты
    над белой подложкой тенью + чётким hover'ом (иначе «сливаются» white-on-white). */
 .dashboard-tile {

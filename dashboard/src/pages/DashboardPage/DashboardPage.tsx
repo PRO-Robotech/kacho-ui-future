@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FC, type ReactNode } from "react";
 import { Card, Col, Empty, Input, Row, Space, Tree, Typography } from "antd";
 import type { DataNode } from "antd/es/tree";
-import { ArrowRight, Boxes, FolderClosed, LockKeyhole, Search } from "lucide-react";
+import {
+  ArrowRight,
+  Boxes,
+  Building2,
+  FolderClosed,
+  FolderKanban,
+  History,
+  LockKeyhole,
+  Search,
+  ShieldCheck,
+} from "lucide-react";
 import { SERVICE_MODULES } from "../../lib/service-modules";
 import type { ServiceModule } from "../../lib/service-modules";
 import { useModuleCounts } from "../../hooks/use-module-counts";
@@ -28,6 +38,8 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
   const loadedAccounts = useRef<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
+  // Поиск по сервисам (плашки «Ресурсы») — фильтр по названию/короткому имени.
+  const [serviceQuery, setServiceQuery] = useState("");
 
   // loadProjects — догружает проекты одного аккаунта (идемпотентно: повторно не
   // ходит). Вызывается из loadData (раскрытие) и при поиске (догрузка всех).
@@ -156,6 +168,21 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
     ? `Проект: ${ctx.project.name || ctx.project.id}`
     : "Выберите проект в дереве слева, чтобы открыть VPC / Compute / NLB. IAM доступен всегда.";
 
+  // Быстрые действия — верхнеуровневые входы IAM (как ряд быстрых действий на
+  // консольном дашборде). Ведут в разделы IAM независимо от выбранного проекта.
+  const quickActions: { key: string; label: string; icon: ReactNode; path: string }[] = [
+    { key: "accounts", label: "Аккаунты", icon: <Building2 size={16} />, path: "/iam/accounts" },
+    { key: "projects", label: "Проекты", icon: <FolderKanban size={16} />, path: "/iam/projects" },
+    { key: "access", label: "Права доступа", icon: <ShieldCheck size={16} />, path: "/iam/access-bindings" },
+    { key: "operations", label: "Операции", icon: <History size={16} />, path: "/iam/operations" },
+  ];
+
+  // Фильтр плашек по поиску сервисов (название или короткое имя).
+  const sq = serviceQuery.trim().toLowerCase();
+  const shownModules = SERVICE_MODULES.filter(
+    (m) => !sq || m.label.toLowerCase().includes(sq) || (m.short ?? "").toLowerCase().includes(sq),
+  );
+
   return (
     <section className="dashboard-console" data-testid="dashboard-page">
       <aside className="dashboard-nav">
@@ -190,8 +217,40 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
 
       <main className="dashboard-main">
         <div className="dashboard-heading">
-          <Typography.Title level={3}>Сервисы облака</Typography.Title>
+          <Typography.Title level={3}>Дашборд Kachō</Typography.Title>
           <Typography.Text type="secondary">{caption}</Typography.Text>
+        </div>
+
+        {/* Ряд быстрых действий IAM (аккаунты / проекты / права доступа / операции). */}
+        <div className="dashboard-quicknav">
+          {quickActions.map((a) => (
+            <button
+              key={a.key}
+              type="button"
+              className="dashboard-quick-btn"
+              onClick={() => void navigate(a.path)}
+              data-testid={`dashboard-quick-${a.key}`}
+            >
+              <span className="dashboard-quick-icon">{a.icon}</span>
+              <span>{a.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Поиск по сервисам — фильтрует плашки ресурсов ниже. */}
+        <Input
+          allowClear
+          value={serviceQuery}
+          onChange={(e) => setServiceQuery(e.target.value)}
+          placeholder="Поиск сервисов"
+          prefix={<Search size={15} style={{ opacity: 0.5 }} />}
+          className="dashboard-service-search"
+        />
+
+        <div className="dashboard-section-head">
+          <Typography.Title level={4} style={{ margin: 0 }}>
+            Ресурсы
+          </Typography.Title>
         </div>
 
         {treeData.length === 0 && accountsLoaded && accounts.length > 0 && q === "" ? (
@@ -201,7 +260,7 @@ export const DashboardPage: FC<DashboardPageProps> = ({ context, navigate = defa
         ) : null}
 
         <Row gutter={[16, 16]}>
-          {SERVICE_MODULES.map((module) => {
+          {shownModules.map((module) => {
             const disabled = tileDisabled(module);
             return (
               <Col key={module.key} xs={24} sm={24} md={12} lg={12} style={{ display: "flex" }}>
