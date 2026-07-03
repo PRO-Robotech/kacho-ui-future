@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Empty, Input, Select, Space, Tag, Typography } from "antd";
+import { Button, Empty, Input, Select, Tag, Typography } from "antd";
 import { HistoryOutlined, ReloadOutlined } from "@ant-design/icons";
 import { api } from "@/api/client";
 import { PanelHeader } from "@/components/molecules/PanelHeader";
@@ -133,8 +133,12 @@ export function IamOperationsPage() {
   }
 
   return (
-    <div className="kc-surface" style={{ padding: 20, minHeight: "100%" }}>
-      <Space direction="vertical" size={0} style={{ width: "100%" }}>
+    <div
+      className="kc-surface"
+      style={{ padding: 20, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}
+    >
+      {/* Шапка (иконка + «Операции» + IAM + счётчик + фильтры) — фиксирована сверху. */}
+      <div style={{ flexShrink: 0, marginBottom: 12 }}>
         <PanelHeader
           icon={<HistoryOutlined />}
           eyebrow="Операции"
@@ -169,22 +173,27 @@ export function IamOperationsPage() {
             </>
           }
         />
+      </div>
 
+      {/* Тело таблицы заполняет остаток поверхности и скроллит СЕБЯ (фикс. шапка
+          колонок + вертикальный скролл тела) — иначе внутри Space высота
+          коллапсирует и видно лишь ~4 строки. */}
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
         <OperationsTable
           rows={filtered}
           loading={isLoading && acc.length === 0}
           showResourceKind
           empty={acc.length > 0 && filtered.length === 0}
         />
+      </div>
 
-        {nextToken && (
-          <div style={{ marginTop: 12, textAlign: "center" }}>
-            <Button loading={isFetching} onClick={() => setPageToken(nextToken)}>
-              Показать ещё
-            </Button>
-          </div>
-        )}
-      </Space>
+      {nextToken && (
+        <div style={{ flexShrink: 0, marginTop: 12, textAlign: "center" }}>
+          <Button loading={isFetching} onClick={() => setPageToken(nextToken)}>
+            Показать ещё
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
