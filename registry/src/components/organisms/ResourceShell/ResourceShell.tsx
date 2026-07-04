@@ -42,7 +42,7 @@ import { buildSpecColumns } from "@/lib/spec-columns";
 import { useResourceList, useResourceListAllPages } from "@/lib/use-resource-list";
 import { useInvalidateResourceList } from "@/lib/use-operation";
 import { DetailOverviewActions } from "@/components/molecules/DetailOverviewActions";
-import { RepositoryTagsDrawer } from "@/components/organisms/RepositoryTagsDrawer";
+import { RepositoryTagsPanel } from "@/components/organisms/RepositoryTagsPanel";
 
 export type ResourceShellMode = "edit" | "child-create";
 
@@ -175,27 +175,46 @@ function RelatedTable({
         <TableSearch value={search} onChange={setSearch} />
         <ColumnSettings columns={toggleCols} hidden={hidden} onToggle={toggleHidden} />
       </HeaderSlotPortal>
-      <ResourceTable
-        rows={rows}
-        columns={columns}
-        loading={isLoading}
-        rowKey={(r) => getByPath<string>(r, "id") ?? getByPath<string>(r, "name") ?? Math.random().toString()}
-        empty={q || facetVal ? "По запросу ничего не найдено." : undefined}
-        onRowClick={(r) => {
-          // Образ (OCI-репозиторий) адресуется ИМЕНЕМ (нет `id`) — клик открывает
-          // боковую панель (Drawer) с тегами, БЕЗ перехода на отдельную страницу.
-          if (childSpec.id === "repositories") {
-            const repo = getByPath<string>(r, "name");
-            if (repo) setTagsRepo(repo);
-            return;
-          }
-          const id = getByPath<string>(r, "id");
-          if (id) navigate(`${flatChildBase}/${id}`);
-        }}
-      />
-      {childSpec.id === "repositories" && (
-        <RepositoryTagsDrawer registryId={parentId} repository={tagsRepo} onClose={() => setTagsRepo(null)} />
-      )}
+      {/* Split-зона: таблица (сжимается) слева + встроенная панель тегов справа.
+          Панель раздвигает таблицу вбок (не оверлей), живёт внутри лайаута. При
+          сжатии у таблицы появляется h-скролл, а колонка «Имя» залипает (stickyFirst). */}
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex" }}>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
+          <ResourceTable
+            rows={rows}
+            columns={columns}
+            loading={isLoading}
+            stickyFirst={!!tagsRepo}
+            rowKey={(r) => getByPath<string>(r, "id") ?? getByPath<string>(r, "name") ?? Math.random().toString()}
+            empty={q || facetVal ? "По запросу ничего не найдено." : undefined}
+            onRowClick={(r) => {
+              // Образ адресуется ИМЕНЕМ (нет `id`) — клик выдвигает боковую панель
+              // тегов В ЛАЙАУТЕ (раздвигает таблицу), без перехода на страницу.
+              if (childSpec.id === "repositories") {
+                const repo = getByPath<string>(r, "name");
+                if (repo) setTagsRepo(repo);
+                return;
+              }
+              const id = getByPath<string>(r, "id");
+              if (id) navigate(`${flatChildBase}/${id}`);
+            }}
+          />
+        </div>
+        {childSpec.id === "repositories" && (
+          <div
+            style={{
+              width: tagsRepo ? 460 : 0,
+              flexShrink: 0,
+              minHeight: 0,
+              overflow: "hidden",
+              transition: "width .2s ease",
+              marginLeft: tagsRepo ? 12 : 0,
+            }}
+          >
+            {tagsRepo && <RepositoryTagsPanel registryId={parentId} repository={tagsRepo} onClose={() => setTagsRepo(null)} />}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

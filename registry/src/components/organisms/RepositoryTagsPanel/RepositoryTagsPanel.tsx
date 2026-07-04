@@ -1,16 +1,17 @@
-// RepositoryTagsDrawer — выдвижная боковая панель (Drawer) со списком тегов
-// образа. Открывается по клику на образ в списке — БЕЗ перехода на отдельную
-// страницу. Теги — path-scoped проекция ListTags(registryId, repository); read-
-// only, кроме DeleteTag (async Operation). Digest сокращён до 9 символов (полный —
-// по копированию).
+// RepositoryTagsPanel — встроенная боковая панель тегов образа. Живёт ВНУТРИ
+// зоны контента (сиблинг таблицы образов), не оверлей: раздвигает таблицу вбок,
+// не покидает лайаут. Теги — path-scoped проекция ListTags(registryId,
+// repository); read-only, кроме DeleteTag (async Operation). Digest сокращён до
+// 9 символов (полный — по копированию).
 
 import { type FC, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Drawer, Popconfirm, Typography } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import { Button, Popconfirm, Typography } from "antd";
+import { CloseOutlined, DeleteOutlined } from "@ant-design/icons";
 import { ApiError } from "@/api/client";
 import { registriesApi } from "@/api/resources";
 import { extractOperationId } from "@/components/molecules/OperationDialog";
+import { ResourceIcon } from "@/components/organisms/form/ResourceIcon";
 import { ResourceTable, type Column } from "@/components/organisms/ResourceTable";
 import { ErrorResult } from "@/components/molecules/ErrorResult";
 import { REGISTRY, getByPath } from "@/lib/resource-registry";
@@ -27,26 +28,23 @@ function ShortDigestCell({ value }: { value: unknown }) {
   const short = shortDigest(value);
   if (!short) return <Typography.Text type="secondary">—</Typography.Text>;
   return (
-    <Typography.Text code copyable={{ text: full }}>
+    <Typography.Text code copyable={{ text: full }} style={{ fontSize: 12 }}>
       {short}…
     </Typography.Text>
   );
 }
 
-export const RepositoryTagsDrawer: FC<{
+export const RepositoryTagsPanel: FC<{
   registryId: string;
-  repository: string | null;
+  repository: string;
   onClose: () => void;
 }> = ({ registryId, repository, onClose }) => {
-  const open = !!repository;
-  const repo = repository ?? "";
   const qc = useQueryClient();
-
-  const tagsKey = useMemo(() => ["tags", "list", registryId, repo], [registryId, repo]);
+  const tagsKey = useMemo(() => ["tags", "list", registryId, repository], [registryId, repository]);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: tagsKey,
-    queryFn: () => registriesApi.listTags(registryId, repo),
-    enabled: open && !!registryId && !!repo,
+    queryFn: () => registriesApi.listTags(registryId, repository),
+    enabled: !!registryId && !!repository,
     refetchInterval: 5_000,
     staleTime: 0,
   });
@@ -54,7 +52,7 @@ export const RepositoryTagsDrawer: FC<{
   const rows = (data?.tags as Record<string, unknown>[] | undefined) ?? [];
   const invalidateTags = () => void qc.invalidateQueries({ queryKey: tagsKey, refetchType: "all" });
 
-  // Стандартные колонки тега из реестра, но Digest — сокращённый (9 симв.).
+  // Колонки тега из реестра, но Digest — сокращённый (9 симв.) + delete-действие.
   const columns: Column<Record<string, unknown>>[] = buildSpecColumns(TAGS_SPEC).map((c) =>
     c.header === "Digest" ? { ...c, cell: (row: Record<string, unknown>) => <ShortDigestCell value={getByPath(row, "digest")} /> } : c,
   );
@@ -62,43 +60,53 @@ export const RepositoryTagsDrawer: FC<{
     header: "",
     className: "text-right whitespace-nowrap",
     cell: (row) => (
-      <TagDeleteAction
-        registryId={registryId}
-        repository={repo}
-        tag={getByPath<string>(row, "tag") ?? ""}
-        onDone={invalidateTags}
-      />
+      <TagDeleteAction registryId={registryId} repository={repository} tag={getByPath<string>(row, "tag") ?? ""} onDone={invalidateTags} />
     ),
   });
 
   return (
-    <Drawer
-      open={open}
-      onClose={onClose}
-      placement="right"
-      width={720}
-      title={
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <span style={{ maxWidth: 480, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{repo}</span>
+    <div
+      className="kc-surface"
+      style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
+    >
+      {/* Шапка панели: иконка + имя образа + «теги» + крестик закрытия. */}
+      <div
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          padding: "10px 12px 10px 16px",
+          borderBottom: "1px solid var(--kc-border, rgba(128,128,128,0.18))",
+        }}
+      >
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <ResourceIcon specId={TAGS_SPEC.id} />
+          <span style={{ fontWeight: 600, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {repository}
+          </span>
           <Typography.Text type="secondary" style={{ fontWeight: 400 }}>
             · теги
           </Typography.Text>
         </span>
-      }
-      destroyOnHidden
-    >
-      {isError ? (
-        <ErrorResult error={error} />
-      ) : (
-        <ResourceTable
-          rows={rows}
-          columns={columns}
-          loading={isLoading}
-          rowKey={(r) => getByPath<string>(r, "tag") ?? getByPath<string>(r, "digest") ?? Math.random().toString()}
-          empty="Нет тегов — образ ещё не публиковался (docker push)."
-        />
-      )}
-    </Drawer>
+        <Button type="text" size="small" icon={<CloseOutlined />} onClick={onClose} aria-label="Закрыть теги" />
+      </div>
+
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, padding: "8px 8px 12px" }}>
+        {isError ? (
+          <ErrorResult error={error} />
+        ) : (
+          <ResourceTable
+            rows={rows}
+            columns={columns}
+            loading={isLoading}
+            rowKey={(r) => getByPath<string>(r, "tag") ?? getByPath<string>(r, "digest") ?? Math.random().toString()}
+            empty="Нет тегов — образ ещё не публиковался (docker push)."
+          />
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -171,9 +179,7 @@ function TagDeleteAction({
         loading={pending}
         onClick={(e) => e.stopPropagation()}
         aria-label="Удалить тег"
-      >
-        Удалить тег
-      </Button>
+      />
     </Popconfirm>
   );
 }

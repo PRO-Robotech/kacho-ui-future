@@ -26,6 +26,9 @@ interface Props<T> {
   /** Если задан — клик по строке вызывает callback (для drill-down в detail).
    *  Cells, у которых внутри есть button/link с stopPropagation, не триггерят. */
   onRowClick?: (row: T) => void;
+  /** Залипающая первая колонка (напр. «Имя») при горизонтальном скролле —
+   *  когда таблицу сжимает боковая панель. */
+  stickyFirst?: boolean;
 }
 
 export function ResourceTable<T extends object>({
@@ -36,6 +39,7 @@ export function ResourceTable<T extends object>({
   loading,
   defaultSort,
   onRowClick,
+  stickyFirst,
 }: Props<T>) {
   const antColumns: ColumnType<T>[] = useMemo(
     () =>
@@ -46,6 +50,8 @@ export function ResourceTable<T extends object>({
           className: c.className,
           render: (_value, row) => c.cell(row),
         };
+        // Первая колонка залипает слева при h-скролле (таблицу сжимает панель).
+        if (stickyFirst && idx === 0) col.fixed = "left";
         if (c.sortKey) {
           col.sorter = (a: T, b: T) => {
             const av = getByPath(a, c.sortKey!);

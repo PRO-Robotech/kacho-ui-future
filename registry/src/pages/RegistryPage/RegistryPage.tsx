@@ -78,8 +78,9 @@ export const RegistryPage: FC<RegistryPageProps> = ({ context }) => {
                     <Route path={`${spec.route}/:uid/:tab`} element={<ResourceShell spec={spec} />} />
                   </Route>
                 ))}
-                {/* Теги образа рендерятся боковой панелью (RepositoryTagsDrawer) по
-                    клику в списке образов — без перехода на отдельный route. */}
+                {/* Теги образа рендерятся встроенной боковой панелью
+                    (RepositoryTagsPanel) по клику в списке образов — панель
+                    раздвигает таблицу внутри лайаута, без перехода на route. */}
                 <Route path="*" element={<ProjectRegistryDefaultRedirect />} />
               </Routes>
             </RegistryFrame>

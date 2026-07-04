@@ -1,1 +1,0 @@
-export { RepositoryTagsDrawer } from "./RepositoryTagsDrawer";
