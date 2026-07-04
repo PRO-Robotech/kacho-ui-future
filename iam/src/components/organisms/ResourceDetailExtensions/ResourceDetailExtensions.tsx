@@ -37,6 +37,7 @@ import { api } from "@/api/client";
 import { iamApi, type AccessBinding, type User } from "@/api/iam";
 import { AccessBindingCreateForm, type SubjectType } from "@/components/organisms/iam/AccessBindingCreateForm";
 import { SaKeysPanel } from "@/components/organisms/SaKeysPanel";
+import { UserTokensPanel } from "@/components/organisms/UserTokensPanel";
 import { getByPath } from "@/lib/resource-registry";
 
 export interface DescItem {
@@ -409,6 +410,21 @@ function tokensTab(serviceAccountId: string): DetailTab {
   };
 }
 
+// userTokensTab — DetailTab «Токены» для detail-страницы пользователя: список
+// персональных OAuth-токенов (UserTokenService) + выпуск токена с одноразовым
+// показом секрета + отзыв. Зеркалит tokensTab сервисного аккаунта.
+function userTokensTab(userId: string): DetailTab {
+  return {
+    id: "tokens",
+    label: "Токены",
+    eyebrow: "Список",
+    headerTitle: "Токены",
+    headerIcon: <KeyOutlined />,
+    fill: true,
+    render: () => <UserTokensPanel userId={userId} />,
+  };
+}
+
 // privilegesChildCreate — билдер childCreate: embedded AccessBindingCreateForm в
 // зоне-3 (mainOverride). subject-режим → субъект ЗАЛОЧЕН (реконсайл, subjectAccountId
 // = home-account субъекта для scope по умолчанию); resource-режим (account-скоуп) →
@@ -629,7 +645,8 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
     ],
     extraTabs: ({ data, detailBase }) => {
       const id = getByPath<string>(data, "id") ?? "";
-      return id ? [privilegesTab({ kind: "subject", subjectType: "user", subjectId: id }, detailBase)] : [];
+      if (!id) return [];
+      return [privilegesTab({ kind: "subject", subjectType: "user", subjectId: id }, detailBase), userTokensTab(id)];
     },
     childCreate: privilegesChildCreate({ kind: "subject", subjectType: "user" }),
   },

@@ -123,6 +123,45 @@ export function saKeysPath(serviceAccountId: string): string {
   return `${IAM.serviceAccounts}/${encodeURIComponent(serviceAccountId)}/keys`;
 }
 
+// ====== User OAuth tokens (UserTokenService) ======
+// Персональные OAuth-токены пользователя (workload identity под личностью юзера).
+// Секрет (private_key_pem) выдается ОДИН раз в ответе Issue-операции и нигде не
+// хранится — UI обязан показать его сразу и дать сохранить. List/Get секрет не содержат.
+export interface UserOAuthClient {
+  id: string; // uoc_…
+  user_id?: string;
+  hydra_client_id?: string;
+  description?: string;
+  expires_at?: string;
+  last_used_at?: string;
+  created_by_user_id?: string;
+  created_at?: string;
+}
+export interface ListUserTokensResponse {
+  tokens?: UserOAuthClient[];
+  next_page_token?: string;
+}
+// Ответ Issue-операции (Operation.response). Несет одноразовый секрет private_key_pem.
+export interface IssueUserTokenResponse {
+  key?: UserOAuthClient;
+  client_id?: string;
+  private_key_pem?: string;
+  public_key_pem?: string;
+  algorithm?: string;
+  key_id?: string;
+  audiences?: string[];
+}
+// Тело Issue-запроса. created_by_user_id проставляет backend из принципала — не шлем.
+export interface IssueUserTokenBody {
+  description?: string;
+  ttl_seconds?: number;
+}
+
+// REST-путь коллекции токенов пользователя: /iam/v1/users/{user_id}/tokens.
+export function userTokensPath(userId: string): string {
+  return `${IAM.users}/${encodeURIComponent(userId)}/tokens`;
+}
+
 // ====== Group ======
 export interface Group {
   id: string;
@@ -376,6 +415,9 @@ export const iamApi = {
   // SA OAuth keys (SAKeyService.List) — метаданные ключей без секрета.
   listSaKeys: (serviceAccountId: string, q?: Record<string, string>) =>
     api.list<ListSAKeysResponse>(saKeysPath(serviceAccountId), q),
+  // User OAuth tokens (UserTokenService.List) — метаданные токенов без секрета.
+  listUserTokens: (userId: string, q?: Record<string, string>) =>
+    api.list<ListUserTokensResponse>(userTokensPath(userId), q),
   // Groups
   listGroups: (q?: Record<string, string>) => api.list<GroupList>(IAM.groups, q),
   // Group members — custom GET endpoint /iam/v1/groups/{group_id}:listMembers
