@@ -84,6 +84,45 @@ export interface ServiceAccountList {
   next_page_token?: string;
 }
 
+// ====== ServiceAccount OAuth keys (SAKeyService) ======
+// Статические OAuth-ключи сервисного аккаунта (Class A workload identity). Секрет
+// (private_key_pem) выдается ОДИН раз в ответе Issue-операции и нигде не хранится —
+// UI обязан показать его сразу и дать сохранить. List/Get секрет не содержат.
+export interface ServiceAccountOAuthClient {
+  id: string; // soc_…
+  sva_id?: string;
+  hydra_client_id?: string;
+  description?: string;
+  expires_at?: string;
+  last_used_at?: string;
+  created_by_user_id?: string;
+  created_at?: string;
+}
+export interface ListSAKeysResponse {
+  keys?: ServiceAccountOAuthClient[];
+  next_page_token?: string;
+}
+// Ответ Issue-операции (Operation.response). Несет одноразовый секрет private_key_pem.
+export interface IssueSAKeyResponse {
+  key?: ServiceAccountOAuthClient;
+  client_id?: string;
+  private_key_pem?: string;
+  public_key_pem?: string;
+  algorithm?: string;
+  key_id?: string;
+  audiences?: string[];
+}
+// Тело Issue-запроса. created_by_user_id проставляет backend из принципала — не шлем.
+export interface IssueSAKeyBody {
+  description?: string;
+  ttl_seconds?: number;
+}
+
+// REST-путь коллекции ключей сервисного аккаунта: /iam/v1/serviceAccounts/{id}/keys.
+export function saKeysPath(serviceAccountId: string): string {
+  return `${IAM.serviceAccounts}/${encodeURIComponent(serviceAccountId)}/keys`;
+}
+
 // ====== Group ======
 export interface Group {
   id: string;
@@ -334,6 +373,9 @@ export const iamApi = {
   listUsers: (q?: Record<string, string>) => api.list<UserList>(IAM.users, q),
   // SAs
   listServiceAccounts: (q?: Record<string, string>) => api.list<ServiceAccountList>(IAM.serviceAccounts, q),
+  // SA OAuth keys (SAKeyService.List) — метаданные ключей без секрета.
+  listSaKeys: (serviceAccountId: string, q?: Record<string, string>) =>
+    api.list<ListSAKeysResponse>(saKeysPath(serviceAccountId), q),
   // Groups
   listGroups: (q?: Record<string, string>) => api.list<GroupList>(IAM.groups, q),
   // Group members — custom GET endpoint /iam/v1/groups/{group_id}:listMembers

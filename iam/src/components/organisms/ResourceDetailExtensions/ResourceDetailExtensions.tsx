@@ -12,7 +12,7 @@
 
 import { useMemo, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined, KeyOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -36,6 +36,7 @@ import { ReferrerLink } from "@/lib/spec-columns";
 import { api } from "@/api/client";
 import { iamApi, type AccessBinding, type User } from "@/api/iam";
 import { AccessBindingCreateForm, type SubjectType } from "@/components/organisms/iam/AccessBindingCreateForm";
+import { SaKeysPanel } from "@/components/organisms/SaKeysPanel";
 import { getByPath } from "@/lib/resource-registry";
 
 export interface DescItem {
@@ -393,6 +394,21 @@ function privilegesTab(mode: PrivilegesMode, detailBase: string): DetailTab {
   };
 }
 
+// tokensTab — DetailTab «Токены» для detail-страницы сервисного аккаунта: список
+// OAuth-ключей (SAKeyService) + выпуск токена с одноразовым показом секрета + отзыв.
+// Registry-driven таблица внутри SaKeysPanel; CTA «Создать токен» живет в слоте шапки.
+function tokensTab(serviceAccountId: string): DetailTab {
+  return {
+    id: "tokens",
+    label: "Токены",
+    eyebrow: "Список",
+    headerTitle: "Токены",
+    headerIcon: <KeyOutlined />,
+    fill: true,
+    render: () => <SaKeysPanel serviceAccountId={serviceAccountId} />,
+  };
+}
+
 // privilegesChildCreate — билдер childCreate: embedded AccessBindingCreateForm в
 // зоне-3 (mainOverride). subject-режим → субъект ЗАЛОЧЕН (реконсайл, subjectAccountId
 // = home-account субъекта для scope по умолчанию); resource-режим (account-скоуп) →
@@ -575,16 +591,19 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
     childCreate: privilegesChildCreate({ kind: "resource", resourceType: "account" }),
   },
 
-  // ServiceAccount — субъект типа service_account (listBySubject).
+  // ServiceAccount — субъект типа service_account (listBySubject). Вкладки:
+  // «Привилегии» (AccessBinding'и субъекта) + «Токены» (OAuth-ключи SAKeyService).
   "service-accounts": {
     overviewExtra: ({ data }) => [
       { label: "Аккаунт", value: <IamRefLink specId="accounts" refId={getByPath<string>(data, "account_id")} /> },
     ],
     extraTabs: ({ data, detailBase }) => {
       const id = getByPath<string>(data, "id") ?? "";
-      return id
-        ? [privilegesTab({ kind: "subject", subjectType: "service_account", subjectId: id }, detailBase)]
-        : [];
+      if (!id) return [];
+      return [
+        privilegesTab({ kind: "subject", subjectType: "service_account", subjectId: id }, detailBase),
+        tokensTab(id),
+      ];
     },
     childCreate: privilegesChildCreate({ kind: "subject", subjectType: "service_account" }),
   },

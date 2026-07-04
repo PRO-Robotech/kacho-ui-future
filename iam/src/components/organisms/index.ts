@@ -26,6 +26,7 @@ export { ResourceShell } from "./ResourceShell";
 export { ResourceTable } from "./ResourceTable";
 export { RoutesEditor } from "./RoutesEditor";
 export { RoutesPanel } from "./RoutesPanel";
+export { SaKeysPanel } from "./SaKeysPanel";
 export { SgRulesPanel } from "./SgRulesPanel";
 export { CidrSection } from "./SubnetCidrManager";
 export { SubnetCidrPanel } from "./SubnetCidrPanel";
