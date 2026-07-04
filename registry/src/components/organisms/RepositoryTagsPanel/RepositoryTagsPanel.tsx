@@ -1,37 +1,47 @@
 // RepositoryTagsPanel — встроенная боковая панель тегов образа. Живёт ВНУТРИ
-// зоны контента (сиблинг таблицы образов), не оверлей: раздвигает таблицу вбок,
-// не покидает лайаут. Теги — path-scoped проекция ListTags(registryId,
-// repository); read-only, кроме DeleteTag (async Operation). Digest сокращён до
-// 9 символов (полный — по копированию).
+// зоны контента (сиблинг таблицы образов): раздвигает таблицу вбок, не оверлей.
+//
+// UX: вместо широкой таблицы — вертикальный список карточек тегов (компактно на
+// узком экране, без горизонтального скролла). Каждая карточка: тег + короткий
+// digest (9 симв., копируемый) + размер/дата + кнопка копирования `docker pull`
+// (ссылка на скачивание образа). Read-only, кроме DeleteTag (async Operation).
 
 import { type FC, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Popconfirm, Typography } from "antd";
-import { CloseOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Button, Empty, Popconfirm, Skeleton, Tag, Tooltip, Typography } from "antd";
+import { CloseOutlined, CopyOutlined, DeleteOutlined } from "@ant-design/icons";
 import { ApiError } from "@/api/client";
 import { registriesApi } from "@/api/resources";
 import { extractOperationId } from "@/components/molecules/OperationDialog";
 import { ResourceIcon } from "@/components/organisms/form/ResourceIcon";
-import { ResourceTable, type Column } from "@/components/organisms/ResourceTable";
 import { ErrorResult } from "@/components/molecules/ErrorResult";
-import { REGISTRY, getByPath } from "@/lib/resource-registry";
-import { buildSpecColumns } from "@/lib/spec-columns";
+import { getByPath } from "@/lib/resource-registry";
 import { useOperation } from "@/lib/use-operation";
 import { shortDigest } from "@/lib/short-digest";
+import { formatDateTime } from "@/lib/datetime";
 import { toast } from "@/lib/toast";
 
-const TAGS_SPEC = REGISTRY.tags;
+// fmtSize — байты (int64 приходит строкой) в человекочитаемый вид.
+function fmtSize(v: unknown): string {
+  const n = typeof v === "string" ? Number.parseInt(v, 10) : typeof v === "number" ? v : Number.NaN;
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  let x = n;
+  let i = 0;
+  while (x >= 1024 && i < u.length - 1) {
+    x /= 1024;
+    i += 1;
+  }
+  return `${i ? x.toFixed(1) : x} ${u[i]}`;
+}
 
-/** ShortDigestCell — короткий digest (9 симв.) + копирование полного значения. */
-function ShortDigestCell({ value }: { value: unknown }) {
-  const full = typeof value === "string" ? value : "";
-  const short = shortDigest(value);
-  if (!short) return <Typography.Text type="secondary">—</Typography.Text>;
-  return (
-    <Typography.Text code copyable={{ text: full }} style={{ fontSize: 12 }}>
-      {short}…
-    </Typography.Text>
-  );
+async function copyText(text: string, okMsg: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(okMsg);
+  } catch {
+    toast.error("Не удалось скопировать");
+  }
 }
 
 export const RepositoryTagsPanel: FC<{
@@ -49,27 +59,25 @@ export const RepositoryTagsPanel: FC<{
     staleTime: 0,
   });
 
-  const rows = (data?.tags as Record<string, unknown>[] | undefined) ?? [];
-  const invalidateTags = () => void qc.invalidateQueries({ queryKey: tagsKey, refetchType: "all" });
-
-  // Колонки тега из реестра, но Digest — сокращённый (9 симв.) + delete-действие.
-  const columns: Column<Record<string, unknown>>[] = buildSpecColumns(TAGS_SPEC).map((c) =>
-    c.header === "Digest" ? { ...c, cell: (row: Record<string, unknown>) => <ShortDigestCell value={getByPath(row, "digest")} /> } : c,
-  );
-  columns.push({
-    header: "",
-    className: "text-right whitespace-nowrap",
-    cell: (row) => (
-      <TagDeleteAction registryId={registryId} repository={repository} tag={getByPath<string>(row, "tag") ?? ""} onDone={invalidateTags} />
-    ),
+  // endpoint реестра для команды docker pull (registry.kacho.local/<id>). Кэшируем
+  // по реестру; fallback — конвенционный base, пока запрос не вернулся.
+  const { data: reg } = useQuery({
+    queryKey: ["registry", "endpoint", registryId],
+    queryFn: () => registriesApi.get(registryId),
+    enabled: !!registryId,
+    staleTime: 60_000,
   });
+  const pullBase = (reg?.endpoint as string | undefined) ?? `registry.kacho.local/${registryId}`;
+
+  const invalidateTags = () => void qc.invalidateQueries({ queryKey: tagsKey, refetchType: "all" });
+  const rows = (data?.tags as Record<string, unknown>[] | undefined) ?? [];
 
   return (
     <div
       className="kc-surface"
       style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
     >
-      {/* Шапка панели: иконка + имя образа + «теги» + крестик закрытия. */}
+      {/* Шапка панели */}
       <div
         style={{
           flexShrink: 0,
@@ -77,42 +85,83 @@ export const RepositoryTagsPanel: FC<{
           alignItems: "center",
           justifyContent: "space-between",
           gap: 8,
-          padding: "10px 12px 10px 16px",
+          padding: "10px 10px 10px 16px",
           borderBottom: "1px solid var(--kc-border, rgba(128,128,128,0.18))",
         }}
       >
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <ResourceIcon specId={TAGS_SPEC.id} />
-          <span style={{ fontWeight: 600, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <ResourceIcon specId="tags" />
+          <span style={{ fontWeight: 600, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {repository}
           </span>
           <Typography.Text type="secondary" style={{ fontWeight: 400 }}>
-            · теги
+            · теги{rows.length ? ` · ${rows.length}` : ""}
           </Typography.Text>
         </span>
         <Button type="text" size="small" icon={<CloseOutlined />} onClick={onClose} aria-label="Закрыть теги" />
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, minWidth: 0, padding: "8px 8px 12px" }}>
+      {/* Тело: вертикальный список карточек тегов (скролл внутри). */}
+      <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
         {isError ? (
           <ErrorResult error={error} />
+        ) : isLoading ? (
+          <Skeleton active paragraph={{ rows: 3 }} />
+        ) : rows.length === 0 ? (
+          <Empty description="Нет тегов — образ ещё не публиковался (docker push)." />
         ) : (
-          <ResourceTable
-            rows={rows}
-            columns={columns}
-            loading={isLoading}
-            rowKey={(r) => getByPath<string>(r, "tag") ?? getByPath<string>(r, "digest") ?? Math.random().toString()}
-            empty="Нет тегов — образ ещё не публиковался (docker push)."
-          />
+          rows.map((r) => {
+            const tag = getByPath<string>(r, "tag") ?? "";
+            const digest = getByPath<string>(r, "digest") ?? "";
+            const created = getByPath<string>(r, "created_at");
+            const pullRef = `${pullBase}/${repository}:${tag}`;
+            return (
+              <div key={tag || digest} className="kc-tag-card">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <Tag color="blue" style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 13, margin: 0 }}>
+                    {tag}
+                  </Tag>
+                  <TagDeleteAction registryId={registryId} repository={repository} tag={tag} onDone={invalidateTags} />
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                  {shortDigest(digest) ? (
+                    <Typography.Text code copyable={{ text: digest, tooltips: ["Копировать digest", "Скопировано"] }} style={{ fontSize: 12 }}>
+                      {shortDigest(digest)}…
+                    </Typography.Text>
+                  ) : (
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      —
+                    </Typography.Text>
+                  )}
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    · {fmtSize(getByPath(r, "size_bytes"))} · {created ? formatDateTime(created) : "—"}
+                  </Typography.Text>
+                </div>
+
+                {/* Кнопка копирования docker pull (ссылка на скачивание). */}
+                <Tooltip title={`docker pull ${pullRef}`} placement="topLeft">
+                  <Button
+                    size="small"
+                    block
+                    icon={<CopyOutlined />}
+                    onClick={() => copyText(`docker pull ${pullRef}`, "docker pull скопирован")}
+                    style={{ marginTop: 8, justifyContent: "flex-start", fontFamily: "var(--font-mono, monospace)", fontSize: 12 }}
+                  >
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>docker pull …/{tag}</span>
+                  </Button>
+                </Tooltip>
+              </div>
+            );
+          })
         )}
       </div>
     </div>
   );
 };
 
-// TagDeleteAction — per-row удаление тега (async Operation): Popconfirm →
-// registriesApi.deleteTag → extractOperationId → useOperation poll до done →
-// invalidate списка тегов. Ошибка → toast, список сохраняется.
+// TagDeleteAction — per-tag удаление (async Operation): иконка + Popconfirm →
+// deleteTag → extractOperationId → poll → invalidate. Ошибка → toast.
 function TagDeleteAction({
   registryId,
   repository,
@@ -171,15 +220,7 @@ function TagDeleteAction({
       cancelText="Отмена"
       onConfirm={() => mutation.mutate()}
     >
-      <Button
-        type="text"
-        size="small"
-        danger
-        icon={<DeleteOutlined />}
-        loading={pending}
-        onClick={(e) => e.stopPropagation()}
-        aria-label="Удалить тег"
-      />
+      <Button type="text" size="small" danger icon={<DeleteOutlined />} loading={pending} aria-label="Удалить тег" />
     </Popconfirm>
   );
 }
