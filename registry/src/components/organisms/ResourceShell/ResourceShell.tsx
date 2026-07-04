@@ -18,7 +18,7 @@
 import { type ReactNode, useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Descriptions, Spin, Typography } from "antd";
+import { Button, Descriptions, Select, Spin, Typography } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { DetailShell, HeaderSlotPortal, type DetailTab, type DocLink } from "@/components/organisms/DetailShell";
 import { DetailHeaderProvider } from "@/components/molecules/PanelHeader";
@@ -39,7 +39,7 @@ import { detailExtension, type DescItem, type DetailExtCtx } from "@/components/
 import { api } from "@/api/client";
 import { REGISTRY, getByPath, resourceProjectPath, type ResourceSpec } from "@/lib/resource-registry";
 import { buildSpecColumns } from "@/lib/spec-columns";
-import { useResourceList } from "@/lib/use-resource-list";
+import { useResourceList, useResourceListAllPages } from "@/lib/use-resource-list";
 import { useInvalidateResourceList } from "@/lib/use-operation";
 import { DetailOverviewActions } from "@/components/molecules/DetailOverviewActions";
 
@@ -84,6 +84,7 @@ function RelatedTable({
 }) {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [facetVal, setFacetVal] = useState("");
   const [hidden, toggleHidden] = useHiddenColumns(`cols:${childSpec.id}`);
   // Path-scoped child: apiPath с ЕДИНСТВЕННЫМ `{param}`-плейсхолдером (напр.
   // `/registry/v1/registries/{registryId}/repositories`) фетчится по PATH-параметру
@@ -94,24 +95,32 @@ function RelatedTable({
   const childSpecResolved = pathScoped
     ? { ...childSpec, apiPath: childSpec.apiPath.replace(pathParams[0], parentId) }
     : childSpec;
-  const { data, isLoading, isError, error } = useResourceList(
+  // loadAllPages (напр. образы): грузим ВСЕ страницы, чтобы facet видел полный
+  // набор. Оба хука зовём безусловно (стабильный порядок), гейтим через enabled.
+  const wantAll = pathScoped && !!childSpec.loadAllPages;
+  const singleQ = useResourceList(
     childSpecResolved,
-    pathScoped ? null : "project_id",
-    pathScoped ? null : projectId,
+    wantAll ? "__disabled__" : pathScoped ? null : "project_id",
+    wantAll ? null : pathScoped ? null : projectId,
   );
+  const allQ = useResourceListAllPages(childSpecResolved, { enabled: wantAll });
+  const { data, isLoading, isError, error } = wantAll ? allQ : singleQ;
   const all = (data?.[childSpec.payloadKey] as Record<string, unknown>[] | undefined) ?? [];
   // Фильтр по родителю (OR по нескольким полям — напр. subnet→addresses v4∪v6).
   const ownRows = all.filter((r) => filterFields.some((ff) => getByPath<string>(r, ff) === parentId));
 
   // Поиск по имени или идентификатору (client-side).
   const q = search.trim().toLowerCase();
-  const rows = q
+  const searched = q
     ? ownRows.filter((r) => {
         const nm = (getByPath<string>(r, "name") ?? "").toLowerCase();
         const id = (getByPath<string>(r, "id") ?? "").toLowerCase();
         return nm.includes(q) || id.includes(q);
       })
     : ownRows;
+  // Facet-фильтр (напр. тип артефакта): по точному значению поля, поверх поиска.
+  const facet = childSpec.facet;
+  const rows = facet && facetVal ? searched.filter((r) => getByPath<string>(r, facet.path) === facetVal) : searched;
 
   // child-create — панель в зоне 3 shell РОДИТЕЛЯ (URI вложен под родителя).
   const createPath = `${detailBase}/${childSpec.route}/create`;
@@ -147,6 +156,19 @@ function RelatedTable({
       {/* Фильтры (поиск/колонки) поднимаются на уровень имени ресурса (зона 3,
           правый слот) через HeaderSlotPortal — req3. */}
       <HeaderSlotPortal>
+        {facet && (
+          <Select
+            size="small"
+            style={{ minWidth: 150 }}
+            value={facetVal}
+            onChange={setFacetVal}
+            aria-label={facet.label}
+            options={[
+              { value: "", label: `${facet.label}: все` },
+              ...facet.options.map((o) => ({ value: o.value, label: o.label })),
+            ]}
+          />
+        )}
         <TableSearch value={search} onChange={setSearch} />
         <ColumnSettings columns={toggleCols} hidden={hidden} onToggle={toggleHidden} />
       </HeaderSlotPortal>
@@ -154,8 +176,8 @@ function RelatedTable({
         rows={rows}
         columns={columns}
         loading={isLoading}
-        rowKey={(r) => getByPath<string>(r, "id") ?? Math.random().toString()}
-        empty={q ? "По запросу ничего не найдено." : undefined}
+        rowKey={(r) => getByPath<string>(r, "id") ?? getByPath<string>(r, "name") ?? Math.random().toString()}
+        empty={q || facetVal ? "По запросу ничего не найдено." : undefined}
         onRowClick={(r) => {
           // Образ (OCI-репозиторий) адресуется ИМЕНЕМ (нет `id`) и его теги — PATH-scoped ПОД
           // текущим реестром: drill идёт в выделенный tags-route под detailBase

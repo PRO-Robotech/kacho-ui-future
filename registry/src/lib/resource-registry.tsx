@@ -10,6 +10,7 @@ import { setByPath } from "./path";
 import { CopyableId } from "@/components/atoms/CopyableId";
 import { CopyableName } from "@/components/atoms/CopyableName";
 import { LabelsCell } from "@/components/atoms/LabelsCell";
+import { ArtifactTypeTag } from "@/components/atoms/ArtifactTypeTag";
 
 export interface ResourceColumn {
   header: string;
@@ -66,6 +67,12 @@ export interface ResourceSpec {
   internalGetPath?: string;
   /** Связанные дочерние ресурсы — отдельные табы во ResourceShell. */
   related?: { childId: string; filterField: string | string[]; label?: string }[];
+  /** Facet-фильтр списка (client-side по значению поля): напр. тип артефакта
+   *  образа. Рендерит Select рядом с поиском, фильтрует загруженные строки. */
+  facet?: { path: string; label: string; options: { value: string; label: string }[] };
+  /** Грузить ВСЕ страницы списка (follow next_page_token) до рендера — чтобы
+   *  client-side facet видел полный набор (path-scoped дети, напр. образы). */
+  loadAllPages?: boolean;
   /** Ссылки на документацию (блок «Документация» в aside DetailShell). */
   docs?: { label: string; href: string }[];
   /** Welcome-копирайт для пустой таблицы этого ресурса. */
@@ -190,12 +197,28 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     ops: { create: false, update: false, delete: false },
     // Теги — дочерний ресурс образа (ListTags(registryId, repository)).
     related: [{ childId: "tags", filterField: ["registry_id", "repository"], label: "Теги" }],
+    // Facet-фильтр по типу артефакта: отделить docker-образы от helm-чартов.
+    // Значения — enum-имена REST-проекции Repository.artifact_type.
+    facet: {
+      path: "artifact_type",
+      label: "Тип",
+      options: [
+        { value: "ARTIFACT_TYPE_CONTAINER_IMAGE", label: "Docker-образы" },
+        { value: "ARTIFACT_TYPE_HELM_CHART", label: "Helm-чарты" },
+        { value: "ARTIFACT_TYPE_OTHER", label: "Иные" },
+      ],
+    },
+    // Образы пагинируются на handler-слое (next_page_token) — грузим ВСЕ страницы,
+    // чтобы facet видел полный набор (helm-образ со страницы 2+ не пропал).
+    loadAllPages: true,
     columns: [
       {
         header: "Имя",
         path: "name",
         render: (row) => <CopyableName name={(row.name as string) ?? ""} fallback={row.name as string} />,
       },
+      // Тип артефакта — цветной тег (docker-образ / helm-чарт / иной / «—»).
+      { header: "Тип", path: "artifact_type", render: (row) => <ArtifactTypeTag value={row.artifact_type} /> },
       { header: "Тегов", path: "tag_count", format: "text" },
       // proto3 int64 сериализуется в JSON как СТРОКА — рендерим как есть (text).
       { header: "Размер", path: "size_bytes", format: "text" },

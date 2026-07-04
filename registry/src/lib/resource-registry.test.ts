@@ -25,6 +25,21 @@ describe("registry resource-registry", () => {
     expect(repo.fields).toBeUndefined();
   });
 
+  it("repositories — facet artifact_type (docker/helm/иные) + load-all + колонка «Тип»", () => {
+    const repo = getResource("repositories")!;
+    // Facet-фильтр по типу артефакта.
+    expect(repo.facet?.path).toBe("artifact_type");
+    expect(repo.facet?.options.map((o) => o.value)).toEqual([
+      "ARTIFACT_TYPE_CONTAINER_IMAGE",
+      "ARTIFACT_TYPE_HELM_CHART",
+      "ARTIFACT_TYPE_OTHER",
+    ]);
+    // load-all: facet должен видеть полный набор (handler пагинирует).
+    expect(repo.loadAllPages).toBe(true);
+    // Колонка «Тип» присутствует (artifact_type).
+    expect(repo.columns.some((c) => c.header === "Тип" && c.path === "artifact_type")).toBe(true);
+  });
+
   it("tags — единственная мутация delete, nested apiPath, без create/update-полей", () => {
     const tag = getResource("tags")!;
     expect(tag.apiPath).toBe("/registry/v1/registries/{registryId}/repositories/{repository}/tags");
