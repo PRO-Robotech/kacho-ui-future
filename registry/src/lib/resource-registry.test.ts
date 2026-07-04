@@ -48,13 +48,14 @@ describe("registry resource-registry", () => {
     expect(tag.fields).toBeUndefined();
   });
 
-  it("registries name-поле — required + immutable + create-only (входит в OCI-путь)", () => {
+  it("registries name-поле — required + mutable (переименование; OCI-путь по id)", () => {
     const reg = getResource("registries")!;
     const name = reg.fields!.find((f) => f.name === "name")!;
     expect(name.type).toBe("string");
     expect(name.required).toBe(true);
-    expect(name.immutable).toBe(true);
-    expect(name.createOnly).toBe(true);
+    // Имя реестра mutable — редактируется и после создания (OCI-путь по id, не по имени).
+    expect(name.immutable).toBeFalsy();
+    expect(name.createOnly).toBeFalsy();
   });
 
   it("service prefix + project path → сегмент /registry/", () => {

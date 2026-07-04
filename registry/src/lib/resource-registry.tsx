@@ -83,18 +83,17 @@ export interface ResourceSpec {
 
 // ── Общие FormField-константы ──
 
-// Имя реестра — DNS-safe (lowercase + цифры + дефисы), immutable после Create:
-// имя реестра участвует в OCI-пути образа (registry/<name>/<repo>:<tag>).
+// Имя реестра — DNS-safe (lowercase + цифры + дефисы). Mutable: сменить можно и
+// после создания — OCI-путь образа строится по идентификатору реестра, не по имени,
+// поэтому переименование не ломает docker pull/push. Конфликт имени → ALREADY_EXISTS.
 const FIELD_NAME_REGISTRY: FormField = {
   name: "name",
   label: "Имя",
   type: "string",
   required: true,
-  createOnly: true,
-  immutable: true,
   placeholder: "my-registry",
   description:
-    "Строчные латинские буквы, цифры и «-». Должно начинаться с буквы, длина до 63 символов. Неизменяемо после создания — входит в OCI-путь образа.",
+    "Строчные латинские буквы, цифры и «-». Должно начинаться с буквы, длина до 63 символов. Можно изменить позже — имя не входит в OCI-путь (тот по идентификатору).",
   pattern: "^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$",
 };
 
