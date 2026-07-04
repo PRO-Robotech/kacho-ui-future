@@ -157,6 +157,14 @@ function RelatedTable({
         rowKey={(r) => getByPath<string>(r, "id") ?? Math.random().toString()}
         empty={q ? "По запросу ничего не найдено." : undefined}
         onRowClick={(r) => {
+          // Образ (OCI-репозиторий) адресуется ИМЕНЕМ (нет `id`) и его теги — PATH-scoped ПОД
+          // текущим реестром: drill идёт в выделенный tags-route под detailBase
+          // реестра (registryId + repository), а не на плоский flatChildBase.
+          if (childSpec.id === "repositories") {
+            const repo = getByPath<string>(r, "name");
+            if (repo) navigate(`${detailBase}/repositories/${encodeURIComponent(repo)}/tags`);
+            return;
+          }
           const id = getByPath<string>(r, "id");
           if (id) navigate(`${flatChildBase}/${id}`);
         }}

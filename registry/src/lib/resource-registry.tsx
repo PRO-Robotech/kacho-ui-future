@@ -130,9 +130,9 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       { label: "Реестры контейнеров", href: "#" },
       { label: "Публикация образов (docker login / push)", href: "#" },
     ],
-    // Репозитории — дочерний ресурс: появляются при docker push в реестр.
+    // Образы — дочерний ресурс: появляются при docker push в реестр.
     // Отдельный registry-driven таб (read-only список, без CTA «Создать»).
-    related: [{ childId: "repositories", filterField: "registry_id", label: "Репозитории" }],
+    related: [{ childId: "repositories", filterField: "registry_id", label: "Образы" }],
     columns: [
       {
         header: "Имя",
@@ -145,7 +145,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         render: (row) => <CopyableId id={(row.id as string) ?? ""} />,
       },
       { header: "Статус", path: "status", format: "status" },
-      { header: "Репозиториев", path: "repository_count", format: "text" },
+      { header: "Образов", path: "repository_count", format: "text" },
       { header: "Endpoint", path: "endpoint", format: "code" },
       { header: "Дата создания", path: "created_at", format: "datetime" },
       {
@@ -163,15 +163,16 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     }),
     emptyState: {
       title: "Создайте первый реестр",
-      body: "Реестр хранит контейнерные образы проекта. После создания выполните docker login к endpoint реестра и docker push — репозитории появятся автоматически.",
+      body: "Реестр хранит контейнерные образы проекта. После создания выполните docker login к endpoint реестра и docker push — образы появятся автоматически.",
       docs: ["Реестры контейнеров", "Публикация образов (docker login / push)"],
     },
   },
 
-  // ====== repository ======
-  // Repository — read-only: репозитории НЕ создаются через API, они материализуются
-  // при первом docker push в реестр. Единственный вход — ListRepositories(registryId)
-  // (path-scoped под реестром). Мутаций нет.
+  // ====== image (OCI-репозиторий) ======
+  // Образ — read-only: образы НЕ создаются через API, они материализуются при
+  // первом docker push в реестр. Единственный вход — ListRepositories(registryId)
+  // (path-scoped под реестром). Мутаций нет. Wire-идентификаторы (id/route/apiPath/
+  // payloadKey = repositories) — контракт OCI/REST, tenant-facing термин — «образ».
 
   repositories: {
     id: "repositories",
@@ -180,14 +181,14 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     // registriesApi.listRepositories(registryId) (см. api/resources.ts).
     apiPath: "/registry/v1/registries/{registryId}/repositories",
     payloadKey: "repositories",
-    singular: "Репозиторий",
-    plural: "Репозитории",
-    genitive: "Репозитория",
+    singular: "Образ",
+    plural: "Образы",
+    genitive: "Образа",
     serviceTitle: "Container Registry",
     scope: "project",
-    // Read-only: репозиторий появляется через docker push, а не через UI.
+    // Read-only: образ появляется через docker push, а не через UI.
     ops: { create: false, update: false, delete: false },
-    // Теги — дочерний ресурс репозитория (ListTags(registryId, repository)).
+    // Теги — дочерний ресурс образа (ListTags(registryId, repository)).
     related: [{ childId: "tags", filterField: ["registry_id", "repository"], label: "Теги" }],
     columns: [
       {
@@ -203,14 +204,14 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     // Read-only ресурс — form-schema нет.
     template: () => ({}),
     emptyState: {
-      title: "Репозитории появляются автоматически",
-      body: "Репозиторий создаётся при первом docker push образа в этот реестр. Пустой реестр не содержит репозиториев — выполните push, чтобы образ появился здесь.",
+      title: "Образы появляются автоматически",
+      body: "Образ появляется при первом docker push в этот реестр. Пустой реестр не содержит образов — выполните push, чтобы образ появился здесь.",
       docs: ["Публикация образов (docker login / push)"],
     },
   },
 
   // ====== tag ======
-  // Tag — тег образа в репозитории. Read-в основном; единственная мутация —
+  // Tag — версия образа (тег/манифест). Read-в основном; единственная мутация —
   // DeleteTag (async Operation). Создание/обновление тегов — через docker push,
   // не через UI.
 

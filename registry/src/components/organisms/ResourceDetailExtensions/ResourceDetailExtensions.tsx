@@ -4,7 +4,7 @@
 // ResourceShell остаётся generic (Обзор / связанные / Операции / JSON + формы-
 // панели). Доменно-специфичные строки Обзора и header-действия конкретного
 // ресурса подключаются здесь по spec.id. Для Registry: реестр — endpoint /
-// число репозиториев / статус + header-действие «Управление доступом»
+// число образов / статус + header-действие «Управление доступом»
 // (навигация в IAM-remote к созданию AccessBinding на проекте реестра).
 
 import { type ReactNode } from "react";
@@ -63,10 +63,10 @@ function txt(v: unknown): ReactNode {
 export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
   registries: {
     // Доменные строки Обзора реестра: endpoint для docker login/push,
-    // число репозиториев (растёт с push) и статус.
+    // число образов (растёт с push) и статус.
     overviewExtra: ({ data }) => [
       { label: "Endpoint", value: code(getByPath<string>(data, "endpoint")) },
-      { label: "Репозиториев", value: txt(getByPath<number>(data, "repository_count") ?? 0) },
+      { label: "Образов", value: txt(getByPath<number>(data, "repository_count") ?? 0) },
       { label: "Статус", value: <StatusBadge state={getByPath<string>(data, "status")} /> },
     ],
     // «Управление доступом» — доступ к реестру = registry-scoped Role, привязанная

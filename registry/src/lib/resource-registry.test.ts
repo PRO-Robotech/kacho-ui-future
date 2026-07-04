@@ -5,19 +5,22 @@ describe("registry resource-registry", () => {
     expect(Object.keys(REGISTRY).sort()).toEqual(["registries", "repositories", "tags"].sort());
   });
 
-  it("registries spec — apiPath / payloadKey / full CRUD ops + repositories child", () => {
+  it("registries spec — apiPath / payloadKey / full CRUD ops + образы child", () => {
     const reg = getResource("registries")!;
     expect(reg.apiPath).toBe("/registry/v1/registries");
     expect(reg.payloadKey).toBe("registries");
     expect(reg.scope).toBe("project");
     expect(reg.ops).toEqual({ create: true, update: true, delete: true });
-    expect(reg.related).toEqual([{ childId: "repositories", filterField: "registry_id", label: "Репозитории" }]);
+    // Wire-id ребёнка = repositories (OCI/REST-контракт), tenant-facing label — «Образы».
+    expect(reg.related).toEqual([{ childId: "repositories", filterField: "registry_id", label: "Образы" }]);
   });
 
-  it("repositories — read-only (нет create/update/delete), nested apiPath, без fields", () => {
+  it("repositories (образы) — read-only (нет create/update/delete), nested apiPath, без fields", () => {
     const repo = getResource("repositories")!;
     expect(repo.apiPath).toBe("/registry/v1/registries/{registryId}/repositories");
     expect(repo.payloadKey).toBe("repositories");
+    expect(repo.singular).toBe("Образ");
+    expect(repo.plural).toBe("Образы");
     expect(repo.ops).toEqual({ create: false, update: false, delete: false });
     expect(repo.fields).toBeUndefined();
   });

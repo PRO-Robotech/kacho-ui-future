@@ -13,6 +13,7 @@ import { ResourceListPage } from "@/components/organisms/ResourceListPage";
 import { ResourceShell } from "@/components/organisms/ResourceShell";
 import { contextApi } from "@/lib/context-store";
 import { REGISTRY } from "@/lib/resource-registry";
+import { RepositoryTagsPage } from "./RepositoryTagsPage";
 import "@/typography.css";
 import "@/index.css";
 
@@ -78,6 +79,13 @@ export const RegistryPage: FC<RegistryPageProps> = ({ context }) => {
                     <Route path={`${spec.route}/:uid/:tab`} element={<ResourceShell spec={spec} />} />
                   </Route>
                 ))}
+                {/* Теги образа — PATH-scoped (нужны И registryId, И repository):
+                    выделенный route ПОД detail реестра, вне generic-map (тот
+                    умеет только одиночный `:uid`). :uid=registryId, :repository=repo. */}
+                <Route
+                  path="registries/:uid/repositories/:repository/tags"
+                  element={<RepositoryTagsPage />}
+                />
                 <Route path="*" element={<ProjectRegistryDefaultRedirect />} />
               </Routes>
             </RegistryFrame>
