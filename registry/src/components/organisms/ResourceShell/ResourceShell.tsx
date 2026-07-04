@@ -85,7 +85,20 @@ function RelatedTable({
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [hidden, toggleHidden] = useHiddenColumns(`cols:${childSpec.id}`);
-  const { data, isLoading, isError, error } = useResourceList(childSpec, "project_id", projectId);
+  // Path-scoped child: apiPath с ЕДИНСТВЕННЫМ `{param}`-плейсхолдером (напр.
+  // `/registry/v1/registries/{registryId}/repositories`) фетчится по PATH-параметру
+  // родителя, а не project_id-query — ListRepositories берёт registryId из пути.
+  // Интерполируем плейсхолдер parentId'ом и не шлём project_id (path уже скоупит).
+  const pathParams = childSpec.apiPath.match(/\{[^}]+\}/g) ?? [];
+  const pathScoped = pathParams.length === 1 && !!parentId;
+  const childSpecResolved = pathScoped
+    ? { ...childSpec, apiPath: childSpec.apiPath.replace(pathParams[0], parentId) }
+    : childSpec;
+  const { data, isLoading, isError, error } = useResourceList(
+    childSpecResolved,
+    pathScoped ? null : "project_id",
+    pathScoped ? null : projectId,
+  );
   const all = (data?.[childSpec.payloadKey] as Record<string, unknown>[] | undefined) ?? [];
   // Фильтр по родителю (OR по нескольким полям — напр. subnet→addresses v4∪v6).
   const ownRows = all.filter((r) => filterFields.some((ff) => getByPath<string>(r, ff) === parentId));
