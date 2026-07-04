@@ -29,7 +29,7 @@ import { ErrorResult } from "@/components/molecules/ErrorResult";
 import { CopyableId } from "@/components/atoms/CopyableId";
 import { LabelsCell } from "@/components/atoms/LabelsCell";
 import { formatDateTime } from "@/lib/datetime";
-import { RowActionsMenu } from "@/components/molecules/RowActionsMenu";
+import { RowActionsMenu, resourceHasRowActions } from "@/components/molecules/RowActionsMenu";
 import { JsonMonacoView } from "@/components/molecules/JsonMonacoView";
 import { OperationsTab } from "@/components/organisms/OperationsTab";
 import { InlineResourceForm } from "@/components/organisms/InlineResourceForm";
@@ -138,13 +138,17 @@ function RelatedTable({
   };
   const toggleCols: ToggleCol[] = specNoParent.columns.map((c) => ({ key: c.header, label: c.header }));
   const columns = buildSpecColumns(specNoParent, { projectId }).filter((c) => !hidden.has(c.header));
-  columns.push({
-    header: "",
-    className: "text-right whitespace-nowrap",
-    cell: (row) => (
-      <RowActionsMenu spec={childSpec} row={row} basePath={flatChildBase} projectId={projectId || null} editAsPanel />
-    ),
-  });
+  // Столбец действий — только когда у ресурса есть строчные действия. Для read-only
+  // (напр. образы) не рисуем пустой столбец.
+  if (resourceHasRowActions(childSpec)) {
+    columns.push({
+      header: "",
+      className: "text-right whitespace-nowrap",
+      cell: (row) => (
+        <RowActionsMenu spec={childSpec} row={row} basePath={flatChildBase} projectId={projectId || null} editAsPanel />
+      ),
+    });
+  }
 
   if (isError) return <ErrorResult error={error} />;
 

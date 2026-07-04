@@ -9,7 +9,13 @@
 import { type FC, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Empty, Popconfirm, Skeleton, Tag, Tooltip, Typography } from "antd";
-import { CloseOutlined, CopyOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  ClockCircleOutlined,
+  CloseOutlined,
+  CopyOutlined,
+  DeleteOutlined,
+  HddOutlined,
+} from "@ant-design/icons";
 import { ApiError } from "@/api/client";
 import { registriesApi } from "@/api/resources";
 import { extractOperationId } from "@/components/molecules/OperationDialog";
@@ -74,7 +80,7 @@ export const RepositoryTagsPanel: FC<{
 
   return (
     <div
-      className="kc-surface"
+      className="kc-tags-panel"
       style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
     >
       {/* Шапка панели */}
@@ -114,16 +120,28 @@ export const RepositoryTagsPanel: FC<{
             const tag = getByPath<string>(r, "tag") ?? "";
             const digest = getByPath<string>(r, "digest") ?? "";
             const created = getByPath<string>(r, "created_at");
+            const size = fmtSize(getByPath(r, "size_bytes"));
             const pullRef = `${pullBase}/${repository}:${tag}`;
             return (
               <div key={tag || digest} className="kc-tag-card">
-                {/* Строка 1: тег + sha256:digest В ОДНУ ЛИНИЮ + удаление. */}
+                {/* Строка 1: тег-герой + sha256:digest В ОДНУ ЛИНИЮ + удаление. */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                  <Tag color="blue" style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 13, margin: 0, flexShrink: 0 }}>
+                  <Tag
+                    color="blue"
+                    style={{
+                      fontFamily: "var(--font-mono, monospace)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      margin: 0,
+                      flexShrink: 0,
+                      paddingInline: 8,
+                    }}
+                  >
                     {tag}
                   </Tag>
                   {shortDigest(digest) && (
                     <Typography.Text
+                      type="secondary"
                       code
                       copyable={{ text: digest, tooltips: ["Копировать digest", "Скопировано"] }}
                       style={{ fontSize: 11, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -135,29 +153,34 @@ export const RepositoryTagsPanel: FC<{
                   <TagDeleteAction registryId={registryId} repository={repository} tag={tag} onDone={invalidateTags} />
                 </div>
 
-                {/* Строка 2: метаданные (размер · дата). */}
-                <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: "block" }}>
-                  {fmtSize(getByPath(r, "size_bytes"))} · {created ? formatDateTime(created) : "—"}
-                </Typography.Text>
-
-                {/* Строка 3: docker pull + иконка копирования в конце строки. */}
+                {/* Строка 2: метаданные (размер · дата) с иконками — быстрое сканирование. */}
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 4,
+                    gap: 14,
                     marginTop: 8,
-                    padding: "2px 2px 2px 10px",
-                    border: "1px solid var(--kc-border-secondary)",
-                    borderRadius: 8,
+                    color: "var(--kc-text-secondary)",
+                    fontSize: 12,
                   }}
                 >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    <HddOutlined style={{ fontSize: 12 }} /> {size}
+                  </span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                    <ClockCircleOutlined style={{ fontSize: 12 }} /> {created ? formatDateTime(created) : "—"}
+                  </span>
+                </div>
+
+                {/* Строка 3: docker pull — утопленное code-поле + копирование в конце. */}
+                <div className="kc-pull-field">
                   <Typography.Text
                     style={{
                       flex: 1,
                       minWidth: 0,
                       fontFamily: "var(--font-mono, monospace)",
                       fontSize: 12,
+                      color: "var(--kc-text-secondary)",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",

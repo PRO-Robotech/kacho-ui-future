@@ -11,7 +11,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { api } from "@/api/client";
 import { REGISTRY, getByPath, resourceServicePrefix, type ResourceSpec } from "@/lib/resource-registry";
 import { ResourceTable, type Column } from "@/components/organisms/ResourceTable";
-import { RowActionsMenu } from "@/components/molecules/RowActionsMenu";
+import { RowActionsMenu, resourceHasRowActions } from "@/components/molecules/RowActionsMenu";
 import { PanelHeader } from "@/components/molecules/PanelHeader";
 import { ResourceIcon } from "@/components/organisms/form/ResourceIcon";
 import { type ReactNode } from "react";
@@ -151,19 +151,23 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue }
     projectId: params.projectId,
   }).filter((c) => !hidden.has(c.header));
 
-  columns.push({
-    header: "",
-    className: "text-right whitespace-nowrap",
-    cell: (row) => (
-      <RowActionsMenu
-        spec={spec}
-        row={row}
-        basePath={basePath}
-        projectId={filterValue ?? null}
-        editAsPanel={panelForms}
-      />
-    ),
-  });
+  // Столбец действий — только когда у ресурса есть строчные действия
+  // (read-only ресурсы не получают пустой столбец).
+  if (resourceHasRowActions(spec)) {
+    columns.push({
+      header: "",
+      className: "text-right whitespace-nowrap",
+      cell: (row) => (
+        <RowActionsMenu
+          spec={spec}
+          row={row}
+          basePath={basePath}
+          projectId={filterValue ?? null}
+          editAsPanel={panelForms}
+        />
+      ),
+    });
+  }
 
   // Пустой список (без активных пользовательских фильтров) → welcome, как у
   // дочерних таблиц. По filteredItems (учитывает intrinsic-фильтр addresses

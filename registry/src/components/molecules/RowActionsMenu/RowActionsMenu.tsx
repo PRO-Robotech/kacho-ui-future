@@ -1,6 +1,7 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Dropdown } from "antd";
+import { Button, Dropdown, Tooltip } from "antd";
 import type { MenuProps } from "antd";
 import {
   MoreOutlined,
@@ -27,6 +28,21 @@ interface Props {
   editAsPanel?: boolean;
 }
 
+// RowAction — единичное строчное действие: иконка + подпись + обработчик.
+// Общий тип для обоих способов рендера (инлайн-кнопка / пункт кебаба).
+type RowAction = { key: string; icon: ReactNode; label: string; danger?: boolean; run: () => void };
+
+// Ресурсы без семантики cross-project «Переместить»: системные + OCI-сущности
+// реестра (registry/образ/тег).
+const MOVE_INCAPABLE = ["accounts", "projects", "regions", "zones", "address-pools", "registries", "repositories", "tags"];
+
+// resourceHasRowActions — есть ли у ресурса хоть одно строчное действие
+// (мутация или move/create-subnet). Совпадает с логикой mutationActions ниже —
+// таблицы используют его, чтобы не рисовать пустой столбец действий.
+export function resourceHasRowActions(spec: ResourceSpec): boolean {
+  return spec.ops.update || spec.ops.delete || !MOVE_INCAPABLE.includes(spec.id) || spec.id === "networks";
+}
+
 export function RowActionsMenu({ spec, row, basePath, projectId, editAsPanel }: Props) {
   const navigate = useNavigate();
   const params = useParams();
@@ -42,90 +58,115 @@ export function RowActionsMenu({ spec, row, basePath, projectId, editAsPanel }: 
   const isDefaultSg = spec.id === "security-groups" && Boolean(getByPath<boolean>(row, "default_for_network"));
   const showDelete = spec.ops.delete && !isDefaultSg;
 
-  const moveCapable = !["accounts", "projects", "regions", "zones", "address-pools"].includes(spec.id);
+  // Move — заглушка cross-project перемещения. Неприменима к системным ресурсам
+  // и к OCI-сущностям реестра (registry/образ/тег) — у них нет такой семантики.
+  const moveCapable = !MOVE_INCAPABLE.includes(spec.id);
 
   const isNetwork = spec.id === "networks";
   const currentProjectId = params.projectId ?? projectId ?? null;
 
-  // antd Dropdown menu items рендерятся в portal, но React-event bubble идёт
-  // через virtual-tree (а не DOM-tree). Без stopPropagation на domEvent клик по
-  // menu-item доходит до строки таблицы и триггерит onRowClick → навигация
-  // съедает наш setOpen / navigate. domEvent.stopPropagation() обязательно
-  // на каждом item.
+  // «Просмотр»/«Открыть» — чистая навигация в detail; не считается мутирующим
+  // действием (строка и так открывается кликом).
+  const openAction: RowAction = {
+    key: "open",
+    icon: drillIsChild ? <ArrowRightOutlined /> : <EyeOutlined />,
+    label: drillIsChild ? "Открыть" : "Просмотр",
+    run: () => navigate(drillTarget),
+  };
+
+  // Мутирующие действия строки.
+  const mutationActions: RowAction[] = [];
+  if (isNetwork && currentProjectId) {
+    mutationActions.push({
+      key: "create-subnet",
+      icon: <PlusOutlined />,
+      label: "Создать подсеть",
+      // editAsPanel: форма-панель в зоне 3 shell сети (child-create).
+      // Иначе (legacy list-модалка): ?modal-флаг над текущей страницей.
+      run: () =>
+        navigate(
+          editAsPanel
+            ? `/projects/${currentProjectId}/vpc/networks/${id}/subnets/create`
+            : `/projects/${currentProjectId}/vpc/networks/${id}?modal=subnets-create&networkId=${id}`,
+        ),
+    });
+  }
+  if (spec.ops.update) {
+    mutationActions.push({
+      key: "edit",
+      icon: <EditOutlined />,
+      label: "Редактировать",
+      // editAsPanel (ResourceShell-контекст): форма-панель в зоне 3
+      //   (`${basePath}/${id}/edit` → ResourceShell mode=edit), как создание.
+      // Иначе (list-страница): модалка через ?modal-флаг.
+      run: () => navigate(editAsPanel ? `${basePath}/${id}/edit` : `${basePath}?modal=${spec.id}-edit&id=${id}`),
+    });
+  }
+  if (moveCapable) {
+    mutationActions.push({ key: "move", icon: <DragOutlined />, label: "Переместить", run: () => setMoveOpen(true) });
+  }
+  if (showDelete) {
+    mutationActions.push({
+      key: "delete",
+      icon: <DeleteOutlined />,
+      label: "Удалить",
+      danger: true,
+      run: () => setDeleteOpen(true),
+    });
+  }
+
+  // Дисциплина «не прятать одиночное действие за кебабом»:
+  //   0 мутаций → строка открывается кликом, отдельная кнопка не нужна;
+  //   1 мутация → показываем её инлайн иконкой (напр. «Удалить»), а не ⋮;
+  //   ≥2 мутаций → кебаб с полным меню (включая «Просмотр»).
+  const singleInline = mutationActions.length === 1 ? mutationActions[0] : null;
+
+  // stop — antd Dropdown menu-items рендерятся в portal, но React-event bubble
+  // идёт через virtual-tree (не DOM-tree). Без stopPropagation клик по item
+  // доходит до строки → onRowClick съедает наш navigate/setOpen.
   const stop =
     (fn: () => void) =>
     ({ domEvent }: { domEvent: React.MouseEvent | React.KeyboardEvent }) => {
       domEvent.stopPropagation();
       fn();
     };
+  const stopRun = (fn: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
 
-  const items: MenuProps["items"] = [
-    {
-      key: "open",
-      icon: drillIsChild ? <ArrowRightOutlined /> : <EyeOutlined />,
-      label: drillIsChild ? "Открыть" : "Просмотр",
-      onClick: stop(() => navigate(drillTarget)),
-    },
-    isNetwork && currentProjectId
-      ? {
-          key: "create-subnet",
-          icon: <PlusOutlined />,
-          label: "Создать подсеть",
-          // editAsPanel: форма-панель в зоне 3 shell сети (child-create).
-          // Иначе (legacy list-модалка): ?modal-флаг над текущей страницей.
-          onClick: stop(() =>
-            navigate(
-              editAsPanel
-                ? `/projects/${currentProjectId}/vpc/networks/${id}/subnets/create`
-                : `/projects/${currentProjectId}/vpc/networks/${id}?modal=subnets-create&networkId=${id}`,
-            ),
-          ),
-        }
-      : null,
-    spec.ops.update
-      ? {
-          key: "edit",
-          icon: <EditOutlined />,
-          label: "Редактировать",
-          // editAsPanel (ResourceShell-контекст): форма-панель в зоне 3
-          //   (`${basePath}/${id}/edit` → ResourceShell mode=edit), как создание.
-          // Иначе (list-страница, KAC-70): модалка через ?modal-флаг.
-          onClick: stop(() =>
-            navigate(editAsPanel ? `${basePath}/${id}/edit` : `${basePath}?modal=${spec.id}-edit&id=${id}`),
-          ),
-        }
-      : null,
-    moveCapable
-      ? {
-          key: "move",
-          icon: <DragOutlined />,
-          label: "Переместить",
-          onClick: stop(() => setMoveOpen(true)),
-        }
-      : null,
-    showDelete ? { type: "divider" as const } : null,
-    showDelete
-      ? {
-          key: "delete",
-          icon: <DeleteOutlined />,
-          label: "Удалить",
-          danger: true,
-          onClick: stop(() => setDeleteOpen(true)),
-        }
-      : null,
-  ].filter(Boolean) as MenuProps["items"];
+  const menuItems: MenuProps["items"] = [
+    { key: openAction.key, icon: openAction.icon, label: openAction.label, onClick: stop(openAction.run) },
+  ];
+  for (const a of mutationActions) {
+    if (a.key === "delete") menuItems.push({ type: "divider" as const });
+    menuItems.push({ key: a.key, icon: a.icon, label: a.label, danger: a.danger, onClick: stop(a.run) });
+  }
 
   return (
     <>
-      <Dropdown menu={{ items }} trigger={["click"]} placement="bottomRight">
-        <Button
-          type="text"
-          size="small"
-          icon={<MoreOutlined />}
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Действия"
-        />
-      </Dropdown>
+      {mutationActions.length === 0 ? null : singleInline ? (
+        <Tooltip title={singleInline.label} placement="topRight">
+          <Button
+            type="text"
+            size="small"
+            danger={singleInline.danger}
+            icon={singleInline.icon}
+            onClick={stopRun(singleInline.run)}
+            aria-label={singleInline.label}
+          />
+        </Tooltip>
+      ) : (
+        <Dropdown menu={{ items: menuItems }} trigger={["click"]} placement="bottomRight">
+          <Button
+            type="text"
+            size="small"
+            icon={<MoreOutlined />}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Действия"
+          />
+        </Dropdown>
+      )}
 
       {showDelete && (
         <DeleteDialog

@@ -237,25 +237,50 @@ body.ant-modal-open {
   box-shadow: var(--kc-shadow-sm);
 }
 
-/* Карточка тега в боковой панели образа (RepositoryTagsPanel) — компактная,
- * theme-aware, с мягким hover. Стопкой вертикально, без h-скролла. */
+/* Боковая панель тегов образа (RepositoryTagsPanel) — самостоятельный слой над
+ * таблицей образов: рецессивный фон-«лоток» (page-уровень) + мягкая тень, чтобы
+ * панель не сливалась с поверхностью таблицы, а читалась отдельным слоем. */
+.kc-tags-panel {
+  background: var(--kc-page);
+  border: 1px solid var(--kc-border);
+  border-radius: 12px;
+  box-shadow: var(--kc-shadow-md);
+}
+
+/* Карточка тега — приподнятый блок на «лотке» панели: контрастная elevated-
+ * поверхность + тень + лёгкий lift на hover (глубина «одно над другим»). */
 .kc-tag-card {
-  background: var(--kc-container-secondary, rgba(128, 128, 128, 0.06));
+  background: var(--kc-elevated);
   border: 1px solid var(--kc-border-secondary);
-  border-radius: 10px;
-  padding: 10px 12px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: var(--kc-shadow-sm);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 .kc-tag-card:hover {
-  border-color: var(--kc-primary, rgba(64, 128, 255, 0.5));
-  box-shadow: var(--kc-shadow-sm);
+  transform: translateY(-1px);
+  border-color: var(--kc-primary);
+  box-shadow: var(--kc-shadow-md);
+}
+
+/* Команда docker pull внутри карточки — «утопленное» code-поле (page-уровень
+ * внутри elevated-карточки даёт inset-эффект). */
+.kc-pull-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 2px 2px 2px 10px;
+  background: var(--kc-page);
+  border: 1px solid var(--kc-border-secondary);
+  border-radius: 8px;
 }
 
 /* Подсветка выбранной строки таблицы образов — когда её теги открыты в боковой
  * панели (связь панель↔строка). Перебивает zebra-striping + красит sticky-ячейку. */
 .kc-table .ant-table-row.kc-row-selected > .ant-table-cell,
 .kc-table .ant-table-row.kc-row-selected > .ant-table-cell-fix-left {
-  background: var(--kc-primary-bg, rgba(64, 128, 255, 0.16)) !important;
+  background: var(--kc-primary-bg, rgb(64 128 255 / 0.16)) !important;
 }
 .kc-table .ant-table-row.kc-row-selected > .ant-table-cell:first-child {
   box-shadow: inset 3px 0 0 var(--kc-primary, #4080ff);
