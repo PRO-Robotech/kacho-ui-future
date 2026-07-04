@@ -117,40 +117,64 @@ export const RepositoryTagsPanel: FC<{
             const pullRef = `${pullBase}/${repository}:${tag}`;
             return (
               <div key={tag || digest} className="kc-tag-card">
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <Tag color="blue" style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 13, margin: 0 }}>
+                {/* Строка 1: тег + sha256:digest В ОДНУ ЛИНИЮ + удаление. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <Tag color="blue" style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 13, margin: 0, flexShrink: 0 }}>
                     {tag}
                   </Tag>
+                  {shortDigest(digest) && (
+                    <Typography.Text
+                      code
+                      copyable={{ text: digest, tooltips: ["Копировать digest", "Скопировано"] }}
+                      style={{ fontSize: 11, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    >
+                      sha256:{shortDigest(digest)}…
+                    </Typography.Text>
+                  )}
+                  <span style={{ flex: 1 }} />
                   <TagDeleteAction registryId={registryId} repository={repository} tag={tag} onDone={invalidateTags} />
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
-                  {shortDigest(digest) ? (
-                    <Typography.Text code copyable={{ text: digest, tooltips: ["Копировать digest", "Скопировано"] }} style={{ fontSize: 12 }}>
-                      {shortDigest(digest)}…
-                    </Typography.Text>
-                  ) : (
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      —
-                    </Typography.Text>
-                  )}
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    · {fmtSize(getByPath(r, "size_bytes"))} · {created ? formatDateTime(created) : "—"}
-                  </Typography.Text>
-                </div>
+                {/* Строка 2: метаданные (размер · дата). */}
+                <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: "block" }}>
+                  {fmtSize(getByPath(r, "size_bytes"))} · {created ? formatDateTime(created) : "—"}
+                </Typography.Text>
 
-                {/* Кнопка копирования docker pull (ссылка на скачивание). */}
-                <Tooltip title={`docker pull ${pullRef}`} placement="topLeft">
-                  <Button
-                    size="small"
-                    block
-                    icon={<CopyOutlined />}
-                    onClick={() => copyText(`docker pull ${pullRef}`, "docker pull скопирован")}
-                    style={{ marginTop: 8, justifyContent: "flex-start", fontFamily: "var(--font-mono, monospace)", fontSize: 12 }}
+                {/* Строка 3: docker pull + иконка копирования в конце строки. */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    marginTop: 8,
+                    padding: "2px 2px 2px 10px",
+                    border: "1px solid var(--kc-border-secondary)",
+                    borderRadius: 8,
+                  }}
+                >
+                  <Typography.Text
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      fontFamily: "var(--font-mono, monospace)",
+                      fontSize: 12,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
                   >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>docker pull …/{tag}</span>
-                  </Button>
-                </Tooltip>
+                    docker pull …/{tag}
+                  </Typography.Text>
+                  <Tooltip title={`Копировать: docker pull ${pullRef}`} placement="topRight">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<CopyOutlined />}
+                      onClick={() => copyText(`docker pull ${pullRef}`, "docker pull скопирован")}
+                      aria-label="Копировать docker pull"
+                    />
+                  </Tooltip>
+                </div>
               </div>
             );
           })

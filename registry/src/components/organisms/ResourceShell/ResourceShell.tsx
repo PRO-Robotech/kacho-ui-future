@@ -185,6 +185,7 @@ function RelatedTable({
             columns={columns}
             loading={isLoading}
             stickyFirst={!!tagsRepo}
+            selectedRowKey={tagsRepo}
             rowKey={(r) => getByPath<string>(r, "id") ?? getByPath<string>(r, "name") ?? Math.random().toString()}
             empty={q || facetVal ? "По запросу ничего не найдено." : undefined}
             onRowClick={(r) => {
@@ -203,7 +204,7 @@ function RelatedTable({
         {childSpec.id === "repositories" && (
           <div
             style={{
-              width: tagsRepo ? 460 : 0,
+              width: tagsRepo ? 360 : 0,
               flexShrink: 0,
               minHeight: 0,
               overflow: "hidden",

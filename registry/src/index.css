@@ -251,6 +251,16 @@ body.ant-modal-open {
   box-shadow: var(--kc-shadow-sm);
 }
 
+/* Подсветка выбранной строки таблицы образов — когда её теги открыты в боковой
+ * панели (связь панель↔строка). Перебивает zebra-striping + красит sticky-ячейку. */
+.kc-table .ant-table-row.kc-row-selected > .ant-table-cell,
+.kc-table .ant-table-row.kc-row-selected > .ant-table-cell-fix-left {
+  background: var(--kc-primary-bg, rgba(64, 128, 255, 0.16)) !important;
+}
+.kc-table .ant-table-row.kc-row-selected > .ant-table-cell:first-child {
+  box-shadow: inset 3px 0 0 var(--kc-primary, #4080ff);
+}
+
 /* Federated host integration.
  * VPC owns PageHeaderSlot state, but the visual slot must sit in the host
  * header row. The host currently has no cross-remote header-slot API, so this

@@ -29,6 +29,9 @@ interface Props<T> {
   /** Залипающая первая колонка (напр. «Имя») при горизонтальном скролле —
    *  когда таблицу сжимает боковая панель. */
   stickyFirst?: boolean;
+  /** rowKey выбранной строки — подсвечивается (напр. образ, чьи теги открыты
+   *  в боковой панели). Связывает панель с исходной строкой таблицы. */
+  selectedRowKey?: string | null;
 }
 
 export function ResourceTable<T extends object>({
@@ -40,6 +43,7 @@ export function ResourceTable<T extends object>({
   defaultSort,
   onRowClick,
   stickyFirst,
+  selectedRowKey,
 }: Props<T>) {
   const antColumns: ColumnType<T>[] = useMemo(
     () =>
@@ -51,7 +55,11 @@ export function ResourceTable<T extends object>({
           render: (_value, row) => c.cell(row),
         };
         // Первая колонка залипает слева при h-скролле (таблицу сжимает панель).
-        if (stickyFirst && idx === 0) col.fixed = "left";
+        // AntD требует ЯВНУЮ width у fixed-колонки — иначе fixed игнорируется.
+        if (stickyFirst && idx === 0) {
+          col.fixed = "left";
+          col.width = 220;
+        }
         if (c.sortKey) {
           col.sorter = (a: T, b: T) => {
             const av = getByPath(a, c.sortKey!);
@@ -106,6 +114,8 @@ export function ResourceTable<T extends object>({
     // скроллится вертикально под фиксированной шапкой колонок.
     scroll: { x: "max-content", y: scrollY },
     loading,
+    // Подсветка выбранной строки (образ с открытой панелью тегов).
+    rowClassName: selectedRowKey ? (row) => (rowKey(row) === selectedRowKey ? "kc-row-selected" : "") : undefined,
     locale: {
       emptyText: empty ?? "Ресурсов не найдено",
     },
