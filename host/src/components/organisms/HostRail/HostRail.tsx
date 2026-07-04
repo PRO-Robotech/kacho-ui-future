@@ -162,6 +162,7 @@ export const HostRail: FC<{
       import("dashboard/navigation"),
       import("vpc/navigation"),
       import("nlb/navigation"),
+      import("registry/navigation"),
       import("iam/navigation"),
     ])
       .then((results) => {

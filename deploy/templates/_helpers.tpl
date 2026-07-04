@@ -170,6 +170,41 @@ app.kubernetes.io/name: {{ include "ui.nlbName" . }}
 app.kubernetes.io/component: nlb-remote
 {{- end -}}
 
+{{- define "ui.registryName" -}}
+{{- default "ui-registry" .Values.registry.name -}}
+{{- end -}}
+
+{{- define "ui.registryImage" -}}
+{{- if .Values.registry.image -}}
+{{- .Values.registry.image -}}
+{{- else -}}
+{{- $hostImage := include "ui.hostImage" . -}}
+{{- if contains "host" $hostImage -}}
+{{- replace "host" "registry" $hostImage -}}
+{{- else -}}
+{{- "kacho-ui-future-registry:dev" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.registryImagePullPolicy" -}}
+{{- default (include "ui.hostImagePullPolicy" .) .Values.registry.imagePullPolicy -}}
+{{- end -}}
+
+{{- define "ui.registryUpstream" -}}
+{{- if .Values.host.upstreams.registry -}}
+{{- .Values.host.upstreams.registry -}}
+{{- else -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "ui.registryName" .) .Release.Namespace .Values.registry.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.registrySelectorLabels" -}}
+app: {{ include "ui.registryName" . }}
+app.kubernetes.io/name: {{ include "ui.registryName" . }}
+app.kubernetes.io/component: registry-remote
+{{- end -}}
+
 {{- define "ui.hostResources" -}}
 {{- if .Values.host.resources }}
 {{- toYaml .Values.host.resources }}

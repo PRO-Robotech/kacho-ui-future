@@ -60,6 +60,8 @@ spec:
               value: {{ include "ui.iamUpstream" . | quote }}
             - name: KACHO_UI_NLB_UPSTREAM
               value: {{ include "ui.nlbUpstream" . | quote }}
+            - name: KACHO_UI_REGISTRY_UPSTREAM
+              value: {{ include "ui.registryUpstream" . | quote }}
           volumeMounts:
             - name: nginx-template
               mountPath: /etc/nginx/templates/default.conf.template

@@ -42,6 +42,7 @@ host:
     vpc: ""
     iam: ""
     nlb: ""
+    registry: ""
 
 dashboard:
   name: ui-dashboard
@@ -111,6 +112,27 @@ nlb:
   replicas: 1
   # When empty, the chart derives this from the host image by replacing "host"
   # with "nlb", e.g. kacho-ui-future-host:dev -> kacho-ui-future-nlb:dev.
+  image: ""
+  imagePullPolicy: ""
+  port: 8080
+  resources:
+    requests:
+      cpu: 30m
+      memory: 64Mi
+    limits:
+      cpu: 180m
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+
+registry:
+  name: ui-registry
+  replicas: 1
+  # When empty, the chart derives this from the host image by replacing "host"
+  # with "registry", e.g. kacho-ui-future-host:dev -> kacho-ui-future-registry:dev.
   image: ""
   imagePullPolicy: ""
   port: 8080
