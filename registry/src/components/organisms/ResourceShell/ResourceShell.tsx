@@ -42,6 +42,7 @@ import { buildSpecColumns } from "@/lib/spec-columns";
 import { useResourceList, useResourceListAllPages } from "@/lib/use-resource-list";
 import { useInvalidateResourceList } from "@/lib/use-operation";
 import { DetailOverviewActions } from "@/components/molecules/DetailOverviewActions";
+import { RepositoryTagsDrawer } from "@/components/organisms/RepositoryTagsDrawer";
 
 export type ResourceShellMode = "edit" | "child-create";
 
@@ -85,6 +86,8 @@ function RelatedTable({
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [facetVal, setFacetVal] = useState("");
+  // Открытый образ для боковой панели тегов (repositories → Drawer, без перехода).
+  const [tagsRepo, setTagsRepo] = useState<string | null>(null);
   const [hidden, toggleHidden] = useHiddenColumns(`cols:${childSpec.id}`);
   // Path-scoped child: apiPath с ЕДИНСТВЕННЫМ `{param}`-плейсхолдером (напр.
   // `/registry/v1/registries/{registryId}/repositories`) фетчится по PATH-параметру
@@ -179,18 +182,20 @@ function RelatedTable({
         rowKey={(r) => getByPath<string>(r, "id") ?? getByPath<string>(r, "name") ?? Math.random().toString()}
         empty={q || facetVal ? "По запросу ничего не найдено." : undefined}
         onRowClick={(r) => {
-          // Образ (OCI-репозиторий) адресуется ИМЕНЕМ (нет `id`) и его теги — PATH-scoped ПОД
-          // текущим реестром: drill идёт в выделенный tags-route под detailBase
-          // реестра (registryId + repository), а не на плоский flatChildBase.
+          // Образ (OCI-репозиторий) адресуется ИМЕНЕМ (нет `id`) — клик открывает
+          // боковую панель (Drawer) с тегами, БЕЗ перехода на отдельную страницу.
           if (childSpec.id === "repositories") {
             const repo = getByPath<string>(r, "name");
-            if (repo) navigate(`${detailBase}/repositories/${encodeURIComponent(repo)}/tags`);
+            if (repo) setTagsRepo(repo);
             return;
           }
           const id = getByPath<string>(r, "id");
           if (id) navigate(`${flatChildBase}/${id}`);
         }}
       />
+      {childSpec.id === "repositories" && (
+        <RepositoryTagsDrawer registryId={parentId} repository={tagsRepo} onClose={() => setTagsRepo(null)} />
+      )}
     </div>
   );
 }
