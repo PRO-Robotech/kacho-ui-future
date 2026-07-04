@@ -121,6 +121,7 @@ export const RepositoryTagsPanel: FC<{
             const digest = getByPath<string>(r, "digest") ?? "";
             const created = getByPath<string>(r, "created_at");
             const size = fmtSize(getByPath(r, "size_bytes"));
+            const arch = getByPath<string>(r, "architecture");
             const pullRef = `${pullBase}/${repository}:${tag}`;
             return (
               <div key={tag || digest} className="kc-tag-card">
@@ -170,6 +171,11 @@ export const RepositoryTagsPanel: FC<{
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
                     <ClockCircleOutlined style={{ fontSize: 12 }} /> {created ? formatDateTime(created) : "—"}
                   </span>
+                  {arch && (
+                    <Tag bordered style={{ margin: 0, fontFamily: "var(--font-mono, monospace)", fontSize: 11, lineHeight: "18px" }}>
+                      {arch}
+                    </Tag>
+                  )}
                 </div>
 
                 {/* Строка 3: docker pull — утопленное code-поле + копирование в конце. */}
