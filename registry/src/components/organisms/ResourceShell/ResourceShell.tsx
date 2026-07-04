@@ -121,9 +121,16 @@ function RelatedTable({
         return nm.includes(q) || id.includes(q);
       })
     : ownRows;
-  // Facet-фильтр (напр. тип артефакта): по точному значению поля, поверх поиска.
+  // Facet-фильтр (напр. тип артефакта): поверх поиска. Поле-массив (artifact_types
+  // смешанного репозитория) — по включению; скаляр — по точному значению.
   const facet = childSpec.facet;
-  const rows = facet && facetVal ? searched.filter((r) => getByPath<string>(r, facet.path) === facetVal) : searched;
+  const rows =
+    facet && facetVal
+      ? searched.filter((r) => {
+          const v = getByPath<unknown>(r, facet.path);
+          return Array.isArray(v) ? v.includes(facetVal) : v === facetVal;
+        })
+      : searched;
 
   // child-create — панель в зоне 3 shell РОДИТЕЛЯ (URI вложен под родителя).
   const createPath = `${detailBase}/${childSpec.route}/create`;
@@ -193,8 +200,8 @@ function RelatedTable({
             rowKey={(r) => getByPath<string>(r, "id") ?? getByPath<string>(r, "name") ?? Math.random().toString()}
             empty={q || facetVal ? "По запросу ничего не найдено." : undefined}
             onRowClick={(r) => {
-              // Образ адресуется ИМЕНЕМ (нет `id`) — клик выдвигает боковую панель
-              // тегов В ЛАЙАУТЕ (раздвигает таблицу), без перехода на страницу.
+              // Репозиторий адресуется ИМЕНЕМ (нет `id`) — клик выдвигает боковую
+              // панель тегов В ЛАЙАУТЕ (раздвигает таблицу), без перехода на страницу.
               if (childSpec.id === "repositories") {
                 const repo = getByPath<string>(r, "name");
                 if (repo) setTagsRepo(repo);

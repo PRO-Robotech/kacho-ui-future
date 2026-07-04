@@ -5,30 +5,30 @@ describe("registry resource-registry", () => {
     expect(Object.keys(REGISTRY).sort()).toEqual(["registries", "repositories", "tags"].sort());
   });
 
-  it("registries spec — apiPath / payloadKey / full CRUD ops + образы child", () => {
+  it("registries spec — apiPath / payloadKey / full CRUD ops + репозитории child", () => {
     const reg = getResource("registries")!;
     expect(reg.apiPath).toBe("/registry/v1/registries");
     expect(reg.payloadKey).toBe("registries");
     expect(reg.scope).toBe("project");
     expect(reg.ops).toEqual({ create: true, update: true, delete: true });
-    // Wire-id ребёнка = repositories (OCI/REST-контракт), tenant-facing label — «Образы».
-    expect(reg.related).toEqual([{ childId: "repositories", filterField: "registry_id", label: "Образы" }]);
+    // Wire-id ребёнка = repositories (OCI/REST-контракт), tenant-facing label — «Репозитории».
+    expect(reg.related).toEqual([{ childId: "repositories", filterField: "registry_id", label: "Репозитории" }]);
   });
 
-  it("repositories (образы) — read-only (нет create/update/delete), nested apiPath, без fields", () => {
+  it("repositories (репозитории) — read-only (нет create/update/delete), nested apiPath, без fields", () => {
     const repo = getResource("repositories")!;
     expect(repo.apiPath).toBe("/registry/v1/registries/{registryId}/repositories");
     expect(repo.payloadKey).toBe("repositories");
-    expect(repo.singular).toBe("Образ");
-    expect(repo.plural).toBe("Образы");
+    expect(repo.singular).toBe("Репозиторий");
+    expect(repo.plural).toBe("Репозитории");
     expect(repo.ops).toEqual({ create: false, update: false, delete: false });
     expect(repo.fields).toBeUndefined();
   });
 
-  it("repositories — facet artifact_type (docker/helm/иные) + load-all + колонка «Тип»", () => {
+  it("repositories — facet artifact_types (docker/helm/иные, include-match) + load-all + колонка «Тип»", () => {
     const repo = getResource("repositories")!;
-    // Facet-фильтр по типу артефакта.
-    expect(repo.facet?.path).toBe("artifact_type");
+    // Facet-фильтр по массиву типов артефакта (смешанный репозиторий → include).
+    expect(repo.facet?.path).toBe("artifact_types");
     expect(repo.facet?.options.map((o) => o.value)).toEqual([
       "ARTIFACT_TYPE_CONTAINER_IMAGE",
       "ARTIFACT_TYPE_HELM_CHART",
@@ -36,8 +36,8 @@ describe("registry resource-registry", () => {
     ]);
     // load-all: facet должен видеть полный набор (handler пагинирует).
     expect(repo.loadAllPages).toBe(true);
-    // Колонка «Тип» присутствует (artifact_type).
-    expect(repo.columns.some((c) => c.header === "Тип" && c.path === "artifact_type")).toBe(true);
+    // Колонка «Тип» присутствует (artifact_types, multi-icon).
+    expect(repo.columns.some((c) => c.header === "Тип" && c.path === "artifact_types")).toBe(true);
   });
 
   it("tags — единственная мутация delete, nested apiPath, без create/update-полей", () => {

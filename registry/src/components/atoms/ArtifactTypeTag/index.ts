@@ -1,1 +1,1 @@
-export { ArtifactTypeTag, artifactTypeLabel } from "./ArtifactTypeTag";
+export { ArtifactTypeTag, ArtifactTypesTag, artifactTypeLabel, artifactTypeLabels } from "./ArtifactTypeTag";

@@ -33,7 +33,7 @@ interface Props {
 type RowAction = { key: string; icon: ReactNode; label: string; danger?: boolean; run: () => void };
 
 // Ресурсы без семантики cross-project «Переместить»: системные + OCI-сущности
-// реестра (registry/образ/тег).
+// реестра (registry/репозиторий/тег).
 const MOVE_INCAPABLE = ["accounts", "projects", "regions", "zones", "address-pools", "registries", "repositories", "tags"];
 
 // resourceHasRowActions — есть ли у ресурса хоть одно строчное действие
@@ -59,7 +59,7 @@ export function RowActionsMenu({ spec, row, basePath, projectId, editAsPanel }: 
   const showDelete = spec.ops.delete && !isDefaultSg;
 
   // Move — заглушка cross-project перемещения. Неприменима к системным ресурсам
-  // и к OCI-сущностям реестра (registry/образ/тег) — у них нет такой семантики.
+  // и к OCI-сущностям реестра (registry/репозиторий/тег) — у них нет такой семантики.
   const moveCapable = !MOVE_INCAPABLE.includes(spec.id);
 
   const isNetwork = spec.id === "networks";

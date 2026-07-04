@@ -1,10 +1,11 @@
-// RepositoryTagsPanel — встроенная боковая панель тегов образа. Живёт ВНУТРИ
-// зоны контента (сиблинг таблицы образов): раздвигает таблицу вбок, не оверлей.
+// RepositoryTagsPanel — встроенная боковая панель тегов репозитория. Живёт
+// ВНУТРИ зоны контента (сиблинг таблицы репозиториев): раздвигает таблицу вбок,
+// не оверлей.
 //
 // UX: вместо широкой таблицы — вертикальный список карточек тегов (компактно на
 // узком экране, без горизонтального скролла). Каждая карточка: тег + короткий
-// digest (9 симв., копируемый) + размер/дата + кнопка копирования `docker pull`
-// (ссылка на скачивание образа). Read-only, кроме DeleteTag (async Operation).
+// digest (9 симв., копируемый) + размер/push/pull + кнопка копирования
+// `docker pull`. Read-only, кроме DeleteTag (async Operation).
 
 import { type FC, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +15,9 @@ import {
   CloseOutlined,
   CopyOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   HddOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import { ApiError } from "@/api/client";
 import { registriesApi } from "@/api/resources";
@@ -25,20 +28,22 @@ import { getByPath } from "@/lib/resource-registry";
 import { useOperation } from "@/lib/use-operation";
 import { shortDigest } from "@/lib/short-digest";
 import { formatDateTime } from "@/lib/datetime";
+import { formatBytes } from "@/lib/bytes";
 import { toast } from "@/lib/toast";
 
-// fmtSize — байты (int64 приходит строкой) в человекочитаемый вид.
-function fmtSize(v: unknown): string {
+// fmtLastPull — время последнего pull тега. Zero-time («1970-01-01T00:00:00Z»,
+// нулевой timestamp) / пусто → «не скачивался»; иначе — дата-время.
+function fmtLastPull(v: unknown): string {
+  if (typeof v !== "string" || !v) return "не скачивался";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime()) || d.getTime() <= 0 || d.getUTCFullYear() <= 1970) return "не скачивался";
+  return formatDateTime(v);
+}
+
+// parsePositiveInt — int64-счётчик (приходит строкой) → число, если > 0.
+function parsePositiveInt(v: unknown): number | null {
   const n = typeof v === "string" ? Number.parseInt(v, 10) : typeof v === "number" ? v : Number.NaN;
-  if (!Number.isFinite(n) || n <= 0) return "—";
-  const u = ["B", "KB", "MB", "GB", "TB"];
-  let x = n;
-  let i = 0;
-  while (x >= 1024 && i < u.length - 1) {
-    x /= 1024;
-    i += 1;
-  }
-  return `${i ? x.toFixed(1) : x} ${u[i]}`;
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 async function copyText(text: string, okMsg: string) {
@@ -114,14 +119,17 @@ export const RepositoryTagsPanel: FC<{
         ) : isLoading ? (
           <Skeleton active paragraph={{ rows: 3 }} />
         ) : rows.length === 0 ? (
-          <Empty description="Нет тегов — образ ещё не публиковался (docker push)." />
+          <Empty description="Нет тегов — репозиторий ещё не публиковался (docker push)." />
         ) : (
           rows.map((r) => {
             const tag = getByPath<string>(r, "tag") ?? "";
             const digest = getByPath<string>(r, "digest") ?? "";
             const created = getByPath<string>(r, "created_at");
-            const size = fmtSize(getByPath(r, "size_bytes"));
+            const size = formatBytes(getByPath(r, "size_bytes"));
             const arch = getByPath<string>(r, "architecture");
+            const lastPull = fmtLastPull(getByPath(r, "last_pulled_at"));
+            const pushedBy = getByPath<string>(r, "pushed_by") || "";
+            const downloadCount = parsePositiveInt(getByPath(r, "download_count"));
             const pullRef = `${pullBase}/${repository}:${tag}`;
             return (
               <div key={tag || digest} className="kc-tag-card">
@@ -154,12 +162,17 @@ export const RepositoryTagsPanel: FC<{
                   <TagDeleteAction registryId={registryId} repository={repository} tag={tag} onDone={invalidateTags} />
                 </div>
 
-                {/* Строка 2: метаданные (размер · дата) с иконками — быстрое сканирование. */}
+                {/* Строка 2: метаданные (размер · запушен · последний pull · арх)
+                    с иконками — быстрое сканирование. Значение времени: clock =
+                    push (created_at), download = последний pull (last_pulled_at);
+                    смысл иконок — в tooltip. */}
                 <div
                   style={{
                     display: "flex",
+                    flexWrap: "wrap",
                     alignItems: "center",
-                    gap: 14,
+                    columnGap: 14,
+                    rowGap: 6,
                     marginTop: 8,
                     color: "var(--kc-text-secondary)",
                     fontSize: 12,
@@ -168,15 +181,64 @@ export const RepositoryTagsPanel: FC<{
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                     <HddOutlined style={{ fontSize: 12 }} /> {size}
                   </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                    <ClockCircleOutlined style={{ fontSize: 12 }} /> {created ? formatDateTime(created) : "—"}
-                  </span>
+                  <Tooltip title="Запушен (время docker push)">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                      <ClockCircleOutlined style={{ fontSize: 12 }} /> {created ? formatDateTime(created) : "—"}
+                    </span>
+                  </Tooltip>
+                  <Tooltip title="Последний pull (docker pull)">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                      <DownloadOutlined style={{ fontSize: 12 }} /> {lastPull}
+                    </span>
+                  </Tooltip>
                   {arch && (
                     <Tag bordered style={{ margin: 0, fontFamily: "var(--font-mono, monospace)", fontSize: 11, lineHeight: "18px" }}>
                       {arch}
                     </Tag>
                   )}
                 </div>
+
+                {/* Строка 2b (опц.): автор push + число pull'ов — приглушённо. */}
+                {(pushedBy || downloadCount !== null) && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      columnGap: 12,
+                      rowGap: 4,
+                      marginTop: 6,
+                      color: "var(--kc-text-tertiary, #8b929e)",
+                      fontSize: 11,
+                    }}
+                  >
+                    {pushedBy && (
+                      <Tooltip title="Кем запушен">
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            maxWidth: 180,
+                          }}
+                        >
+                          <UserOutlined style={{ fontSize: 11 }} /> {pushedBy}
+                        </span>
+                      </Tooltip>
+                    )}
+                    {downloadCount !== null && (
+                      <Tooltip title="Число pull'ов">
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <DownloadOutlined style={{ fontSize: 11 }} /> {downloadCount}
+                        </span>
+                      </Tooltip>
+                    )}
+                  </div>
+                )}
 
                 {/* Строка 3: docker pull — утопленное code-поле + копирование в конце. */}
                 <div className="kc-pull-field">

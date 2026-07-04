@@ -5,12 +5,14 @@
 // read-only) → Tag (тег образа; единственная мутация — DeleteTag, async).
 
 import type { ReactNode } from "react";
+import { Typography } from "antd";
 import type { FormField } from "./form-schema";
 import { setByPath } from "./path";
+import { formatBytes } from "./bytes";
 import { CopyableId } from "@/components/atoms/CopyableId";
 import { CopyableName } from "@/components/atoms/CopyableName";
 import { LabelsCell } from "@/components/atoms/LabelsCell";
-import { ArtifactTypeTag } from "@/components/atoms/ArtifactTypeTag";
+import { ArtifactTypesTag } from "@/components/atoms/ArtifactTypeTag";
 
 export interface ResourceColumn {
   header: string;
@@ -117,6 +119,13 @@ const FIELD_LABELS: FormField = {
   type: "labels",
 };
 
+// SizeCell — ячейка размера (байты int64 строкой) в человекочитаемом виде;
+// пусто/0 → приглушённое «—» (в стиле datetime/text-ячеек), не «0 B».
+function SizeCell({ value }: { value: unknown }): ReactNode {
+  const s = formatBytes(value);
+  return s === "—" ? <Typography.Text type="secondary">—</Typography.Text> : <>{s}</>;
+}
+
 export const REGISTRY: Record<string, ResourceSpec> = {
   // ====== registry ======
   // proto: kacho.cloud.registry.v1.RegistryService. Registry — tenant-facing
@@ -137,9 +146,9 @@ export const REGISTRY: Record<string, ResourceSpec> = {
       { label: "Реестры контейнеров", href: "#" },
       { label: "Публикация образов (docker login / push)", href: "#" },
     ],
-    // Образы — дочерний ресурс: появляются при docker push в реестр.
+    // Репозитории — дочерний ресурс: появляются при docker push в реестр.
     // Отдельный registry-driven таб (read-only список, без CTA «Создать»).
-    related: [{ childId: "repositories", filterField: "registry_id", label: "Образы" }],
+    related: [{ childId: "repositories", filterField: "registry_id", label: "Репозитории" }],
     columns: [
       {
         header: "Имя",
@@ -152,7 +161,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         render: (row) => <CopyableId id={(row.id as string) ?? ""} />,
       },
       { header: "Статус", path: "status", format: "status" },
-      { header: "Образов", path: "repository_count", format: "text" },
+      { header: "Репозиториев", path: "repository_count", format: "text" },
       { header: "Endpoint", path: "endpoint", format: "code" },
       { header: "Дата создания", path: "created_at", format: "datetime" },
       {
@@ -170,16 +179,17 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     }),
     emptyState: {
       title: "Создайте первый реестр",
-      body: "Реестр хранит контейнерные образы проекта. После создания выполните docker login к endpoint реестра и docker push — образы появятся автоматически.",
+      body: "Реестр хранит контейнерные образы проекта. После создания выполните docker login к endpoint реестра и docker push — репозитории появятся автоматически.",
       docs: ["Реестры контейнеров", "Публикация образов (docker login / push)"],
     },
   },
 
-  // ====== image (OCI-репозиторий) ======
-  // Образ — read-only: образы НЕ создаются через API, они материализуются при
-  // первом docker push в реестр. Единственный вход — ListRepositories(registryId)
-  // (path-scoped под реестром). Мутаций нет. Wire-идентификаторы (id/route/apiPath/
-  // payloadKey = repositories) — контракт OCI/REST, tenant-facing термин — «образ».
+  // ====== repository (OCI-репозиторий) ======
+  // Репозиторий — read-only: репозитории НЕ создаются через API, они
+  // материализуются при первом docker push в реестр. Единственный вход —
+  // ListRepositories(registryId) (path-scoped под реестром). Мутаций нет.
+  // Tenant-facing термин — «репозиторий» (id/route/apiPath/payloadKey =
+  // repositories по OCI/REST-контракту).
 
   repositories: {
     id: "repositories",
@@ -188,19 +198,20 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     // registriesApi.listRepositories(registryId) (см. api/resources.ts).
     apiPath: "/registry/v1/registries/{registryId}/repositories",
     payloadKey: "repositories",
-    singular: "Образ",
-    plural: "Образы",
-    genitive: "Образа",
+    singular: "Репозиторий",
+    plural: "Репозитории",
+    genitive: "Репозитория",
     serviceTitle: "Container Registry",
     scope: "project",
-    // Read-only: образ появляется через docker push, а не через UI.
+    // Read-only: репозиторий появляется через docker push, а не через UI.
     ops: { create: false, update: false, delete: false },
-    // Теги — дочерний ресурс образа (ListTags(registryId, repository)).
+    // Теги — дочерний ресурс репозитория (ListTags(registryId, repository)).
     related: [{ childId: "tags", filterField: ["registry_id", "repository"], label: "Теги" }],
     // Facet-фильтр по типу артефакта: отделить docker-образы от helm-чартов.
-    // Значения — enum-имена REST-проекции Repository.artifact_type.
+    // Фильтруем по массиву artifact_types (включение) — смешанный репозиторий
+    // (docker + helm) попадает в обе категории. Значения — enum-имена проекции.
     facet: {
-      path: "artifact_type",
+      path: "artifact_types",
       label: "Тип",
       options: [
         { value: "ARTIFACT_TYPE_CONTAINER_IMAGE", label: "Docker-образы" },
@@ -208,8 +219,8 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         { value: "ARTIFACT_TYPE_OTHER", label: "Иные" },
       ],
     },
-    // Образы пагинируются на handler-слое (next_page_token) — грузим ВСЕ страницы,
-    // чтобы facet видел полный набор (helm-образ со страницы 2+ не пропал).
+    // Репозитории пагинируются на handler-слое (next_page_token) — грузим ВСЕ
+    // страницы, чтобы facet видел полный набор (helm-чарт со страницы 2+ не пропал).
     loadAllPages: true,
     columns: [
       {
@@ -217,18 +228,25 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         path: "name",
         render: (row) => <CopyableName name={(row.name as string) ?? ""} fallback={row.name as string} />,
       },
-      // Тип артефакта — цветной тег (docker-образ / helm-чарт / иной / «—»).
-      { header: "Тип", path: "artifact_type", render: (row) => <ArtifactTypeTag value={row.artifact_type} /> },
+      // Тип(ы) артефакта — цветные иконки (docker + helm рядом для смешанного
+      // репозитория); читаем массив artifact_types, fallback — primary artifact_type.
+      {
+        header: "Тип",
+        path: "artifact_types",
+        render: (row) => <ArtifactTypesTag value={row.artifact_types ?? row.artifact_type} />,
+      },
       { header: "Тегов", path: "tag_count", format: "text" },
-      // proto3 int64 сериализуется в JSON как СТРОКА — рендерим как есть (text).
-      { header: "Размер", path: "size_bytes", format: "text" },
+      // size_bytes — агрегат по репозиторию (int64 строкой) → человекочитаемо;
+      // 0/пусто → «—» (никогда «0 B»).
+      { header: "Размер", path: "size_bytes", render: (row) => <SizeCell value={row.size_bytes} /> },
+      // updated_at — время последнего push (last pushed) в репозиторий.
       { header: "Обновлён", path: "updated_at", format: "datetime" },
     ],
     // Read-only ресурс — form-schema нет.
     template: () => ({}),
     emptyState: {
-      title: "Образы появляются автоматически",
-      body: "Образ появляется при первом docker push в этот реестр. Пустой реестр не содержит образов — выполните push, чтобы образ появился здесь.",
+      title: "Репозитории появляются автоматически",
+      body: "Репозиторий появляется при первом docker push в этот реестр. Пустой реестр не содержит репозиториев — выполните push, чтобы репозиторий появился здесь.",
       docs: ["Публикация образов (docker login / push)"],
     },
   },

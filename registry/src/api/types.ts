@@ -353,9 +353,18 @@ export interface Repository {
   registry_id?: string;
   // Число тегов образов в репозитории (output-only).
   tag_count?: number;
-  // proto3 int64 сериализуется в JSON как СТРОКА.
+  // Агрегатный размер репозитория; proto3 int64 сериализуется как СТРОКА.
   size_bytes?: string;
+  // Время последнего push (last pushed).
   updated_at?: string;
+  // Время последнего pull; zero/пусто = ни разу не скачивался.
+  last_pulled_at?: string;
+  // Основной тип артефакта (enum-имя ARTIFACT_TYPE_*).
+  artifact_type?: string;
+  // Все типы артефактов репозитория (смешанный: docker + helm) — enum-имена.
+  artifact_types?: string[];
+  // Суммарное число pull'ов; proto3 int64 сериализуется как СТРОКА.
+  download_count?: string;
 }
 
 export interface RepositoryList {
@@ -366,11 +375,21 @@ export interface RepositoryList {
 // Tag — тег образа в репозитории. Единственная мутация — DeleteTag (async).
 export interface Tag {
   tag: string;
+  registry_id?: string;
+  repository?: string;
   digest?: string;
   // proto3 int64 сериализуется в JSON как СТРОКА.
   size_bytes?: string;
   media_type?: string;
+  // Время push этого тега.
   created_at?: string;
+  architecture?: string;
+  // Время последнего pull; zero/пусто = ни разу не скачивался.
+  last_pulled_at?: string;
+  // Кем запушен (identity/subject).
+  pushed_by?: string;
+  // Число pull'ов тега; proto3 int64 сериализуется как СТРОКА.
+  download_count?: string;
 }
 
 export interface TagList {
