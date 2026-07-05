@@ -88,10 +88,10 @@ export interface ResourceSpec {
    *  переопределение заголовка таба (по умолчанию childSpec.plural). */
   related?: { childId: string; filterField: string | string[]; label?: string }[];
   /** KAC-233: ссылки на документацию по типу ресурса (блок «Документация» в
-   *  aside DetailShell). Kachō-style, без «yandex». */
+   *  aside DetailShell). Kachō-style. */
   docs?: { label: string; href: string }[];
   /** KAC-233: welcome-копирайт для пустой таблицы этого ресурса (когда он
-   *  показан как ребёнок и список пуст). Kachō-style, без «yandex». */
+   *  показан как ребёнок и список пуст). Kachō-style. */
   emptyState?: { title: string; body: string; docs?: string[] };
 }
 
@@ -1197,14 +1197,9 @@ export const REGISTRY: Record<string, ResourceSpec> = {
           },
         ],
       },
-      // TODO(KAC-7): инициализировать default-значением из
-      // subnet → network.default_security_group_id (при смене subnet_id:
-      // GET /vpc/v1/subnets/<id> → networkId → GET /vpc/v1/networks/<id> →
-      // defaultSecurityGroupId). Generic-форма не поддерживает динамический
-      // default от другого поля — отложено.
-      // TODO(KAC-7): SG-create pre-fill сетью, разрешённой subnet_id формы,
-      // требует dependent-lookup subnet_id → subnet.network_id — generic-форма
-      // его не умеет; пока в SG-create-форме сеть выбирает пользователь.
+      // В SG-create-форме сеть выбирает пользователь: generic-форма не делает
+      // cross-field dependent-lookup, поэтому не выводит default из
+      // subnet_id (subnet → network.default_security_group_id).
       {
         name: "security_group_ids",
         label: "Группы безопасности",
