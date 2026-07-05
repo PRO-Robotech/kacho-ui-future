@@ -17,14 +17,14 @@ import { useParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { Button, Modal, Space, Typography, Tag } from "antd";
 import { PlusOutlined, MinusOutlined } from "@ant-design/icons";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { OperationDialog, extractOperationId } from "@/components/molecules/OperationDialog";
-import { RefSelect } from "@/components/organisms/form/RefSelect";
-import { api, ApiError } from "@/api/client";
-import { REGISTRY, getByPath } from "@/lib/resource-registry";
-import { useProjectStore } from "@/lib/context-store";
-import { useInvalidateResourceList } from "@/lib/use-operation";
-import { toast } from "@/lib/toast";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { OperationDialog, extractOperationId } from "@shared/components/molecules/OperationDialog";
+import { RefSelect } from "@shared/components/organisms/form/RefSelect";
+import { api, ApiError } from "@shared/api/client";
+import { REGISTRY, getByPath } from "@shared/lib/resource-registry";
+import { useProjectStore } from "@shared/lib/context-store";
+import { useInvalidateResourceList } from "@shared/lib/use-operation";
+import { toast } from "@shared/lib/toast";
 
 const SPEC = REGISTRY["compute-instances"];
 

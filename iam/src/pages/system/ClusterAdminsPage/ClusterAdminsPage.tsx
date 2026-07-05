@@ -20,14 +20,14 @@ import { Alert, Button, Popconfirm, Space, Spin, Table, Tooltip, Typography } fr
 import { DeleteOutlined, ExclamationCircleOutlined, ReloadOutlined, UserAddOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError } from "@/api/client";
-import { clusterApi, type ClusterAdminEntry } from "@/api/cluster";
-import { ErrorResult } from "@/components/molecules/ErrorResult";
-import { CopyableMonoId, fmtTs } from "@/components/organisms/iam/IamCommon";
-import { GrantAdminModal } from "@/components/organisms/system/GrantAdminModal";
-import { useAuth } from "@/contexts/AuthContext";
-import { useOperation } from "@/lib/use-operation";
-import { toast } from "@/lib/toast";
+import { ApiError } from "@shared/api/client";
+import { clusterApi, type ClusterAdminEntry } from "@shared/api/cluster";
+import { ErrorResult } from "@shared/components/molecules/ErrorResult";
+import { CopyableMonoId, fmtTs } from "@shared/components/organisms/iam/IamCommon";
+import { GrantAdminModal } from "@shared/components/organisms/system/GrantAdminModal";
+import { useAuth } from "@shared/contexts/AuthContext";
+import { useOperation } from "@shared/lib/use-operation";
+import { toast } from "@shared/lib/toast";
 
 export default function ClusterAdminsPage() {
   const qc = useQueryClient();

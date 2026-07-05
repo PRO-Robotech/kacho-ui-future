@@ -6,12 +6,12 @@
 
 import { useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { ResourceFormModal } from "@/components/organisms/ResourceFormModal";
-import { InlineSecurityGroupEditForm } from "@/components/organisms/InlineSecurityGroupEditForm";
-import { REGISTRY } from "@/lib/resource-registry";
-import { useNestedBreadcrumb } from "@/lib/use-nested-breadcrumb";
-import type { DetailTab } from "@/components/organisms/DetailShell";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { ResourceFormModal } from "@shared/components/organisms/ResourceFormModal";
+import { InlineSecurityGroupEditForm } from "@shared/components/organisms/InlineSecurityGroupEditForm";
+import { REGISTRY } from "@shared/lib/resource-registry";
+import { useNestedBreadcrumb } from "@shared/lib/use-nested-breadcrumb";
+import type { DetailTab } from "@shared/components/organisms/DetailShell";
 
 interface SgRule {
   id?: string;

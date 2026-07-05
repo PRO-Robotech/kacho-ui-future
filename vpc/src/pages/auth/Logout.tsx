@@ -12,8 +12,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Result, Spin, Alert, Button } from "antd";
 import { LogoutOutlined } from "@ant-design/icons";
-import { useAuth } from "@/contexts/AuthContext";
-import { config } from "@/lib/config";
+import { useAuth } from "@shared/contexts/AuthContext";
+import { config } from "@shared/lib/config";
 import { AuthLayout } from "./Login";
 
 export function LogoutPage() {

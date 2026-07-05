@@ -18,8 +18,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button, Card, Space, Typography, Alert, Input, Form, Divider, Spin } from "antd";
 import { KeyOutlined, LockOutlined, MailOutlined, SafetyOutlined } from "@ant-design/icons";
-import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@/lib/kratos";
-import { config } from "@/lib/config";
+import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@shared/lib/kratos";
+import { config } from "@shared/lib/config";
 
 const { Title, Text, Paragraph } = Typography;
 

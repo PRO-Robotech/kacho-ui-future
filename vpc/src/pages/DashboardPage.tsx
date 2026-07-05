@@ -11,10 +11,10 @@ import { useNavigate } from "react-router-dom";
 import { useQueries } from "@tanstack/react-query";
 import { Card, Empty, Statistic, Typography, Space, Button, Row, Col, Alert, Tooltip } from "antd";
 import { ArrowRightOutlined, FolderOpenOutlined, AppstoreOutlined, LockOutlined } from "@ant-design/icons";
-import { useBreadcrumb, useHeaderRight, usePageTitle } from "@/components/molecules/PageHeaderSlot";
-import { api } from "@/api/client";
-import { useContext } from "@/lib/context-store";
-import { SERVICE_MODULES, type ServiceModule } from "@/lib/service-modules";
+import { useBreadcrumb, useHeaderRight, usePageTitle } from "@shared/components/molecules/PageHeaderSlot";
+import { api } from "@shared/api/client";
+import { useContext } from "@shared/lib/context-store";
+import { SERVICE_MODULES, type ServiceModule } from "@shared/lib/service-modules";
 
 type CountMap = Record<string, number | null>;
 

@@ -8,13 +8,13 @@ import { Button, Form, Input, Popconfirm, Select, Space, Table, Tag, Typography 
 import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { api } from "@/api/client";
-import { iamApi, IAM, type Group, type GroupMember, type User, type ServiceAccount } from "@/api/iam";
-import { useIamMutation, fmtTs, CopyableMonoId } from "@/components/organisms/iam/IamCommon";
-import { FormFooter } from "@/components/organisms/form/FormFooter";
-import { FormShell } from "@/components/organisms/form/FormShell";
-import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
-import { useContext } from "@/lib/context-store";
+import { api } from "@shared/api/client";
+import { iamApi, IAM, type Group, type GroupMember, type User, type ServiceAccount } from "@shared/api/iam";
+import { useIamMutation, fmtTs, CopyableMonoId } from "@shared/components/organisms/iam/IamCommon";
+import { FormFooter } from "@shared/components/organisms/form/FormFooter";
+import { FormShell } from "@shared/components/organisms/form/FormShell";
+import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
+import { useContext } from "@shared/lib/context-store";
 
 export function GroupsPage() {
   const account = useContext((s) => s.account);

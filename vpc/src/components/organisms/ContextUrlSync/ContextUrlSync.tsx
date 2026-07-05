@@ -16,8 +16,8 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
-import { contextApi, useContext } from "@/lib/context-store";
+import { api } from "@shared/api/client";
+import { contextApi, useContext } from "@shared/lib/context-store";
 
 interface ProjectApi {
   id: string;

@@ -4,15 +4,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { Alert, Typography } from "antd";
-import { ResourceFormBody } from "@/components/organisms/form/ResourceFormBody";
-import { FORM_WIDTH } from "@/components/organisms/form/FormShell";
-import { extractOperationId } from "@/components/molecules/OperationDialog";
-import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
-import { ApiError, api } from "@/api/client";
-import { applyFieldDefaults, type ResourceSpec } from "@/lib/resource-registry";
-import { setByPath } from "@/lib/path";
-import { useInvalidateResourceList, useOperation } from "@/lib/use-operation";
-import { toast } from "@/lib/toast";
+import { ResourceFormBody } from "@shared/components/organisms/form/ResourceFormBody";
+import { FORM_WIDTH } from "@shared/components/organisms/form/FormShell";
+import { extractOperationId } from "@shared/components/molecules/OperationDialog";
+import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
+import { ApiError, api } from "@shared/api/client";
+import { applyFieldDefaults, type ResourceSpec } from "@shared/lib/resource-registry";
+import { setByPath } from "@shared/lib/path";
+import { useInvalidateResourceList, useOperation } from "@shared/lib/use-operation";
+import { toast } from "@shared/lib/toast";
 
 interface Props {
   spec: ResourceSpec;

@@ -2,7 +2,7 @@
 // Loading state — skeleton-spacer (фиксированная ширина чтобы header не дёргался).
 
 import { Spin } from "antd";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@shared/contexts/AuthContext";
 import { LoginButton } from "../LoginButton";
 import { UserMenu } from "../UserMenu";
 

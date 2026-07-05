@@ -9,16 +9,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Input, Space, Typography } from "antd";
-import { ErrorResult } from "@/components/molecules/ErrorResult";
+import { ErrorResult } from "@shared/components/molecules/ErrorResult";
 import { PlusOutlined } from "@ant-design/icons";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { ResourceTable, type Column } from "@/components/organisms/ResourceTable";
-import { RowActionsMenu } from "@/components/molecules/RowActionsMenu";
-import { ResourceFormModal } from "@/components/organisms/ResourceFormModal";
-import { api } from "@/api/client";
-import { REGISTRY, getByPath, resourceProjectPath, type ResourceSpec } from "@/lib/resource-registry";
-import { buildSpecColumns } from "@/lib/spec-columns";
-import type { DetailTab } from "@/components/organisms/DetailShell";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { ResourceTable, type Column } from "@shared/components/organisms/ResourceTable";
+import { RowActionsMenu } from "@shared/components/molecules/RowActionsMenu";
+import { ResourceFormModal } from "@shared/components/organisms/ResourceFormModal";
+import { api } from "@shared/api/client";
+import { REGISTRY, getByPath, resourceProjectPath, type ResourceSpec } from "@shared/lib/resource-registry";
+import { buildSpecColumns } from "@shared/lib/spec-columns";
+import type { DetailTab } from "@shared/components/organisms/DetailShell";
 
 export function NetworkDetailPage() {
   const { uid: networkId, projectId } = useParams();

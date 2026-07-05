@@ -13,10 +13,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button, Card, Form, Input, Typography, Alert, Space, Spin, Divider, List, Modal, Image } from "antd";
 import { KeyOutlined, SafetyOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@/lib/kratos";
+import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@shared/lib/kratos";
 import { AuthLayout, bufferToBase64Url } from "./Login";
-import { config } from "@/lib/config";
-import { formatDateTime } from "@/lib/datetime";
+import { config } from "@shared/lib/config";
+import { formatDateTime } from "@shared/lib/datetime";
 
 const { Title, Text, Paragraph } = Typography;
 

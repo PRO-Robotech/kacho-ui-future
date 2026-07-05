@@ -9,13 +9,13 @@ import { useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Button, Input, Select, Space, Tag, Typography } from "antd";
 import { ReloadOutlined, DeploymentUnitOutlined } from "@ant-design/icons";
-import { api } from "@/api/client";
-import { PanelHeader } from "@/components/molecules/PanelHeader";
-import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
-import { ErrorResult } from "@/components/molecules/ErrorResult";
-import { OperationsTable, type Op, statusOf, type OperationStatus } from "@/components/molecules/OperationsTable";
-import { useProjectStore } from "@/lib/context-store";
-import { REGISTRY } from "@/lib/resource-registry";
+import { api } from "@shared/api/client";
+import { PanelHeader } from "@shared/components/molecules/PanelHeader";
+import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
+import { ErrorResult } from "@shared/components/molecules/ErrorResult";
+import { OperationsTable, type Op, statusOf, type OperationStatus } from "@shared/components/molecules/OperationsTable";
+import { useProjectStore } from "@shared/lib/context-store";
+import { REGISTRY } from "@shared/lib/resource-registry";
 
 // Список VPC-ресурсов, у которых есть per-resource ListOperations.
 const VPC_RESOURCES = [
