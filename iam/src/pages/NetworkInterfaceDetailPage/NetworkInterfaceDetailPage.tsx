@@ -15,10 +15,10 @@ import { useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, Tag, Typography } from "antd";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { ResourceFormModal } from "@/components/organisms/ResourceFormModal";
-import { REGISTRY } from "@/lib/resource-registry";
-import { api } from "@/api/client";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { ResourceFormModal } from "@shared/components/organisms/ResourceFormModal";
+import { REGISTRY } from "@shared/lib/resource-registry";
+import { api } from "@shared/api/client";
 
 type Address = Record<string, unknown> & { id: string };
 type SG = Record<string, unknown> & { id: string };

@@ -3,9 +3,9 @@
 // (URL `/projects/<projectId>/networks/<n>/route-tables/<id>`).
 
 import { useParams } from "react-router-dom";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { REGISTRY } from "@/lib/resource-registry";
-import { useNestedBreadcrumb } from "@/lib/use-nested-breadcrumb";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { REGISTRY } from "@shared/lib/resource-registry";
+import { useNestedBreadcrumb } from "@shared/lib/use-nested-breadcrumb";
 
 export function RouteTableDetailPage() {
   const { projectId, networkId } = useParams();

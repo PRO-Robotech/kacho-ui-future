@@ -15,9 +15,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button, Form, Input, Typography, Alert, Space, Spin, Divider } from "antd";
 import { KeyOutlined, LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
-import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@/lib/kratos";
+import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@shared/lib/kratos";
 import { AuthLayout, bufferToBase64Url } from "./Login";
-import { config } from "@/lib/config";
+import { config } from "@shared/lib/config";
 
 const { Title, Text, Paragraph } = Typography;
 

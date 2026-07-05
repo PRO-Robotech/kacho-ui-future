@@ -12,8 +12,8 @@
 import { useMemo } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Space, Tabs, Typography } from "antd";
-import { GlobalResourceFormModal } from "@/components/organisms/GlobalResourceFormModal";
-import { usePermissions } from "@/lib/permissions";
+import { GlobalResourceFormModal } from "@shared/components/organisms/GlobalResourceFormModal";
+import { usePermissions } from "@shared/lib/permissions";
 
 interface AdminTab {
   key: string;

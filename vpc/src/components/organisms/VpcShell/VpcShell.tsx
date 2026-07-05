@@ -8,9 +8,9 @@
 
 import { useParams } from "react-router-dom";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { ResourceFormModal } from "@/components/organisms/ResourceFormModal";
-import type { ResourceSpec } from "@/lib/resource-registry";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { ResourceFormModal } from "@shared/components/organisms/ResourceFormModal";
+import type { ResourceSpec } from "@shared/lib/resource-registry";
 
 interface ListProps {
   spec: ResourceSpec;

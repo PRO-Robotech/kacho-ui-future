@@ -10,8 +10,8 @@ import { Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Tabs, Tag
 import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { iamApi, IAM, type Role, type Account } from "@/api/iam";
-import { useIamMutation, fmtTs, CopyableMonoId, SystemTag } from "@/components/organisms/iam/IamCommon";
+import { iamApi, IAM, type Role, type Account } from "@shared/api/iam";
+import { useIamMutation, fmtTs, CopyableMonoId, SystemTag } from "@shared/components/organisms/iam/IamCommon";
 
 // Regex per E0 acceptance §2.3 — permission string format
 // kacho.<module>.<resource>.<verb> (allowing * wildcards in 3rd and 4th part).

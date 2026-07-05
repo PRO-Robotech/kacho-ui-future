@@ -12,10 +12,10 @@ import { Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typo
 import { DeleteOutlined, UserAddOutlined, LinkOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { iamApi, IAM, type User, type InviteStatus } from "@/api/iam";
-import { useIamMutation, fmtTs, CopyableMonoId, groupedRoleOptions } from "@/components/organisms/iam/IamCommon";
-import { useContext } from "@/lib/context-store";
-import { toast } from "@/lib/toast";
+import { iamApi, IAM, type User, type InviteStatus } from "@shared/api/iam";
+import { useIamMutation, fmtTs, CopyableMonoId, groupedRoleOptions } from "@shared/components/organisms/iam/IamCommon";
+import { useContext } from "@shared/lib/context-store";
+import { toast } from "@shared/lib/toast";
 
 function InviteStatusTag({ status }: { status?: InviteStatus }) {
   if (!status) return <Typography.Text type="secondary">—</Typography.Text>;

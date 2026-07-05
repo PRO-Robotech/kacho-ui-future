@@ -7,8 +7,8 @@
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMemo } from "react";
 import { Typography } from "antd";
-import { InlineNetworkInterfaceCreateForm } from "@/components/organisms/InlineNetworkInterfaceCreateForm";
-import { useBreadcrumb } from "@/components/molecules/PageHeaderSlot";
+import { InlineNetworkInterfaceCreateForm } from "@shared/components/organisms/InlineNetworkInterfaceCreateForm";
+import { useBreadcrumb } from "@shared/components/molecules/PageHeaderSlot";
 
 export function NetworkInterfaceCreatePage() {
   const { projectId } = useParams();

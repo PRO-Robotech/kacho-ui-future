@@ -12,9 +12,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button, Form, Input, Typography, Alert, Spin, Result } from "antd";
 import { MailOutlined, KeyOutlined } from "@ant-design/icons";
-import { kratos, type SelfServiceFlow, csrfToken, flowMessages } from "@/lib/kratos";
+import { kratos, type SelfServiceFlow, csrfToken, flowMessages } from "@shared/lib/kratos";
 import { AuthLayout } from "./Login";
-import { config } from "@/lib/config";
+import { config } from "@shared/lib/config";
 
 const { Title, Text, Paragraph } = Typography;
 

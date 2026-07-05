@@ -14,8 +14,8 @@ import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Result, Button, Spin } from "antd";
 import { KeyOutlined } from "@ant-design/icons";
-import { useAuth, isMfaFresh } from "@/contexts/AuthContext";
-import { kratos } from "@/lib/kratos";
+import { useAuth, isMfaFresh } from "@shared/contexts/AuthContext";
+import { kratos } from "@shared/lib/kratos";
 
 interface RequireMFAFreshProps {
   children?: React.ReactNode;

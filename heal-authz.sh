@@ -6,7 +6,10 @@ DEPLOY_DIR="${KACHO_DEPLOY_DIR:-}"
 PG_IAM_POD="${KACHO_PG_IAM_POD:-kacho-umbrella-pg-iam-0}"
 PG_IAM_USER="${KACHO_PG_IAM_USER:-iam}"
 PG_IAM_DB="${KACHO_PG_IAM_DB:-kacho_iam}"
-PG_IAM_PASSWORD="${KACHO_PG_IAM_PASSWORD:-dev-iam-password}"
+# No hard-coded credential default: the kacho_iam Postgres password must be
+# supplied explicitly so this script can never silently authenticate with a
+# baked-in dev password against a non-dev cluster.
+PG_IAM_PASSWORD="${KACHO_PG_IAM_PASSWORD:?KACHO_PG_IAM_PASSWORD must be set (export the kacho_iam Postgres password before running heal-authz.sh)}"
 OPENFGA_URL="${KACHO_OPENFGA_URL:-http://kacho-umbrella-openfga:8080}"
 OPENFGA_STORE_SECRET="${KACHO_OPENFGA_STORE_SECRET:-kacho-iam-openfga-store}"
 OPENFGA_MODEL_SECRET="${KACHO_OPENFGA_MODEL_SECRET:-openfga-model-id}"

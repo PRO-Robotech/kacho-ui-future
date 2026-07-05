@@ -7,15 +7,15 @@
 import { Link, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { IpamUtilizationBar, CIDRBreakdown } from "@/components/molecules/IpamUtilizationBar";
-import { AddressPoolCidrManager } from "@/components/organisms/AddressPoolCidrManager";
-import { CopyableName } from "@/components/atoms/CopyableName";
-import { CopyableId } from "@/components/atoms/CopyableId";
-import { api } from "@/api/client";
-import { REGISTRY } from "@/lib/resource-registry";
-import { formatDateTime } from "@/lib/datetime";
-import type { DetailTab } from "@/components/organisms/DetailShell";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { IpamUtilizationBar, CIDRBreakdown } from "@shared/components/molecules/IpamUtilizationBar";
+import { AddressPoolCidrManager } from "@shared/components/organisms/AddressPoolCidrManager";
+import { CopyableName } from "@shared/components/atoms/CopyableName";
+import { CopyableId } from "@shared/components/atoms/CopyableId";
+import { api } from "@shared/api/client";
+import { REGISTRY } from "@shared/lib/resource-registry";
+import { formatDateTime } from "@shared/lib/datetime";
+import type { DetailTab } from "@shared/components/organisms/DetailShell";
 
 interface PoolAddrEntry {
   id: string;

@@ -13,14 +13,14 @@ import { useMutation } from "@tanstack/react-query";
 import { Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { OperationDialog, extractOperationId } from "@/components/molecules/OperationDialog";
-import { RefSelect } from "@/components/organisms/form/RefSelect";
-import { api, ApiError } from "@/api/client";
-import { REGISTRY, getByPath } from "@/lib/resource-registry";
-import { useProjectStore } from "@/lib/context-store";
-import { useInvalidateResourceList } from "@/lib/use-operation";
-import { toast } from "@/lib/toast";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { OperationDialog, extractOperationId } from "@shared/components/molecules/OperationDialog";
+import { RefSelect } from "@shared/components/organisms/form/RefSelect";
+import { api, ApiError } from "@shared/api/client";
+import { REGISTRY, getByPath } from "@shared/lib/resource-registry";
+import { useProjectStore } from "@shared/lib/context-store";
+import { useInvalidateResourceList } from "@shared/lib/use-operation";
+import { toast } from "@shared/lib/toast";
 
 const SPEC = REGISTRY["target-groups"];
 

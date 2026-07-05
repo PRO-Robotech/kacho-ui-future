@@ -3,19 +3,19 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConfigProvider, App as AntdApp } from "antd";
 import ruRU from "antd/locale/ru_RU";
-import { ThemeProvider, useThemeMode } from "@/lib/theme-context";
-import { buildTheme } from "@/lib/theme";
+import { ThemeProvider, useThemeMode } from "@shared/lib/theme-context";
+import { buildTheme } from "@shared/lib/theme";
 import { Layout } from "@/components/organisms/Layout";
 import { RequireAuth } from "@/components/molecules/auth/RequireAuth";
 import { AdminLayout } from "@/components/organisms/AdminLayout";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
 import { ResourceCreatePage } from "@/components/organisms/ResourceCreatePage";
 import { ResourceEditPage } from "@/components/organisms/ResourceEditPage";
 import { Toaster } from "@/components/molecules/Toaster";
-import { REGISTRY } from "@/lib/resource-registry";
+import { REGISTRY } from "@shared/lib/resource-registry";
 import { AddressPoolDetailPage } from "@/pages/AddressPoolDetailPage";
-import { ResourceShell } from "@/components/organisms/ResourceShell";
+import { ResourceShell } from "@shared/components/organisms/ResourceShell";
 // KAC-231: SubnetDetailPage/SecurityGroupDetailPage/RouteTableDetailPage/
 // AddressDetailPage/NetworkInterfaceDetailPage/VpcDetailShell заменены единым
 // ResourceShell + DETAIL_EXTENSIONS. SubnetCreatePage сохранён (create со списка).
@@ -42,7 +42,7 @@ import { RegisterPage } from "@/pages/auth/Register";
 import { RecoveryPage } from "@/pages/auth/Recovery";
 import { SettingsPage } from "@/pages/auth/Settings";
 import { StepUpModal } from "@/components/molecules/auth/StepUpModal";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider } from "@shared/contexts/AuthContext";
 
 // KAC-196: cluster admins UI — лениво подгружаемая страница.
 const ClusterAdminsPage = lazy(() => import("@/pages/system/ClusterAdminsPage"));

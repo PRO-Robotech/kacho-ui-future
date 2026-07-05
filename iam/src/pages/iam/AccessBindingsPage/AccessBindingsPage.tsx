@@ -15,7 +15,7 @@ import { Alert, Button, Card, Form, Input, Popconfirm, Segmented, Select, Space,
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { api, ApiError } from "@/api/client";
+import { api, ApiError } from "@shared/api/client";
 import {
   iamApi,
   IAM,
@@ -25,14 +25,14 @@ import {
   type ServiceAccount,
   type Group,
   type Account,
-} from "@/api/iam";
-import { useIamMutation, fmtTs, CopyableMonoId, groupedRoleOptions } from "@/components/organisms/iam/IamCommon";
-import { FormFooter } from "@/components/organisms/form/FormFooter";
-import { FormShell } from "@/components/organisms/form/FormShell";
-import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
-import { useAuth } from "@/contexts/AuthContext";
-import { useContext } from "@/lib/context-store";
-import { usePermissions, isAlreadyExistsError, mapApiErrorToMessage } from "@/lib/permissions";
+} from "@shared/api/iam";
+import { useIamMutation, fmtTs, CopyableMonoId, groupedRoleOptions } from "@shared/components/organisms/iam/IamCommon";
+import { FormFooter } from "@shared/components/organisms/form/FormFooter";
+import { FormShell } from "@shared/components/organisms/form/FormShell";
+import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
+import { useAuth } from "@shared/contexts/AuthContext";
+import { useContext } from "@shared/lib/context-store";
+import { usePermissions, isAlreadyExistsError, mapApiErrorToMessage } from "@shared/lib/permissions";
 
 type ViewMode = "byResource" | "bySubject" | "byAccount";
 type SubjectType = "user" | "service_account" | "group";

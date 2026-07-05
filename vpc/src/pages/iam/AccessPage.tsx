@@ -22,13 +22,13 @@ import {
   Typography,
   Alert,
 } from "antd";
-import { toast } from "@/lib/toast";
+import { toast } from "@shared/lib/toast";
 import { PlusOutlined, MailOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { iamApi, IAM, type User, type Role } from "@/api/iam";
-import { CopyableMonoId } from "@/components/organisms/iam/IamCommon";
-import { useContext } from "@/lib/context-store";
+import { iamApi, IAM, type User, type Role } from "@shared/api/iam";
+import { CopyableMonoId } from "@shared/components/organisms/iam/IamCommon";
+import { useContext } from "@shared/lib/context-store";
 
 type ScopeTab = "cloud" | "folder";
 

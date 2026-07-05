@@ -6,8 +6,8 @@
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMemo } from "react";
 import { Typography } from "antd";
-import { InlineSubnetCreateForm } from "@/components/organisms/InlineSubnetCreateForm";
-import { useBreadcrumb } from "@/components/molecules/PageHeaderSlot";
+import { InlineSubnetCreateForm } from "@shared/components/organisms/InlineSubnetCreateForm";
+import { useBreadcrumb } from "@shared/components/molecules/PageHeaderSlot";
 
 export function SubnetCreatePage() {
   const { projectId } = useParams();

@@ -6,25 +6,22 @@
 // → POST <apiPath>/{id}:start|:stop|:restart). Здесь добавляем attach/detach над
 // tab content через secondaryActions.
 //
-// TODO(KAC-14/KAC-9): когда Instance.network_interfaces[] начнут нести `nic_id`
-// (ссылка на отдельный vpc NetworkInterface — отдельный тикет KAC-9), сделать
-// рендеринг NIC-блока с ссылкой на /projects/<projectId>/vpc/network-interfaces/<nic_id>
-// (registry spec "network-interfaces"). Пока в proto/data этого поля нет — блок не
-// рендерим (generic ResourceDetailPage показывает network_interfaces как есть).
+// network_interfaces рендерятся generic-ResourceDetailPage из payload Instance
+// как есть; отдельного linked-NIC-блока со ссылкой на vpc NetworkInterface нет.
 
 import { useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { Button, Modal, Space, Typography, Tag } from "antd";
 import { PlusOutlined, MinusOutlined } from "@ant-design/icons";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { OperationDialog, extractOperationId } from "@/components/molecules/OperationDialog";
-import { RefSelect } from "@/components/organisms/form/RefSelect";
-import { api, ApiError } from "@/api/client";
-import { REGISTRY, getByPath } from "@/lib/resource-registry";
-import { useProjectStore } from "@/lib/context-store";
-import { useInvalidateResourceList } from "@/lib/use-operation";
-import { toast } from "@/lib/toast";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { OperationDialog, extractOperationId } from "@shared/components/molecules/OperationDialog";
+import { RefSelect } from "@shared/components/organisms/form/RefSelect";
+import { api, ApiError } from "@shared/api/client";
+import { REGISTRY, getByPath } from "@shared/lib/resource-registry";
+import { useProjectStore } from "@shared/lib/context-store";
+import { useInvalidateResourceList } from "@shared/lib/use-operation";
+import { toast } from "@shared/lib/toast";
 
 const SPEC = REGISTRY["compute-instances"];
 

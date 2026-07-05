@@ -5,8 +5,8 @@
 
 import { Empty } from "antd";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
-import { useContext } from "@/lib/context-store";
-import type { ResourceSpec } from "@/lib/resource-registry";
+import { useContext } from "@shared/lib/context-store";
+import type { ResourceSpec } from "@shared/lib/resource-registry";
 
 export function IamScopedListShell({
   spec,

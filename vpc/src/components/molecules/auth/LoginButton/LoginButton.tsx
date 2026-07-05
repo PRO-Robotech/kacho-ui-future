@@ -5,7 +5,7 @@
 
 import { Button } from "antd";
 import { LoginOutlined } from "@ant-design/icons";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@shared/contexts/AuthContext";
 
 export function LoginButton() {
   const { login, loading } = useAuth();

@@ -9,17 +9,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { Button as AntButton, Input, Space, Typography } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { Button } from "@/components/atoms/ui/Button";
-import { ResourceDetailPage } from "@/components/organisms/ResourceDetailPage";
-import { ResourceTable, type Column } from "@/components/organisms/ResourceTable";
-import { RowActionsMenu } from "@/components/molecules/RowActionsMenu";
-import { InlineSubnetEditForm } from "@/components/organisms/InlineSubnetEditForm";
-import { ResourceFormModal } from "@/components/organisms/ResourceFormModal";
-import { api } from "@/api/client";
-import { REGISTRY, getByPath } from "@/lib/resource-registry";
-import { useNestedBreadcrumb } from "@/lib/use-nested-breadcrumb";
-import { buildSpecColumns } from "@/lib/spec-columns";
-import type { DetailTab } from "@/components/organisms/DetailShell";
+import { Button } from "@shared/components/atoms/ui/Button";
+import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
+import { ResourceTable, type Column } from "@shared/components/organisms/ResourceTable";
+import { RowActionsMenu } from "@shared/components/molecules/RowActionsMenu";
+import { InlineSubnetEditForm } from "@shared/components/organisms/InlineSubnetEditForm";
+import { ResourceFormModal } from "@shared/components/organisms/ResourceFormModal";
+import { api } from "@shared/api/client";
+import { REGISTRY, getByPath } from "@shared/lib/resource-registry";
+import { useNestedBreadcrumb } from "@shared/lib/use-nested-breadcrumb";
+import { buildSpecColumns } from "@shared/lib/spec-columns";
+import type { DetailTab } from "@shared/components/organisms/DetailShell";
 
 export function SubnetDetailPage() {
   const { uid: subnetId, projectId, networkId } = useParams();

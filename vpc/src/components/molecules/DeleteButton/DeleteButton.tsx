@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
-import { Button } from "@/components/atoms/ui/Button";
+import { Button } from "@shared/components/atoms/ui/Button";
 import {
   Dialog,
   DialogContent,
@@ -12,12 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/atoms/ui/Dialog";
-import { extractOperationId } from "@/components/molecules/OperationDialog";
-import { OperationToastWatcher } from "@/components/molecules/OperationToastWatcher";
-import { ApiError, api } from "@/api/client";
-import { useInvalidateResourceList } from "@/lib/use-operation";
-import { toast } from "@/lib/toast";
+} from "@shared/components/atoms/ui/Dialog";
+import { extractOperationId } from "@shared/components/molecules/OperationDialog";
+import { OperationToastWatcher } from "@shared/components/molecules/OperationToastWatcher";
+import { ApiError, api } from "@shared/api/client";
+import { useInvalidateResourceList } from "@shared/lib/use-operation";
+import { toast } from "@shared/lib/toast";
 
 interface Props {
   /** /v1/<plural>/{id} */

@@ -7,8 +7,8 @@ import { Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typo
 import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { iamApi, IAM, type Group, type Account, type GroupMember, type User, type ServiceAccount } from "@/api/iam";
-import { useIamMutation, fmtTs, CopyableMonoId } from "@/components/organisms/iam/IamCommon";
+import { iamApi, IAM, type Group, type Account, type GroupMember, type User, type ServiceAccount } from "@shared/api/iam";
+import { useIamMutation, fmtTs, CopyableMonoId } from "@shared/components/organisms/iam/IamCommon";
 
 export function GroupsPage() {
   const [accountId, setAccountId] = useState<string | null>(null);

@@ -9,16 +9,16 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Cascader, Form, Input, Segmented, Select, Space, Table, Tabs, Tag, Typography, Alert } from "antd";
-import { toast } from "@/lib/toast";
+import { toast } from "@shared/lib/toast";
 import { PlusOutlined, MailOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { iamApi, IAM, type User, type Role } from "@/api/iam";
-import { CopyableMonoId } from "@/components/organisms/iam/IamCommon";
-import { FormFooter } from "@/components/organisms/form/FormFooter";
-import { FormShell } from "@/components/organisms/form/FormShell";
-import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
-import { useContext } from "@/lib/context-store";
+import { iamApi, IAM, type User, type Role } from "@shared/api/iam";
+import { CopyableMonoId } from "@shared/components/organisms/iam/IamCommon";
+import { FormFooter } from "@shared/components/organisms/form/FormFooter";
+import { FormShell } from "@shared/components/organisms/form/FormShell";
+import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
+import { useContext } from "@shared/lib/context-store";
 
 type ScopeTab = "cloud" | "folder";
 

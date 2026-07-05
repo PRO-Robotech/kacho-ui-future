@@ -7,8 +7,8 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Space, Tabs, Typography, Alert, Select } from "antd";
 import { useQuery } from "@tanstack/react-query";
-import { iamApi, type Account } from "@/api/iam";
-import { contextApi, useContext } from "@/lib/context-store";
+import { iamApi, type Account } from "@shared/api/iam";
+import { contextApi, useContext } from "@shared/lib/context-store";
 
 const TABS = [
   { key: "/iam/accounts", label: "Accounts" },

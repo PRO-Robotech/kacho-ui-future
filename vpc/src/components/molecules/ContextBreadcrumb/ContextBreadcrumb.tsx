@@ -14,9 +14,9 @@ import { forwardRef, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dropdown, theme, type MenuProps } from "antd";
 import { ChevronRight } from "lucide-react";
-import { iamApi } from "@/api/iam";
-import { contextApi, useContext } from "@/lib/context-store";
-import { HeaderBreadcrumbSlot } from "@/components/molecules/PageHeaderSlot";
+import { iamApi } from "@shared/api/iam";
+import { contextApi, useContext } from "@shared/lib/context-store";
+import { HeaderBreadcrumbSlot } from "@shared/components/molecules/PageHeaderSlot";
 
 interface AccountOpt {
   id: string;
