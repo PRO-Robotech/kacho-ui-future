@@ -41,4 +41,22 @@ describe("fetchAllPages (load-all pagination)", () => {
     const rows = await fetchAllPages("/p", "repositories", listFn);
     expect(rows).toEqual([]);
   });
+
+  // Регрессия: apiPath с неразрешённым path-плейсхолдером (родитель ещё не известен)
+  // НЕ должен уходить на backend литералом `{registryId}` — иначе InvalidArgument
+  // «invalid registry id '{registryId}'». Guard возвращает пустой набор без fetch.
+  it("неразрешённый {registryId} → пустой набор, БЕЗ вызова listFn (guard)", async () => {
+    let n = 0;
+    const listFn = async () => {
+      n++;
+      return { repositories: [{ name: "x" }], next_page_token: "" };
+    };
+    const rows = await fetchAllPages(
+      "/registry/v1/registries/{registryId}/repositories",
+      "repositories",
+      listFn,
+    );
+    expect(rows).toEqual([]);
+    expect(n).toBe(0);
+  });
 });

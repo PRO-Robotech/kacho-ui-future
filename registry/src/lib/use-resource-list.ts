@@ -5,26 +5,41 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { ResourceSpec } from "./resource-registry";
 
+// Неразрешённый path-плейсхолдер: apiPath вида /registries/{registryId}/repositories.
+const UNRESOLVED_PLACEHOLDER = /\{[^}]+\}/;
+// snake_case фильтр-поля → camelCase плейсхолдер пути (registry_id → registryId).
+const toPathCamel = (s: string) => s.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
+
 /**
  * useResourceList — поллит GET <apiPath>?<filterField>=<filterValue> каждые 3 сек.
  *
  * filterField + filterValue — параметр родителя (project_id / account_id).
  * Если оба null — список без фильтра (для cluster-scoped ресурсов).
+ *
+ * Path-scoped child: если apiPath несёт `{placeholder}`, совпадающий с camelCase от
+ * filterField (registry_id → `{registryId}`), значение подставляется В ПУТЬ (а не в
+ * query) — backend скоупит по пути. Guard: пока в пути остаётся неразрешённый
+ * `{...}` (родитель ещё не известен), запрос НЕ уходит — иначе backend получит
+ * литерал `{registryId}` и вернёт InvalidArgument.
  */
 export function useResourceList<T = Record<string, unknown>>(
   spec: ResourceSpec,
   filterField: string | null,
   filterValue: string | null,
 ) {
+  let path = spec.apiPath;
+  const q: Record<string, string> = {};
+  if (filterField && filterValue) {
+    const placeholder = `{${toPathCamel(filterField)}}`;
+    if (path.includes(placeholder)) path = path.split(placeholder).join(filterValue);
+    else q[filterField] = filterValue;
+  }
+  const resolved = !UNRESOLVED_PLACEHOLDER.test(path);
   return useQuery({
     queryKey: [spec.id, "list", filterField, filterValue],
-    queryFn: () => {
-      const q: Record<string, string> = {};
-      if (filterField && filterValue) q[filterField] = filterValue;
-      return api.list<Record<string, T[]>>(spec.apiPath, q);
-    },
+    queryFn: () => api.list<Record<string, T[]>>(path, q),
     refetchInterval: 3_000,
-    enabled: !filterField || !!filterValue,
+    enabled: (!filterField || !!filterValue) && resolved,
     staleTime: 0,
   });
 }
@@ -46,6 +61,9 @@ export async function fetchAllPages<T = Record<string, unknown>>(
   listFn: ListFn = (p, q) => api.list<Record<string, unknown>>(p, q),
 ): Promise<T[]> {
   const acc: T[] = [];
+  // Guard: неразрешённый path-плейсхолдер (родитель ещё не известен) — не фетчим
+  // литеральный `{registryId}` (backend вернул бы InvalidArgument).
+  if (UNRESOLVED_PLACEHOLDER.test(apiPath)) return acc;
   let token = "";
   for (let i = 0; i < MAX_PAGES; i++) {
     const q: Record<string, string> = { pageSize: "1000" };
@@ -76,7 +94,8 @@ export function useResourceListAllPages<T = Record<string, unknown>>(
       return { [spec.payloadKey]: rows } as Record<string, T[]>;
     },
     refetchInterval: 3_000,
-    enabled: opts.enabled,
+    // Guard: не фетчим, пока apiPath несёт неразрешённый `{...}` (родитель неизвестен).
+    enabled: opts.enabled && !UNRESOLVED_PLACEHOLDER.test(spec.apiPath),
     staleTime: 0,
   });
 }
