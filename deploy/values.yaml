@@ -16,6 +16,15 @@ ingress:
 # Internal serving config only - no API/proto/wire contract surface.
 # Everything the console talks to (api-gateway, kratos, hydra) is reached
 # same-origin through the host nginx proxy, so a 'self'-based CSP is sufficient.
+#
+# style-src carries 'unsafe-inline' (script-src does NOT). antd v6 renders its
+# component styles through a runtime CSS-in-JS engine that injects <style> tags
+# without a per-tag nonce, so a nonce/hash style-src cannot be satisfied while
+# antd v6 is the UI kit. Because script-src stays 'self', no attacker-controlled
+# JS can execute, so the residual exposure is bounded to CSS-only vectors and is
+# only reachable if a DOM-injection sink is separately introduced. Accepted as a
+# documented residual (see docs/architecture/known-divergences.md); revisit if
+# antd exposes nonce-based StyleProvider integration.
 security:
   enabled: true
   contentSecurityPolicy: >-

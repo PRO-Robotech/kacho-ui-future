@@ -4,6 +4,31 @@ Deliberate, reviewed deviations from a lint/style default. Each entry explains
 why the deviation is intentional and not latent tech-debt, so audits do not
 re-flag it.
 
+## CSP `style-src 'unsafe-inline'`
+
+**Status:** accepted / bounded residual (not an exploitable defect).
+
+The console's Content-Security-Policy (`deploy/values.yaml` → `security.contentSecurityPolicy`)
+is otherwise strict — `script-src 'self'`, `object-src 'none'`, `base-uri 'self'`,
+`frame-ancestors 'none'`, `form-action 'self'`, `connect-src 'self'`. Only
+`style-src` is relaxed to `'self' 'unsafe-inline'`.
+
+**Why it is required:** antd v6 styles components through a runtime CSS-in-JS
+engine that injects `<style>` elements without a per-response nonce or a
+build-time-stable hash. A nonce/hash-based `style-src` would break antd's runtime
+styling. antd v6 does not currently expose a `StyleProvider` nonce integration
+that nginx could feed via `sub_filter`.
+
+**Why the risk is bounded:** `script-src` remains `'self'`, so no
+attacker-controlled JavaScript can execute regardless of the style relaxation.
+The residual is limited to CSS-only vectors (restyle/overlay of controls) and is
+only reachable if a separate DOM-injection sink is introduced elsewhere — none is
+known. The DPoP token flow, auth ceremony and API calls are unaffected.
+
+**Revisit trigger:** drop `'unsafe-inline'` from `style-src` and adopt a
+per-response nonce injected by the host nginx once antd exposes nonce-capable
+style injection.
+
 ## `react-hooks/exhaustive-deps` line-level suppressions
 
 **Status:** accepted / by-design (localized, not a blanket disable).
