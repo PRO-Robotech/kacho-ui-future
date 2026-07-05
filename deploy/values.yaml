@@ -12,6 +12,25 @@ ingress:
   annotations: {}
   tls: []
 
+# Response security headers emitted by every nginx UI server (host + remotes).
+# Internal serving config only - no API/proto/wire contract surface.
+# Everything the console talks to (api-gateway, kratos, hydra) is reached
+# same-origin through the host nginx proxy, so a 'self'-based CSP is sufficient.
+security:
+  enabled: true
+  contentSecurityPolicy: >-
+    default-src 'self';
+    script-src 'self';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data:;
+    font-src 'self' data:;
+    connect-src 'self';
+    worker-src 'self' blob:;
+    frame-ancestors 'none';
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self'
+
 resources:
   requests:
     cpu: 50m

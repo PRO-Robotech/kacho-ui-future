@@ -15,6 +15,7 @@ data:
 
         root /usr/share/nginx/html;
         index index.html;
+        {{- include "ui.securityHeaders" . | nindent 8 }}
 
         location ^~ /dashboard/ {
             set $dashboard_upstream "${KACHO_UI_DASHBOARD_UPSTREAM}";
@@ -120,23 +121,27 @@ data:
         location = /healthz {
             access_log off;
             add_header Content-Type text/plain;
+            {{- include "ui.securityHeaders" . | nindent 12 }}
             return 200 "ok\n";
         }
 
         location = /index.html {
             add_header Cache-Control "no-store, no-cache, must-revalidate";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
         location ^~ /assets/ {
             try_files $uri @kratos_ui_assets_fallback;
             expires 1y;
             add_header Cache-Control "public, immutable";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
         location ~* \.(js|css|svg|png|jpg|jpeg|gif|ico|woff2?|ttf|eot|otf)$ {
             try_files $uri @kratos_ui_assets_fallback;
             expires 1y;
             add_header Cache-Control "public, immutable";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
         location @kratos_ui_assets_fallback {
@@ -185,21 +190,25 @@ data:
 
         root /usr/share/nginx/html;
         index index.html;
+        {{- include "ui.securityHeaders" . | nindent 8 }}
 
         location = /healthz {
             access_log off;
             add_header Content-Type text/plain;
+            {{- include "ui.securityHeaders" . | nindent 12 }}
             return 200 "ok\n";
         }
 
         location = /index.html {
             add_header Cache-Control "no-store, no-cache, must-revalidate";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
         location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
             try_files $uri =404;
             expires 1y;
             add_header Cache-Control "public, immutable";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
         location / {
@@ -226,21 +235,25 @@ data:
 
         root /usr/share/nginx/html;
         index index.html;
+        {{- include "ui.securityHeaders" . | nindent 8 }}
 
         location = /healthz {
             access_log off;
             add_header Content-Type text/plain;
+            {{- include "ui.securityHeaders" . | nindent 12 }}
             return 200 "ok\n";
         }
 
         location = /index.html {
             add_header Cache-Control "no-store, no-cache, must-revalidate";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
         location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
             try_files $uri =404;
             expires 1y;
             add_header Cache-Control "public, immutable";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
         location / {
@@ -267,21 +280,25 @@ data:
 
         root /usr/share/nginx/html;
         index index.html;
+        {{- include "ui.securityHeaders" . | nindent 8 }}
 
         location = /healthz {
             access_log off;
             add_header Content-Type text/plain;
+            {{- include "ui.securityHeaders" . | nindent 12 }}
             return 200 "ok\n";
         }
 
         location = /index.html {
             add_header Cache-Control "no-store, no-cache, must-revalidate";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
         location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
             try_files $uri =404;
             expires 1y;
             add_header Cache-Control "public, immutable";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
         location / {
