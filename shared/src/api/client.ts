@@ -32,6 +32,31 @@ export class ApiError extends Error {
   }
 }
 
+/** Max raw (non-JSON) error body length preserved on an ApiError, in chars. */
+const MAX_RAW_ERROR_BODY = 2048;
+
+/**
+ * Build an ApiError from a response status/statusText and its raw body text.
+ *
+ * A JSON error envelope ({code,message,details}) is unwrapped; a non-JSON body
+ * (e.g. an nginx/gateway 5xx HTML/plaintext page) is preserved into
+ * message/details (truncated) instead of being silently dropped, so the real
+ * backend detail survives for on-call debugging.
+ */
+export function apiErrorFromBody(status: number, statusText: string, text: string): ApiError {
+  let parsed: unknown = null;
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // Non-JSON body — preserved below via rawBody, not discarded.
+    }
+  }
+  const e = (parsed ?? {}) as { code?: string; message?: string; details?: unknown };
+  const rawBody = parsed === null && text ? text.slice(0, MAX_RAW_ERROR_BODY) : undefined;
+  return new ApiError(status, e.code ?? String(status), e.details ?? rawBody, e.message ?? rawBody ?? statusText);
+}
+
 // crypto.randomUUID требует secure context (HTTPS или localhost). При работе
 // через http://console.kacho.local оно недоступно — fallback на Math.random.
 function makeRequestId(): string {
@@ -66,25 +91,16 @@ async function fetchJson<T>(method: string, path: string, body?: unknown): Promi
   }
   const res = await fetch(url, init);
   const text = await res.text();
+  if (!res.ok) {
+    throw apiErrorFromBody(res.status, res.statusText, text);
+  }
   let parsed: unknown = null;
   if (text) {
     try {
       parsed = JSON.parse(text);
     } catch {
-      // Non-JSON body — preserved below via rawBody on error responses.
+      // Successful response with a non-JSON body → treat as null payload.
     }
-  }
-  if (!res.ok) {
-    const err = (parsed ?? {}) as { code?: string; message?: string; details?: unknown };
-    // Preserve a non-JSON error body (e.g. an nginx/gateway 5xx page) instead of
-    // discarding it, so the backend detail survives for on-call debugging.
-    const rawBody = parsed === null && text ? text.slice(0, 2048) : undefined;
-    throw new ApiError(
-      res.status,
-      err.code ?? String(res.status),
-      err.details ?? rawBody,
-      err.message ?? rawBody ?? res.statusText,
-    );
   }
   // На приёме: camelCase → snake_case (UI ожидает proto-style ключи).
   return camelToSnake(parsed) as T;

@@ -4,7 +4,7 @@
 
 import type { ReactNode } from "react";
 import type { FormField } from "./form-schema";
-import { setByPath } from "./path";
+import { setByPath, getByPath as getByPathImpl } from "./path";
 import { CopyableId } from "@shared/components/atoms/CopyableId";
 import { RoutesEditor, type RouteEntry } from "@shared/components/organisms/RoutesEditor";
 import { CopyableName } from "@shared/components/atoms/CopyableName";
@@ -2811,11 +2811,12 @@ export function resourceProjectPath(specId: string, projectId: string | null | u
   return `/projects/${projectId}/${prefix}/${spec.route}`;
 }
 
+// Thin generic wrapper over the single lib/path implementation (superset that
+// also resolves bracket-indexed array paths like "spec.rules[0].direction").
+// Kept as a named export (re-exported as getResourceValueByPath) so the many
+// detail/list call sites keep their <T> type signature unchanged.
 export function getByPath<T = unknown>(obj: unknown, path: string): T | undefined {
-  return path.split(".").reduce<unknown>((acc, key) => {
-    if (acc == null || typeof acc !== "object") return undefined;
-    return (acc as Record<string, unknown>)[key];
-  }, obj) as T | undefined;
+  return getByPathImpl(obj, path) as T | undefined;
 }
 
 // applyDefaults — для Create-формы прогоняем все поля и подставляем default-ы

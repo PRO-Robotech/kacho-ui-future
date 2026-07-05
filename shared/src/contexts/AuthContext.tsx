@@ -6,11 +6,9 @@
 //   - mfaFreshUntil (timestamp) — для step-up RequireMFAFresh-guard
 //   - login() / logout() / refresh() — высокоуровневые actions
 //
-// Подключает `apiClient` (см. lib/api-client.ts) — настраивает callbacks для:
-//   - getAccessToken — отдаёт текущий in-memory token
-//   - onTokenExpired — refresh через Kratos whoami (session cookie) +
-//     Hydra refresh-token (httpOnly cookie). На E2 — single-source-of-truth.
-//   - onStepUpRequired — открывает StepUpModal и ждёт success
+// Аутентификация data-plane запросов — ambient httpOnly session cookie
+// (Kratos/Hydra), выписанная api-gateway middleware; access-token держится
+// in-memory (setAccessToken) для консюмеров, которым он нужен явно.
 //
 // Backward-compat для KAC-115 (Logout, HeaderAuth, LoginButton, UserMenu) —
 // `useAuth` экспозит те же поля `user / loading / login / logout / refresh /
@@ -19,8 +17,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { authApi, hasPermission as checkPerm, type AuthUser, type WhoAmIResponse } from "@shared/api/auth";
 import { kratos, type KratosSession } from "@shared/lib/kratos";
-import { apiClient } from "@shared/lib/api-client";
-import { clearDpopKeyPair, ensureDpopKeyPair } from "@shared/lib/dpop";
 import { config } from "@shared/lib/config";
 
 /** Периодический whoami-refresh — каждые 5 минут (KAC items 1-5 Foundation). */
@@ -40,7 +36,7 @@ export interface AuthContextValue {
 
   /** Старт self-service login flow (Kratos browser redirect). */
   login: (returnTo?: string) => void;
-  /** Logout: Kratos token-flow + Hydra BCL + clear DPoP key. */
+  /** Logout: Kratos token-flow + Hydra BCL. */
   logout: () => Promise<void>;
   /** Перезапросить /me + whoami. */
   refresh: () => Promise<void>;
@@ -115,41 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Init: keypair + initial refresh + apiClient hookup.
+  // Init: начальный refresh (сессия — по httpOnly cookie Kratos/Hydra).
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        await ensureDpopKeyPair();
-      } catch {
-        // WebCrypto / IDB недоступны (private window?) — продолжаем без DPoP.
-      }
-      apiClient.configure({
-        getAccessToken: () => tokenRef.current,
-        onTokenExpired: async () => {
-          // Стратегия: re-fetch /me — Kratos session cookie должна выписать
-          // новый access-token через Hydra refresh-flow (api-gateway middleware).
-          // Если /me возвращает 401 — token не обновился, user должен залогиниться.
-          try {
-            const resp = await authApi.me();
-            if (resp?.user) {
-              await refresh();
-              return tokenRef.current;
-            }
-          } catch {
-            // fallthrough
-          }
-          return null;
-        },
-        onStepUpRequired: async (acr?: string) => {
-          const handler = stepUpHandlerRef.current;
-          if (!handler) {
-            window.location.assign(kratos.loginUrl(window.location.pathname + window.location.search));
-            return;
-          }
-          await handler(acr);
-        },
-      });
       if (!cancelled) await refresh();
     })();
     return () => {
@@ -179,7 +144,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Session уже истекла — игнорируем.
     }
-    await clearDpopKeyPair();
     setUser(null);
     setSession(null);
     setAccessTokenState(null);
