@@ -80,7 +80,7 @@ interface Props {
   onEditClick?: () => void;
   /** Опциональный override inline-edit формы. Если задан — рендерится вместо
    *  generic InlineResourceEditForm когда detail в edit-mode. Используется для
-   *  resource-specific layouts (например, YC-style формы для subnet). */
+   *  resource-specific layouts (например, кастомные формы для subnet). */
   renderInlineEdit?: (data: Record<string, unknown>, exitEdit: () => void) => React.ReactNode;
 }
 

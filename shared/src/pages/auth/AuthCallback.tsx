@@ -3,7 +3,7 @@
 // Ory stack (KAC-115): Kratos self-service flow завершается прямым redirect'ом
 // на `default_browser_return_url` (`/dashboard` или `/`). Этот landing больше
 // не нужен для primary userflow, но оставлен как fallback / для будущего
-// Hydra OAuth2 (CLI/yc-shim) consumer.
+// Hydra OAuth2 (CLI-shim) consumer.
 //
 // Поведение сейчас: показывает Spin → navigate('/') через 1.5s. Если придёт
 // `?error=...` (например, от Hydra или OIDC-провайдера) — render error message.

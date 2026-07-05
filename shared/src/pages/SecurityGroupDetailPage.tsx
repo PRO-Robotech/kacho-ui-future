@@ -1,7 +1,7 @@
 // SecurityGroupDetailPage — обёртка над generic ResourceDetailPage с двумя
 // дополнительными табами: Входящий трафик / Исходящий трафик.
 //
-// Каждый tab фильтрует rules по direction и рендерит YC-style таблицу:
+// Каждый tab фильтрует rules по direction и рендерит resource-specific таблицу:
 // Протокол | Диапазон портов | Тип источника | Источник | Описание.
 
 import { useCallback, useMemo } from "react";

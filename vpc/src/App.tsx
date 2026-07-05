@@ -183,7 +183,7 @@ export function AppRoutes() {
                 path={`/projects/:projectId/vpc/${spec.route}/create`}
                 element={
                   // Subnet — отдельная standalone-страница SubnetCreatePage
-                  // (YC-style layout как у SubnetDetailPage в edit-mode).
+                  // (resource-specific layout как у SubnetDetailPage в edit-mode).
                   // Использует ?networkId=<n> для пред-фиксации сети;
                   // без параметра — показывает RefSelect "Сеть" вверху.
                   // Generic ResourceCreatePage оставлен для остальных VPC-
@@ -343,7 +343,7 @@ export function AppRoutes() {
             <Route path="/iam/groups" element={<GroupsPage />} />
             <Route path="/iam/roles" element={<RolesPage />} />
             <Route path="/iam/access-bindings" element={<AccessBindingsPage />} />
-            {/* KAC-125: YC-style «Права доступа» с Cascader + invite. */}
+            {/* KAC-125: «Права доступа» с Cascader + invite. */}
             <Route path="/iam/access" element={<AccessPage />} />
           </Route>
 

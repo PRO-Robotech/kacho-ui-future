@@ -1,6 +1,6 @@
 // SubnetCreateRedirect — перехватчик старого URL `/projects/.../networks/<n>/subnets/create`.
 // Generic `ResourceCreatePage` (spec.fields-based form) — это «старая» форма
-// подсети, доступная по этому URL по историческим причинам. Новая YC-style
+// подсети, доступная по этому URL по историческим причинам. Новая resource-specific
 // inline-форма живёт на Network detail (правая панель) и открывается через
 // `overviewCreateOverride → setCreatingSubnet(true)`. Этот компонент
 // перенаправляет на Network detail с query-флагом `?createSubnet=1`, чтобы

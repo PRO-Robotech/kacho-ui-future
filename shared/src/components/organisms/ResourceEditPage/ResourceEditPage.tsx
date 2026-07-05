@@ -1,4 +1,4 @@
-// ResourceEditPage — full-page Edit (как в YC console "Изменение ...").
+// ResourceEditPage — full-page Edit (экран "Изменение ...").
 // Поллит ресурс по id, заполняет initial state, отправляет PATCH с update_mask.
 
 import { useEffect, useMemo, useRef, useState } from "react";

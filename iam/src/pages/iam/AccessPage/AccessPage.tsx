@@ -1,4 +1,4 @@
-// AccessPage — YC-style «Права доступа» (KAC-125).
+// AccessPage — «Права доступа» (KAC-125).
 //
 // Layout по скриншотам:
 // - Header: «Права доступа» + табы «Облако» (Account-scope) / «Каталог» (Project-scope).
