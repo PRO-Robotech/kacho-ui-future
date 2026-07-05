@@ -51,6 +51,33 @@ export class StepUpRequiredError extends ApiError {
   }
 }
 
+/** Max raw (non-JSON) error body length preserved on an ApiError, in chars. */
+const MAX_RAW_ERROR_BODY = 2048;
+
+/**
+ * Build an ApiError from a response status/statusText and its raw body text.
+ *
+ * A JSON error envelope ({code,message,details}) is unwrapped as before. When
+ * the body is NOT valid JSON (e.g. an nginx/gateway 5xx HTML or plaintext page),
+ * the raw text is preserved into `message`/`details` instead of being silently
+ * dropped — previously the `JSON.parse` failure was swallowed by a bare `catch`
+ * and only `res.statusText` survived, hiding the real backend detail from
+ * on-call debugging (audit UISEC "errors swallowed by bare catch").
+ */
+export function apiErrorFromBody(status: number, statusText: string, text: string): ApiError {
+  let parsed: unknown = null;
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // Non-JSON body — preserved below via rawBody, not discarded.
+    }
+  }
+  const e = (parsed ?? {}) as { code?: string; message?: string; details?: unknown };
+  const rawBody = parsed === null && text ? text.slice(0, MAX_RAW_ERROR_BODY) : undefined;
+  return new ApiError(status, e.code ?? String(status), e.details ?? rawBody, e.message ?? rawBody ?? statusText);
+}
+
 interface ParsedChallenge {
   scheme: string;
   params: Record<string, string>;
@@ -193,17 +220,17 @@ export class ApiClient {
   async json<T = unknown>(path: string, opts: FetchOpts = {}): Promise<T> {
     const res = await this.fetch(path, opts);
     const text = await res.text();
+    if (!res.ok) {
+      throw apiErrorFromBody(res.status, res.statusText, text);
+    }
     let parsed: unknown = null;
     if (text) {
       try {
         parsed = JSON.parse(text);
       } catch {
-        // not json
+        // Successful response with a non-JSON body → treat as null payload
+        // (unchanged behavior; error bodies are handled by apiErrorFromBody).
       }
-    }
-    if (!res.ok) {
-      const e = (parsed ?? {}) as { code?: string; message?: string; details?: unknown };
-      throw new ApiError(res.status, e.code ?? String(res.status), e.details, e.message ?? res.statusText);
     }
     return parsed as T;
   }
