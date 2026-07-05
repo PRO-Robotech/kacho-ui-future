@@ -1,6 +1,6 @@
 // InlineResourceForm — единый диспетчер inline-формы Create/Edit ресурса.
 //
-// По spec.id выбирает кастомную YC-style форму (Subnet / SecurityGroup /
+// По spec.id выбирает кастомную resource-specific форму (Subnet / SecurityGroup /
 // AddressPool / NetworkInterface) либо generic InlineResourceCreateForm /
 // InlineResourceEditForm. Используется:
 //   • ResourceFormModal (модалка со списка) — оборачивает в <Modal>;
@@ -64,7 +64,7 @@ export function InlineResourceForm(props: InlineResourceFormProps): ReactNode {
   } = props;
   const specId = spec.id;
 
-  // ── Custom YC-style формы по spec.id ──
+  // ── Custom resource-specific формы по spec.id ──
   if (specId === "subnets" && action === "create") {
     return (
       <InlineSubnetCreateForm projectId={projectId} networkId={networkId} onCancel={onCancel} onSuccess={onSuccess} />

@@ -1,6 +1,6 @@
 // InlineSubnetCreateForm — inline-форма создания подсети, встраиваемая в правую
 // панель Network detail вместо "Общее"-Descriptions. Раскладка повторяет
-// YC-style 2-column horizontal layout (label-left / input-right) с custom-
+// 2-column horizontal layout (label-left / input-right) с custom-
 // виджетами под CIDR, метки и DHCP-collapse.
 //
 // Wire-format submission ровно как у public AddressService.Create:

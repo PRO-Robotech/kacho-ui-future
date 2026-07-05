@@ -1,4 +1,4 @@
-// InlineAddressPoolCreateForm — YC-style форма создания AddressPool с тем же
+// InlineAddressPoolCreateForm — форма создания AddressPool с тем же
 // layout, что у InlineSubnetCreateForm: horizontal Form, IPv4/IPv6 CIDR через
 // chip-list виджет (SubnetCidrChips). KAC-60 разрешает v4/v6/dual-stack пулы.
 //

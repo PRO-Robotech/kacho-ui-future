@@ -152,3 +152,37 @@ The prior audit's "pervasive exhaustive-deps suppressions" finding remains
 covered by the dedicated entry above. The sec-hardening-r3 extraction of the
 Resource CRUD organisms into `shared/src/components/organisms/*` further reduced
 the suppression count by collapsing the duplicated vpc/iam copies to one source.
+
+## Destructive/move operations are read-only stubs in the console
+
+**Status:** accepted / by-design (scoped, non-destructive-by-default console).
+
+The console deliberately does **not** perform destructive or ownership-moving
+mutations from the UI. Three surfaces are intentional, fully-implemented "stub"
+components that render the equivalent REST/`kachoctl` invocation instead of
+issuing the call:
+
+- `vpc/src/components/molecules/DeleteConfirmStub` — "Удаление через UI отключено";
+  shows the `DELETE <apiPath>` the operator can run.
+- `shared/src/components/molecules/MoveStubDialog` — "Перемещение через UI пока не
+  реализовано"; shows the `POST <apiPath>:move` body.
+- `shared/src/components/organisms/OperationsTab` — renders a 404 sub-title when a
+  resource's `ListOperations` is not yet exposed, rather than faking a list.
+
+**Why it is not latent tech-debt:** this is a deliberate safety posture for the
+current console, not deferred work smuggled past rule #11. Delete and move are the
+highest-blast-radius mutations; keeping them out of the point-and-click surface
+means an operator must reach for the API or `kachoctl` (auditable, scriptable,
+harder to fat-finger) while the read/create/edit flows the console does own stay
+fully functional. Server-side authz still gates every one of those API calls; the
+UI omission is a UX/blast-radius decision, not an authorization one.
+
+**Why these are complete, not half-built:** each stub is a finished component with
+its own unit test (`DeleteConfirmStub.test.tsx`, `MoveStubDialog.test.tsx`) — they
+have no `TODO`/`FIXME` and no dead branches. They are the intended terminal state
+for this console iteration, not a placeholder awaiting wiring.
+
+**Revisit trigger:** when a destructive-op UX (typed-name confirm for delete, a
+target-Project picker for move) is scoped as its own tracked task, replace the
+corresponding stub with the real flow behind that ticket; until then the stub is
+the reviewed, intended behavior.

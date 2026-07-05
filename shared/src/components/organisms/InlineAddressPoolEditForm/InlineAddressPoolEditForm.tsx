@@ -1,4 +1,4 @@
-// InlineAddressPoolEditForm — YC-style форма редактирования AddressPool,
+// InlineAddressPoolEditForm — форма редактирования AddressPool,
 // визуально парная к InlineAddressPoolCreateForm: тот же horizontal Form
 // layout. Wire-format:
 //   PATCH /vpc/v1/addressPools/{id}  { name, description, ..., update_mask }

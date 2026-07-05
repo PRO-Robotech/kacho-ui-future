@@ -1,5 +1,5 @@
 // Реестр ресурсов: метаданные для generic ListPage / DetailPage / Create-Edit.
-// Scope: 7 ресурсов verbatim YC proto.
+// Scope: 7 ресурсов Kachō proto.
 // apiPath содержит полный путь с доменным префиксом (verbatim из proto google.api.http annotations).
 
 import type { ReactNode } from "react";
@@ -119,7 +119,7 @@ const COL_ID: ResourceColumn = {
 };
 
 // Strict — для IAM (Account, Project).
-// Совпадает с backend validate.Name (verbatim YC `/[a-z]([-a-z0-9]{0,61}[a-z0-9])?/`).
+// Совпадает с backend validate.Name (Kachō `/[a-z]([-a-z0-9]{0,61}[a-z0-9])?/`).
 const FIELD_NAME: FormField = {
   name: "name",
   label: "Имя",
@@ -484,7 +484,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         immutable: true,
         // В Edit поле не показывается — после Create управляется через
         // SubnetCidrManager на DetailPage (verbs :add-cidr-blocks /
-        // :remove-cidr-blocks). См. YC verbatim Subnet docs.
+        // :remove-cidr-blocks). См. Kachō Subnet docs.
         editHidden: true,
         newItem: () => ({ value: "" }),
         itemFields: [
@@ -851,7 +851,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     },
   },
 
-  // proto: GET /vpc/v1/routeTables (YC использует camelCase в URL)
+  // proto: GET /vpc/v1/routeTables (camelCase в URL)
 
   "route-tables": {
     id: "route-tables",
@@ -999,7 +999,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     },
   },
 
-  // proto: GET /vpc/v1/networkInterfaces — AWS-ENI-подобный ресурс (эпик KAC-2).
+  // proto: GET /vpc/v1/networkInterfaces — ENI-подобный NetworkInterface (эпик KAC-2).
   // Публичная проекция: tenant-facing намерение + результат (id/name/привязки/
   // выделенные tenant-адреса/status). Инфра-поля (hv_id/sid/host_iface/...) —
   // только во InternalNetworkInterfaceService, тут не показываются (см. workspace
@@ -1268,7 +1268,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
     },
   },
 
-  // proto: GET /vpc/v1/securityGroups (YC использует camelCase в URL)
+  // proto: GET /vpc/v1/securityGroups (camelCase в URL)
 
   "security-groups": {
     id: "security-groups",
@@ -1333,7 +1333,7 @@ export const REGISTRY: Record<string, ResourceSpec> = {
         label: "Rules",
         type: "sg-rules",
         description: "Direction + protocol/ports + target (cidr | другая SG | predefined). Без правил — default-deny.",
-        // В Update RPC backend ждёт `rule_specs`, не `rules` (verbatim YC).
+        // В Update RPC backend ждёт `rule_specs`, не `rules` (Kachō контракт).
         // В edit-форме скрываем — правила меняются через спец-RPC UpdateRules /
         // UpdateRule на отдельной вкладке.
         editHidden: true,
@@ -2076,8 +2076,8 @@ export const REGISTRY: Record<string, ResourceSpec> = {
   },
 
   // ====== System (kacho-only admin: Region / Zone / AddressPool) ======
-  // НЕ verbatim-YC: эти ресурсы exposed через apiGW REST для admin UI.
-  // На external TLS endpoint (yc CLI compat) НЕ публикуются — см. kacho-vpc CLAUDE.md.
+  // Admin-only: эти ресурсы exposed через apiGW REST для admin UI.
+  // На external TLS endpoint НЕ публикуются — см. kacho-vpc CLAUDE.md.
   // Sync RPC (без Operation envelope), backend handler возвращает ресурс напрямую.
 
   regions: {
