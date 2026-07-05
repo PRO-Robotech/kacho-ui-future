@@ -71,12 +71,20 @@ async function fetchJson<T>(method: string, path: string, body?: unknown): Promi
     try {
       parsed = JSON.parse(text);
     } catch {
-      // not json
+      // Non-JSON body — preserved below via rawBody on error responses.
     }
   }
   if (!res.ok) {
     const err = (parsed ?? {}) as { code?: string; message?: string; details?: unknown };
-    throw new ApiError(res.status, err.code ?? String(res.status), err.details, err.message ?? res.statusText);
+    // Preserve a non-JSON error body (e.g. an nginx/gateway 5xx page) instead of
+    // discarding it, so the backend detail survives for on-call debugging.
+    const rawBody = parsed === null && text ? text.slice(0, 2048) : undefined;
+    throw new ApiError(
+      res.status,
+      err.code ?? String(res.status),
+      err.details ?? rawBody,
+      err.message ?? rawBody ?? res.statusText,
+    );
   }
   // На приёме: camelCase → snake_case (UI ожидает proto-style ключи).
   return camelToSnake(parsed) as T;

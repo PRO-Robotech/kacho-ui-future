@@ -1,1 +1,1 @@
-export * from "./ResourceEditPage";
+export * from "@shared/components/organisms/ResourceEditPage";

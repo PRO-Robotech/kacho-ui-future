@@ -110,6 +110,9 @@
 add_header X-Frame-Options "DENY" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "no-referrer" always;
+{{- if .Values.security.strictTransportSecurity }}
+add_header Strict-Transport-Security "{{ .Values.security.strictTransportSecurity }}" always;
+{{- end }}
 {{- if .Values.security.contentSecurityPolicy }}
 add_header Content-Security-Policy "{{ .Values.security.contentSecurityPolicy }}" always;
 {{- end }}

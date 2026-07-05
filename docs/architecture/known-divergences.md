@@ -63,3 +63,92 @@ This entry supersedes audit finding "47 blanket eslint-disable
 react-hooks/exhaustive-deps suppressions" (the count is now lower after the
 vpc/iam shared-source extraction collapsed the duplicated copies to a single
 source in `shared/src`).
+
+## IAM management pages forked per remote (`vpc` vs `iam`)
+
+**Status:** accepted / by-design (presentational fork), with an authorization
+single-source invariant enforced by test.
+
+The IAM screens — Access Bindings, Access, Groups, Roles, Users — exist as
+independent component implementations in both remotes:
+`vpc/src/pages/iam/<Page>.tsx` and `iam/src/pages/iam/<Page>/<Page>.tsx`.
+
+**Why they are not one shared component:** the two remotes use deliberately
+different create/edit UX wired to different route tables:
+
+- The **iam** remote registers dedicated `/iam/<resource>/create` and
+  `/iam/<resource>/:id/edit` routes (see `iam/src/pages/IamPage/IamPage.tsx`) and
+  its pages `navigate()` to them; it also integrates the IAM account-selector
+  context (`selectedAccount`) that only exists in the iam shell.
+- The **vpc** remote has **no** such create/edit routes; its IAM pages create and
+  edit in-place via antd `Modal`s (`GroupCreateModal`, `AccessBindingCreateModal`,
+  …). It hosts IAM screens only as a convenience surface.
+
+Collapsing both into a single `shared/` component would force one remote to adopt
+the other's routing model (e.g. vpc would `navigate()` to a create route it never
+registers → catch-all redirect), a runtime behavior change that cannot be
+validated without an end-to-end federation harness. The fork is therefore
+intentional and scoped to **presentation/routing only**.
+
+**Why the security risk is neutralized:** every security-relevant primitive is
+already single-sourced in `@shared` and consumed identically by both copies:
+
+- permission gating — `@shared/lib/permissions` (`usePermissions`),
+- IAM mutations + typed API — `@shared/components/organisms/iam/IamCommon`
+  (`useIamMutation`) and `@shared/api/iam`,
+- error mapping — `@shared/lib/permissions`
+  (`isAlreadyExistsError`, `mapApiErrorToMessage`),
+- session — `@shared/contexts/AuthContext`.
+
+A fix to any of those lands once and applies to both remotes. The audit failure
+scenario ("security fix applied to one copy, missed in the other") is prevented
+by `shared/src/test/iam-pages-authz-single-source.test.ts`, which fails CI if any
+IAM page in either remote stops sourcing the gating/mutation/API from `@shared`
+or re-declares a local `usePermissions` / `useIamMutation`. The remaining
+per-app difference is limited to the modal-vs-route create shell and the
+iam-only `selectedAccount` gate, neither of which is an authorization decision
+(the backend enforces authz; the UI gate is defense-in-depth/UX).
+
+**Revisit trigger:** if a future task unifies the two remotes' IAM routing model
+(both route-based or both modal-based), extract the shared page bodies into
+`shared/src/pages/iam/` behind a thin per-app create-shell and drop the fork.
+
+## `resource-registry.tsx` size (single central REGISTRY)
+
+**Status:** accepted / deferred residual (cosmetic size; no security or
+behavioral defect).
+
+`shared/src/lib/resource-registry.tsx` is ~2840 lines, dominated by one
+`REGISTRY: Record<string, ResourceSpec>` object literal (~lines 187-2612). It is
+the single source of truth that drives every list column, detail view and create
+/edit form across **both** the vpc and iam remotes.
+
+**Why it is not split in this security pass:** every REGISTRY entry references a
+shared set of in-file primitives (`COL_NAME`/`COL_ID`/`COL_CREATED`,
+`FIELD_NAME`/`FIELD_PROJECT_ID`/`FIELD_ACCOUNT_ID`/…, and the `sanitizeSgRule` /
+`sanitizeInstanceCreate` / `fmtBytesGiB` helpers). Splitting the object per
+domain (`vpc.ts` / `iam.ts` / `compute.ts` / `nlb.ts`) requires exporting all of
+those primitives and re-wiring imports across the most safety-critical shared
+file in the codebase. The change is purely organizational (CWE-1121 size, not a
+defect) and carries no security or behavioral benefit, while a mis-wired spec
+reference would regress rendering in a way the current export-name smoke tests
+would not catch and which cannot be validated without an end-to-end federation
+UI harness. Under the "keep build green" mandate of the hardening pass the
+risk/value trade does not justify it here.
+
+**Planned split (follow-up, behavior-preserving):**
+1. `resource-registry/primitives.ts` — export the shared column/field consts.
+2. `resource-registry/sanitizers.ts` — `sanitizeSgRule`, `sanitizeInstanceCreate`,
+   `fmtBytesGiB`, `gibToBytes`.
+3. `resource-registry/{vpc,iam,compute,nlb}.ts` — each exports its slice of specs.
+4. `resource-registry.tsx` (or `index.ts`) — composes the slices into `REGISTRY`
+   and keeps the public helpers (`getResource`, `resourceServicePrefix`,
+   `resourceProjectPath`, `applyFieldDefaults`, `getByPath`) so importers are
+   unchanged. Land behind snapshot tests of the composed `REGISTRY` keys.
+
+## `react-hooks/exhaustive-deps` count after shared-source extraction
+
+The prior audit's "pervasive exhaustive-deps suppressions" finding remains
+covered by the dedicated entry above. The sec-hardening-r3 extraction of the
+Resource CRUD organisms into `shared/src/components/organisms/*` further reduced
+the suppression count by collapsing the duplicated vpc/iam copies to one source.
