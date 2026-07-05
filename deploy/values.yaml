@@ -27,6 +27,11 @@ ingress:
 # antd exposes nonce-based StyleProvider integration.
 security:
   enabled: true
+  # HSTS: force https on subsequent navigations (SSL-strip / downgrade defense).
+  # Emitted only over TLS-terminated responses; safe to also set here because the
+  # UI is always served behind the https ingress. Set to "" to defer to an
+  # upstream ingress controller that already injects HSTS.
+  strictTransportSecurity: "max-age=63072000; includeSubDomains"
   contentSecurityPolicy: >-
     default-src 'self';
     script-src 'self';
