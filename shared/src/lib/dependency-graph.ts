@@ -39,10 +39,32 @@ export interface DepNode {
   children: DepNode[];
 }
 
-type AnyRec = Record<string, any>;
+// Backend resources arrive as untyped JSON at this API boundary. Model them as
+// Record<string, unknown> (not `any`) so every field access must be explicitly
+// narrowed — a backend field rename then surfaces at the narrowing site instead
+// of silently yielding `undefined`.
+type Rec = Record<string, unknown>;
 
-async function listAll(apiPath: string, payloadKey: string, query?: Record<string, string>): Promise<AnyRec[]> {
-  const r = await api.list<Record<string, AnyRec[]>>(apiPath, { pageSize: "1000", ...(query ?? {}) });
+/** Read a string field, or "" if absent/non-string. */
+function str(r: Rec, key: string): string {
+  const v = r[key];
+  return typeof v === "string" ? v : "";
+}
+
+/** Read a string[] field, or [] if absent/non-array. */
+function strArr(r: Rec, key: string): string[] {
+  const v = r[key];
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
+/** Read a nested object field, or undefined if absent/non-object. */
+function rec(r: Rec, key: string): Rec | undefined {
+  const v = r[key];
+  return typeof v === "object" && v !== null ? (v as Rec) : undefined;
+}
+
+async function listAll(apiPath: string, payloadKey: string, query?: Record<string, string>): Promise<Rec[]> {
+  const r = await api.list<Record<string, Rec[]>>(apiPath, { pageSize: "1000", ...(query ?? {}) });
   return r?.[payloadKey] ?? [];
 }
 
@@ -52,13 +74,14 @@ function routeSegmentFor(resourceId: string): string {
   return resourceId.startsWith("compute-") ? `compute/${route}` : `vpc/${route}`;
 }
 
-function mkNode(resourceId: string, r: AnyRec, blocks: boolean, children: DepNode[] = []): DepNode {
+function mkNode(resourceId: string, r: Rec, blocks: boolean, children: DepNode[] = []): DepNode {
+  const id = str(r, "id");
   return {
-    key: `${resourceId}:${r.id}`,
+    key: `${resourceId}:${id}`,
     resourceId,
-    id: String(r.id),
-    name: (r.name as string) || String(r.id),
-    projectId: (r.project_id as string) || "",
+    id,
+    name: str(r, "name") || id,
+    projectId: str(r, "project_id"),
     routeSegment: routeSegmentFor(resourceId),
     blocks,
     children,
@@ -66,9 +89,9 @@ function mkNode(resourceId: string, r: AnyRec, blocks: boolean, children: DepNod
 }
 
 /** id инстанса, к которому приаттачен NIC (used_by referrer), либо "". */
-function nicAttachedInstanceId(ni: AnyRec): string {
-  const ref = ni?.used_by?.referrer;
-  return ref?.id ? String(ref.id) : "";
+function nicAttachedInstanceId(ni: Rec): string {
+  const ref = rec(rec(ni, "used_by") ?? {}, "referrer");
+  return ref ? str(ref, "id") : "";
 }
 
 /** Дети подсети: internal-Address'ы (RESTRICT) и NetworkInterface'ы (RESTRICT). */
@@ -80,11 +103,13 @@ async function subnetChildren(subnetId: string, projectId: string): Promise<DepN
   ]);
   const out: DepNode[] = [];
   for (const a of addrs) {
-    const sid = a.internal_ipv4_address?.subnet_id ?? a.internal_ipv6_address?.subnet_id;
+    const v4 = rec(a, "internal_ipv4_address");
+    const v6 = rec(a, "internal_ipv6_address");
+    const sid = (v4 && str(v4, "subnet_id")) || (v6 && str(v6, "subnet_id")) || "";
     if (sid === subnetId) out.push(mkNode("addresses", a, true));
   }
   for (const ni of nics) {
-    if (ni.subnet_id !== subnetId) continue;
+    if (str(ni, "subnet_id") !== subnetId) continue;
     // FK network_interfaces.subnet_id = ON DELETE RESTRICT: NIC всегда блокирует
     // удаление своей подсети (независимо от того, приаттачен ли он к инстансу).
     out.push(mkNode("network-interfaces", ni, true));
@@ -98,8 +123,8 @@ async function addressDependents(addressId: string, projectId: string): Promise<
   const nics = await listAll("/vpc/v1/networkInterfaces", "network_interfaces", { project_id: projectId });
   const out: DepNode[] = [];
   for (const ni of nics) {
-    const v4: string[] = ni.v4_address_ids ?? [];
-    const v6: string[] = ni.v6_address_ids ?? [];
+    const v4 = strArr(ni, "v4_address_ids");
+    const v6 = strArr(ni, "v6_address_ids");
     if (v4.includes(addressId) || v6.includes(addressId)) out.push(mkNode("network-interfaces", ni, true));
   }
   return out;
@@ -130,16 +155,16 @@ export async function loadDependents(
     ]);
     const out: DepNode[] = [];
     for (const s of subnets) {
-      const kids = await subnetChildren(String(s.id), (s.project_id as string) || projectId);
+      const kids = await subnetChildren(str(s, "id"), str(s, "project_id") || projectId);
       out.push(mkNode("subnets", s, true, kids));
     }
     for (const rt of routeTables) out.push(mkNode("route-tables", rt, true));
     for (const sg of sgs) {
-      const isDefault = !!sg.default_for_network;
+      const isDefault = Boolean(sg.default_for_network);
       out.push(
         mkNode(
           "security-groups",
-          { ...sg, name: (isDefault ? "default · " : "") + ((sg.name as string) || sg.id) },
+          { ...sg, name: (isDefault ? "default · " : "") + (str(sg, "name") || str(sg, "id")) },
           !isDefault,
         ),
       );
@@ -158,9 +183,9 @@ export async function loadDependents(
   if (resourceId === "network-interfaces") {
     // NIC, приаттаченный к инстансу, нельзя удалить (NIC.Delete → FailedPrecondition).
     // Загружаем сам NIC, чтобы узнать used_by.
-    let ni: AnyRec | null = null;
+    let ni: Rec | null = null;
     try {
-      ni = await api.get<AnyRec>(`/vpc/v1/networkInterfaces/${resource.id}`);
+      ni = await api.get<Rec>(`/vpc/v1/networkInterfaces/${resource.id}`);
     } catch {
       ni = null;
     }
@@ -169,7 +194,7 @@ export async function loadDependents(
     return [
       mkNode(
         "compute-instances",
-        { id: instId, name: instId, project_id: (ni?.project_id as string) || projectId },
+        { id: instId, name: instId, project_id: (ni && str(ni, "project_id")) || projectId },
         true,
       ),
     ];
