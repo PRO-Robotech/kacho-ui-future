@@ -112,3 +112,43 @@ iam-only `selectedAccount` gate, neither of which is an authorization decision
 **Revisit trigger:** if a future task unifies the two remotes' IAM routing model
 (both route-based or both modal-based), extract the shared page bodies into
 `shared/src/pages/iam/` behind a thin per-app create-shell and drop the fork.
+
+## `resource-registry.tsx` size (single central REGISTRY)
+
+**Status:** accepted / deferred residual (cosmetic size; no security or
+behavioral defect).
+
+`shared/src/lib/resource-registry.tsx` is ~2840 lines, dominated by one
+`REGISTRY: Record<string, ResourceSpec>` object literal (~lines 187-2612). It is
+the single source of truth that drives every list column, detail view and create
+/edit form across **both** the vpc and iam remotes.
+
+**Why it is not split in this security pass:** every REGISTRY entry references a
+shared set of in-file primitives (`COL_NAME`/`COL_ID`/`COL_CREATED`,
+`FIELD_NAME`/`FIELD_PROJECT_ID`/`FIELD_ACCOUNT_ID`/…, and the `sanitizeSgRule` /
+`sanitizeInstanceCreate` / `fmtBytesGiB` helpers). Splitting the object per
+domain (`vpc.ts` / `iam.ts` / `compute.ts` / `nlb.ts`) requires exporting all of
+those primitives and re-wiring imports across the most safety-critical shared
+file in the codebase. The change is purely organizational (CWE-1121 size, not a
+defect) and carries no security or behavioral benefit, while a mis-wired spec
+reference would regress rendering in a way the current export-name smoke tests
+would not catch and which cannot be validated without an end-to-end federation
+UI harness. Under the "keep build green" mandate of the hardening pass the
+risk/value trade does not justify it here.
+
+**Planned split (follow-up, behavior-preserving):**
+1. `resource-registry/primitives.ts` — export the shared column/field consts.
+2. `resource-registry/sanitizers.ts` — `sanitizeSgRule`, `sanitizeInstanceCreate`,
+   `fmtBytesGiB`, `gibToBytes`.
+3. `resource-registry/{vpc,iam,compute,nlb}.ts` — each exports its slice of specs.
+4. `resource-registry.tsx` (or `index.ts`) — composes the slices into `REGISTRY`
+   and keeps the public helpers (`getResource`, `resourceServicePrefix`,
+   `resourceProjectPath`, `applyFieldDefaults`, `getByPath`) so importers are
+   unchanged. Land behind snapshot tests of the composed `REGISTRY` keys.
+
+## `react-hooks/exhaustive-deps` count after shared-source extraction
+
+The prior audit's "pervasive exhaustive-deps suppressions" finding remains
+covered by the dedicated entry above. The sec-hardening-r3 extraction of the
+Resource CRUD organisms into `shared/src/components/organisms/*` further reduced
+the suppression count by collapsing the duplicated vpc/iam copies to one source.
