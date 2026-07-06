@@ -14,6 +14,7 @@ import { Result, Spin, Alert, Button } from "antd";
 import { LogoutOutlined } from "@ant-design/icons";
 import { useAuth } from "@shared/contexts/AuthContext";
 import { config } from "@shared/lib/config";
+import { safeInternalPath } from "@shared/lib/redirect";
 import { AuthLayout } from "./Login";
 
 export function LogoutPage() {
@@ -23,7 +24,10 @@ export function LogoutPage() {
   const [status, setStatus] = useState<"running" | "ok" | "error">("running");
   const [errMsg, setErrMsg] = useState<string>("");
 
-  const postLogoutRedirect = params.get("post_logout_redirect_uri") ?? "/";
+  // post_logout_redirect_uri is caller-supplied — constrain it to a same-origin
+  // in-app path so a freshly-logged-out user cannot be bounced to an attacker
+  // page for re-phishing (CWE-601).
+  const postLogoutRedirect = safeInternalPath(params.get("post_logout_redirect_uri"));
 
   useEffect(() => {
     let cancelled = false;

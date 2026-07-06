@@ -186,3 +186,48 @@ for this console iteration, not a placeholder awaiting wiring.
 target-Project picker for move) is scoped as its own tracked task, replace the
 corresponding stub with the real flow behind that ticket; until then the stub is
 the reviewed, intended behavior.
+
+## Shell apps (`host`, `dashboard`) keep private auth/api helpers outside `@shared`
+
+**Status:** accepted / bounded residual (tiny identical logic, drift-guarded by
+per-copy unit tests).
+
+The two federation **shell** apps — `host` (the outer console shell) and
+`dashboard` — are not members of the `@shared` remote-source workspace (root
+`package.json` `workspaces` = `shared`/`vpc`/`iam`) and deliberately do **not**
+consume the `@shared/*` alias. Each carries a small private copy of:
+
+- `src/utils/auth.ts` — Kratos login-redirect + `isAuthRoute` guard
+  (byte-identical between host and dashboard).
+- `src/utils/api-client.ts` — minimal `apiGet`/`apiList` fetch wrapper with a
+  401→login redirect and a defensive JSON parse (identical between host and
+  dashboard).
+- `src/utils/host-context.ts` — host-context bootstrap; the host copy is a
+  **superset** (adds `localStorage` persistence + a shell-context reset on
+  `/` and `/accounts`). The two are legitimately different, not a fork.
+
+**Why not one `@shared` module:** `@shared` is the source-of-truth for the
+`vpc`/`iam` **remotes**, wired via the `@shared/*` vite/tsconfig/jest alias into
+those packages only. The shells ship a *different, minimal* fetch helper (a
+lightweight `apiGet`, not the typed `ApiError` client in
+`shared/src/api/client.ts`) for their narrow needs (reachability probe,
+host-context bootstrap). Extending the `@shared` alias into two federation
+**host** apps (vite + tsconfig + jest × 2) to fold in ~25 lines of identical
+redirect code is a structural change to the shells' build wiring that cannot be
+validated without an end-to-end federation harness, and the full typed client
+would over-serve the shells.
+
+**Why the residual is bounded:** the duplicated logic is security-sensitive but
+tiny and identical, and the 401→login redirect is unit-tested in **both** copies
+(`host/src/utils/api-client.test.ts`, `dashboard/src/utils/api-client.test.ts`,
+plus `auth.test.ts` in each), so a drift in the redirect/parse behavior fails CI.
+The sec-hardening-r8b pass reconciled the one real drift that had crept in — the
+`dashboard` `api-client.ts` ran `JSON.parse` **before** the `401` branch, so a
+non-JSON 401 body (an nginx/gateway HTML error page) threw a `SyntaxError` and
+masked the login redirect; both copies now carry the host's defensive
+parse-after-redirect and the matching regression test.
+
+**Revisit trigger:** if a third shell app appears, or the shells grow to need the
+typed `ApiError` client, promote `auth.ts` + `api-client.ts` into
+`shared/src/utils` and extend the `@shared` alias to `host`/`dashboard`, deleting
+the private copies.

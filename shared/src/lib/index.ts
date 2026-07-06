@@ -6,6 +6,7 @@ export * from "./dependency-graph";
 export * from "./form-schema";
 export * from "./kratos";
 export * from "./permissions";
+export * from "./redirect";
 export * from "./service-modules";
 export * from "./sidebar-groups";
 export * from "./spec-columns";
