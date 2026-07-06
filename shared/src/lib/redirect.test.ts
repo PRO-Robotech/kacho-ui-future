@@ -1,4 +1,4 @@
-import { safeInternalPath } from "./redirect";
+import { safeInternalPath, resolvePostAuthTarget } from "./redirect";
 
 // jsdom serves window.location.origin as http://localhost.
 
@@ -49,5 +49,40 @@ describe("safeInternalPath", () => {
     // "evil.example" resolves against our own origin, so it is an in-app path,
     // never a cross-origin redirect — returning it is safe.
     expect(safeInternalPath("evil.example")).toBe("/evil.example");
+  });
+});
+
+describe("resolvePostAuthTarget", () => {
+  it("prefers a same-origin flow return_to", () => {
+    expect(resolvePostAuthTarget("/iam/users", "/dashboard", "/")).toBe("/iam/users");
+  });
+
+  it("falls back to the query return_to when the flow value is absent", () => {
+    expect(resolvePostAuthTarget(null, "/vpc/networks", "/")).toBe("/vpc/networks");
+  });
+
+  it("falls back to the query return_to when the flow value is off-origin", () => {
+    // The flow-supplied value is caller-controlled; an off-origin one must not
+    // become an open redirect — we drop to the (already-safe) query value.
+    expect(resolvePostAuthTarget("https://evil.example/steal", "/vpc/networks", "/")).toBe("/vpc/networks");
+  });
+
+  it("falls back to the fallback when both return_to sources are absent", () => {
+    expect(resolvePostAuthTarget(null, null, "/dashboard")).toBe("/dashboard");
+  });
+
+  it("neutralizes an off-origin flow return_to to the fallback (Register: no query source)", () => {
+    // Register passes null for the query source, so an off-origin flow return_to
+    // must resolve to the post-registration fallback, never off-origin.
+    expect(resolvePostAuthTarget("//evil.example", null, "/dashboard")).toBe("/dashboard");
+    expect(resolvePostAuthTarget("https://evil.example/x", null, "/dashboard")).toBe("/dashboard");
+  });
+
+  it("neutralizes a javascript: scheme flow return_to", () => {
+    expect(resolvePostAuthTarget("javascript:alert(1)", null, "/dashboard")).toBe("/dashboard");
+  });
+
+  it("passes a same-origin absolute flow return_to through as its path", () => {
+    expect(resolvePostAuthTarget("http://localhost/iam/access", null, "/dashboard")).toBe("/iam/access");
   });
 });

@@ -2,7 +2,7 @@
 // InlineNetworkInterfaceCreateForm.
 
 import { useEffect, useState } from "react";
-import { snakeToCamelPath } from "@shared/components/organisms/ResourceFormDialog";
+import { snakeToCamelPath } from "@shared/lib/update-mask";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Form, Input, Space, Tooltip, Typography } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";

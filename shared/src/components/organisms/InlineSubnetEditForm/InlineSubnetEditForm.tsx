@@ -7,7 +7,7 @@
 // действительно изменённые mutable-поля.
 
 import { useEffect, useMemo, useState } from "react";
-import { snakeToCamelPath } from "@shared/components/organisms/ResourceFormDialog";
+import { snakeToCamelPath } from "@shared/lib/update-mask";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Collapse, Form, Input, Select, Space, Tooltip, Typography } from "antd";
 import { FormShell } from "@shared/components/organisms/form/FormShell";

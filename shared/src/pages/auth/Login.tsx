@@ -20,7 +20,7 @@ import { Button, Card, Space, Typography, Alert, Input, Form, Divider, Spin } fr
 import { KeyOutlined, LockOutlined, MailOutlined, SafetyOutlined } from "@ant-design/icons";
 import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@shared/lib/kratos";
 import { config } from "@shared/lib/config";
-import { safeInternalPath } from "@shared/lib/redirect";
+import { safeInternalPath, resolvePostAuthTarget } from "@shared/lib/redirect";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -200,7 +200,7 @@ export function LoginPage() {
     // Browser-flow: Kratos выставляет cookie и редиректит сам через 303.
     // Если попали сюда — берём return_to из flow или default.
     // Re-validate: the flow-supplied return_to must also stay same-origin.
-    const target = safeInternalPath(result.return_to || returnTo);
+    const target = resolvePostAuthTarget(result.return_to, returnTo);
     navigate(target, { replace: true });
   }
 

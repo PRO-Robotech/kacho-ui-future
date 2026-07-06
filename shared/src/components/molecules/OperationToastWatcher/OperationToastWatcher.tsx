@@ -1,8 +1,9 @@
 // OperationToastWatcher — невидимый watcher: при заданном opId поллит
 // /operations/{id} и через toast() отображает прогресс / финальный результат.
 //
-// Используется ResourceFormDialog и DeleteButton: форма закрывается сразу
-// после получения Operation, а пользователь видит progress-toast в углу.
+// Используется DeleteButton, SubnetCidrManager, SubnetRelocateDialog: действие
+// завершается сразу после получения Operation, а пользователь видит
+// progress-toast в углу.
 
 import { useEffect, useRef } from "react";
 import { useOperation } from "@shared/lib/use-operation";

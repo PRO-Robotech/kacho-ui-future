@@ -13,7 +13,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Alert } from "antd";
 import { extractOperationId } from "@shared/components/molecules/OperationDialog";
 import { ResourceFormBody } from "@shared/components/organisms/form/ResourceFormBody";
-import { computeUpdateMask, snakeToCamelPath } from "@shared/components/organisms/ResourceFormDialog";
+import { computeUpdateMask, snakeToCamelPath } from "@shared/lib/update-mask";
 import { ApiError, api } from "@shared/api/client";
 import { applyFieldDefaults, type ResourceSpec } from "@shared/lib/resource-registry";
 import { useInvalidateResourceList, useOperation } from "@shared/lib/use-operation";
