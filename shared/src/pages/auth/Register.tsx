@@ -18,6 +18,7 @@ import { KeyOutlined, LockOutlined, MailOutlined, UserOutlined } from "@ant-desi
 import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@shared/lib/kratos";
 import { AuthLayout, bufferToBase64Url } from "./Login";
 import { config } from "@shared/lib/config";
+import { resolvePostAuthTarget } from "@shared/lib/redirect";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -188,7 +189,9 @@ export function RegisterPage() {
   };
 
   function handleSubmitSuccess(result: SelfServiceFlow): void {
-    const target = result.return_to || "/dashboard";
+    // return_to is flow-supplied — constrain it to a same-origin in-app path
+    // (CWE-601), mirroring Login. Falls back to the post-registration dashboard.
+    const target = resolvePostAuthTarget(result.return_to, null, "/dashboard");
     navigate(target, { replace: true });
   }
 

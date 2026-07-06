@@ -4,6 +4,42 @@ Deliberate, reviewed deviations from a lint/style default. Each entry explains
 why the deviation is intentional and not latent tech-debt, so audits do not
 re-flag it.
 
+## Client-side HIBP breach check is a progressive enhancement (not the enforcement point)
+
+**Status:** accepted / by-design (best-effort UX; server-side is authoritative).
+
+`shared/src/pages/auth/Register.tsx` runs a debounced client-side
+have-i-been-pwned (HIBP) k-anonymity check (`checkHibp`) that `fetch`es
+`https://api.pwnedpasswords.com/range/<SHA1-prefix>` and warns the user before
+submit. The app's own CSP is `connect-src 'self'`
+(`deploy/values.yaml` / the four `*/nginx.conf`), so **in the deployed image this
+cross-origin fetch is blocked** and `checkHibp` fail-opens (its `catch` returns
+`false`), so the inline warning does not render in production.
+
+**Why this is intended, not a broken control:** the authoritative breach
+rejection is enforced **server-side** by Kratos —
+`kacho-deploy/.../kratos-config-configmap.yaml` sets
+`password.config.haveibeenpwned_enabled: true` (host `api.pwnedpasswords.com`).
+A breached password is rejected on submit and the Kratos flow message surfaces
+through the existing error path (`err.ui?.messages?.[0]?.text` → `setError`). The
+client check is a *progressive enhancement*: it fires only where CSP is absent
+(local `vite` dev — no nginx header) to give an earlier hint, and degrades
+silently where CSP is present because the server still rejects.
+
+**Why the CSP is deliberately not relaxed for `pwnedpasswords.com`:** granting a
+`connect-src` exception would (a) widen the strict egress allow-list of an
+authenticated console to a third-party host and (b) leak SHA-1 password prefixes
+from the app origin on every keystroke. Keeping `connect-src 'self'` and letting
+Kratos (server-to-server) perform the HIBP lookup is the stronger posture. The
+k-anonymity prefix scheme itself is correct (only 5 hex chars leave the browser,
+never the password), so fail-open on the *hint* leaks nothing and loses no
+enforcement.
+
+**Revisit trigger:** if the client-side pre-warning is ever required to function
+in production (e.g. a product decision to show it before submit), route the HIBP
+lookup through a same-origin gateway endpoint rather than adding
+`api.pwnedpasswords.com` to `connect-src`.
+
 ## CSP `style-src 'unsafe-inline'`
 
 **Status:** accepted / bounded residual (not an exploitable defect).

@@ -23,7 +23,6 @@ export { OperationsTab } from "@shared/components/organisms/OperationsTab";
 export { ResourceCreatePage } from "./ResourceCreatePage";
 export { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
 export { ResourceEditPage } from "./ResourceEditPage";
-export { ResourceFormDialog } from "@shared/components/organisms/ResourceFormDialog";
 export { ResourceFormModal } from "@shared/components/organisms/ResourceFormModal";
 export { ResourceListPage } from "./ResourceListPage";
 export { ResourceShell } from "@shared/components/organisms/ResourceShell";

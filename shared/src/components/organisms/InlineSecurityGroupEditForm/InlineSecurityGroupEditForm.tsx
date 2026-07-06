@@ -6,7 +6,7 @@
 // всего ресурса. Поэтому здесь rules-секции нет.
 
 import { useEffect, useState } from "react";
-import { snakeToCamelPath } from "@shared/components/organisms/ResourceFormDialog";
+import { snakeToCamelPath } from "@shared/lib/update-mask";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Form, Input, Typography } from "antd";
 import { ApiError, api } from "@shared/api/client";
