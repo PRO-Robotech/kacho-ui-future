@@ -3,10 +3,7 @@ module.exports = {
   extensionsToTreatAsEsm: [".ts", ".tsx"],
   roots: ["<rootDir>/src", "<rootDir>/../shared/src"],
   setupFilesAfterEnv: ["<rootDir>/../shared/src/test/setup.ts"],
-  testMatch: [
-    "<rootDir>/src/**/*.test.{ts,tsx}",
-    "<rootDir>/../shared/src/**/*.test.{ts,tsx}",
-  ],
+  testMatch: ["<rootDir>/src/**/*.test.{ts,tsx}", "<rootDir>/../shared/src/**/*.test.{ts,tsx}"],
   moduleNameMapper: {
     "\\.(css|scss)$": "<rootDir>/src/test/style-mock.ts",
     "^@shared/(.*)$": "<rootDir>/../shared/src/$1",
