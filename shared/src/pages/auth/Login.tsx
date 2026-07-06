@@ -20,6 +20,7 @@ import { Button, Card, Space, Typography, Alert, Input, Form, Divider, Spin } fr
 import { KeyOutlined, LockOutlined, MailOutlined, SafetyOutlined } from "@ant-design/icons";
 import { kratos, type SelfServiceFlow, csrfToken, findNode, flowMessages } from "@shared/lib/kratos";
 import { config } from "@shared/lib/config";
+import { safeInternalPath } from "@shared/lib/redirect";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -40,7 +41,9 @@ export function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>();
 
   const flowId = searchParams.get("flow");
-  const returnTo = searchParams.get("return_to") ?? "/";
+  // return_to is caller-supplied — constrain it to a same-origin in-app path so
+  // it cannot become an open-redirect / re-phishing hand-off (CWE-601).
+  const returnTo = safeInternalPath(searchParams.get("return_to"));
 
   // Step 1: получаем flow по ID или инициируем новый через redirect.
   useEffect(() => {
@@ -196,7 +199,8 @@ export function LoginPage() {
   function handleSubmitSuccess(result: SelfServiceFlow): void {
     // Browser-flow: Kratos выставляет cookie и редиректит сам через 303.
     // Если попали сюда — берём return_to из flow или default.
-    const target = result.return_to || returnTo;
+    // Re-validate: the flow-supplied return_to must also stay same-origin.
+    const target = safeInternalPath(result.return_to || returnTo);
     navigate(target, { replace: true });
   }
 

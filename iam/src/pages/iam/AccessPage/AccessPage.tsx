@@ -329,8 +329,10 @@ export function AccessGrantPage() {
       }
 
       toast.error("Выберите пользователя или укажите email для приглашения");
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // The ApiError envelope (which may carry backend detail / a magic-link
+      // payload) must not be dumped to the browser console — surface only the
+      // user-facing toast.
       toast.error("Ошибка выдачи доступа");
     }
   }

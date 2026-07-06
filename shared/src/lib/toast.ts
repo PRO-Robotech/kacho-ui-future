@@ -1,9 +1,8 @@
 // Simple toast system — без внешних deps.
 // API: toast.success(msg), toast.error(msg), toast.info(msg), toast.dismiss(id).
-// Pending → success/error: useOperationToast(opId, {labels})
+// Operation-driven toasts live in the OperationToastWatcher component.
 
-import { useEffect, useSyncExternalStore } from "react";
-import { useOperation } from "./use-operation";
+import { useSyncExternalStore } from "react";
 
 export type ToastVariant = "success" | "error" | "info" | "loading";
 
@@ -71,55 +70,4 @@ export function useToasts(): ToastItem[] {
     () => toasts,
     () => toasts,
   );
-}
-
-// Хелпер: запускает loading-toast и обновляет его при завершении Operation.
-//   labels: тексты для loading/success/error.
-//   onDone: callback при done=true (для invalidate cache, navigate etc.)
-interface OperationToastLabels {
-  loading: string;
-  success: string;
-  // errorPrefix: префикс для error toast; финальная строка = `${prefix}: ${error.message}`
-  errorPrefix: string;
-}
-
-export function useOperationToast(
-  opId: string | null,
-  labels: OperationToastLabels,
-  callbacks?: { onDone?: (success: boolean) => void },
-) {
-  const { data: op, isError } = useOperation(opId);
-
-  useEffect(() => {
-    if (!opId) return;
-    const toastId = toast.loading(labels.loading);
-
-    return () => {
-      // На unmount — если ещё loading, dismiss
-      toast.dismiss(toastId);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opId]);
-
-  useEffect(() => {
-    if (!opId) return;
-    if (op?.done) {
-      // Найти existing loading toast по message — простейший mapping; вместо этого
-      // upgradeим: один toast на opId через ref... Упрощу: при done — dismiss all и
-      // создаём новый.
-      // Поскольку у нас один toast на op (только что создали в useEffect выше),
-      // он уже dismissed на cleanup при изменении opId. Создаём финальный.
-      if (op.error) {
-        toast.error(`${labels.errorPrefix}: ${op.error.message}`);
-        callbacks?.onDone?.(false);
-      } else {
-        toast.success(labels.success);
-        callbacks?.onDone?.(true);
-      }
-    } else if (isError) {
-      toast.error(`${labels.errorPrefix}: ошибка опроса операции`);
-      callbacks?.onDone?.(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [op?.done, op?.error?.code, isError, opId]);
 }
