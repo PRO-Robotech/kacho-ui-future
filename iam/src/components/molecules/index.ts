@@ -1,9 +1,9 @@
 export * from "./auth";
-export { DeleteDialog } from "./DeleteDialog";
-export { DetailOverviewActions } from "./DetailOverviewActions";
-export { DopplerButton } from "./DopplerButton";
-export { EditableKVTable } from "./EditableKVTable";
-export { ErrorResult } from "./ErrorResult";
+export { DeleteDialog } from "@shared/components/molecules/DeleteDialog";
+export { DetailOverviewActions } from "@shared/components/molecules/DetailOverviewActions";
+export { DopplerButton } from "@shared/components/molecules/DopplerButton";
+export { EditableKVTable } from "@shared/components/molecules/EditableKVTable";
+export { ErrorResult } from "@shared/components/molecules/ErrorResult";
 export {
   HeaderBreadcrumbSlot,
   HeaderRightSlot,
@@ -12,22 +12,22 @@ export {
   useBreadcrumb,
   useHeaderRight,
   usePageTitle,
-} from "./PageHeaderSlot";
-export { IpamUtilizationBar } from "./IpamUtilizationBar";
-export { JsonEditor } from "./JsonEditor";
-export { JsonMonacoView } from "./JsonMonacoView";
-export { MoveStubDialog } from "./MoveStubDialog";
-export { OperationBanner } from "./OperationBanner";
-export { OperationDialog } from "./OperationDialog";
-export { OperationsTable } from "./OperationsTable";
-export { OperationToastWatcher } from "./OperationToastWatcher";
-export { PanelHeader } from "./PanelHeader";
-export { ProjectRequiredEmpty } from "./ProjectRequiredEmpty";
-export { RefNameLink } from "./RefNameLink";
-export { ResourceEmptyState } from "./ResourceEmptyState";
-export { ResourceRefChips } from "./ResourceRefChips";
-export { RowActionsMenu } from "./RowActionsMenu";
-export { SectionHeader } from "./SectionHeader";
-export { SubnetCidrChips } from "./SubnetCidrChips";
-export { ColumnSettings, TableSearch, useHiddenColumns } from "./TableToolbar";
-export type { ToggleCol } from "./TableToolbar";
+} from "@shared/components/molecules/PageHeaderSlot";
+export { IpamUtilizationBar } from "@shared/components/molecules/IpamUtilizationBar";
+export { JsonEditor } from "@shared/components/molecules/JsonEditor";
+export { JsonMonacoView } from "@shared/components/molecules/JsonMonacoView";
+export { MoveStubDialog } from "@shared/components/molecules/MoveStubDialog";
+export { OperationBanner } from "@shared/components/molecules/OperationBanner";
+export { OperationDialog } from "@shared/components/molecules/OperationDialog";
+export { OperationsTable } from "@shared/components/molecules/OperationsTable";
+export { OperationToastWatcher } from "@shared/components/molecules/OperationToastWatcher";
+export { PanelHeader } from "@shared/components/molecules/PanelHeader";
+export { ProjectRequiredEmpty } from "@shared/components/molecules/ProjectRequiredEmpty";
+export { RefNameLink } from "@shared/components/molecules/RefNameLink";
+export { ResourceEmptyState } from "@shared/components/molecules/ResourceEmptyState";
+export { ResourceRefChips } from "@shared/components/molecules/ResourceRefChips";
+export { RowActionsMenu } from "@shared/components/molecules/RowActionsMenu";
+export { SectionHeader } from "@shared/components/molecules/SectionHeader";
+export { SubnetCidrChips } from "@shared/components/molecules/SubnetCidrChips";
+export { ColumnSettings, TableSearch, useHiddenColumns } from "@shared/components/molecules/TableToolbar";
+export type { ToggleCol } from "@shared/components/molecules/TableToolbar";

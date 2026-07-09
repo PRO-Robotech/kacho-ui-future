@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Alert, Modal, Select, Typography, Form } from "antd";
-import { extractOperationId } from "@/components/molecules/OperationDialog";
-import { OperationToastWatcher } from "@/components/molecules/OperationToastWatcher";
-import { ApiError, api } from "@/api/client";
-import { useInvalidateResourceList } from "@/lib/use-operation";
-import { toast } from "@/lib/toast";
+import { extractOperationId } from "@shared/components/molecules/OperationDialog";
+import { OperationToastWatcher } from "@shared/components/molecules/OperationToastWatcher";
+import { ApiError, api } from "@shared/api/client";
+import { useInvalidateResourceList } from "@shared/lib/use-operation";
+import { toast } from "@shared/lib/toast";
 
 interface ZoneRow {
   id: string;

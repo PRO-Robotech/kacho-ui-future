@@ -1,4 +1,4 @@
-// AccessPage — YC-style «Права доступа» (KAC-125).
+// AccessPage — «Права доступа» (KAC-125).
 //
 // Layout по скриншотам:
 // - Header: «Права доступа» + табы «Облако» (Account-scope) / «Каталог» (Project-scope).
@@ -22,13 +22,13 @@ import {
   Typography,
   Alert,
 } from "antd";
-import { toast } from "@/lib/toast";
+import { toast } from "@shared/lib/toast";
 import { PlusOutlined, MailOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { iamApi, IAM, type User, type Role } from "@/api/iam";
-import { CopyableMonoId } from "@/components/organisms/iam/IamCommon";
-import { useContext } from "@/lib/context-store";
+import { iamApi, IAM, type User, type Role } from "@shared/api/iam";
+import { CopyableMonoId } from "@shared/components/organisms/iam/IamCommon";
+import { useContext } from "@shared/lib/context-store";
 
 type ScopeTab = "cloud" | "folder";
 
@@ -323,8 +323,10 @@ function InviteModal({ open, onClose, accountId, projectId, scope }: InviteModal
       }
 
       toast.error("Выберите пользователя или укажите email для приглашения");
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // The ApiError envelope (which may carry backend detail / a magic-link
+      // payload) must not be dumped to the browser console — surface only the
+      // user-facing toast.
       toast.error("Ошибка выдачи доступа");
     }
   }

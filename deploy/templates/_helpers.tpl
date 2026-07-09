@@ -105,6 +105,20 @@
 {{- default .Values.replicas .Values.host.replicas -}}
 {{- end -}}
 
+{{- define "ui.securityHeaders" -}}
+{{- if .Values.security.enabled }}
+add_header X-Frame-Options "DENY" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "no-referrer" always;
+{{- if .Values.security.strictTransportSecurity }}
+add_header Strict-Transport-Security "{{ .Values.security.strictTransportSecurity }}" always;
+{{- end }}
+{{- if .Values.security.contentSecurityPolicy }}
+add_header Content-Security-Policy "{{ .Values.security.contentSecurityPolicy }}" always;
+{{- end }}
+{{- end }}
+{{- end -}}
+
 {{- define "ui.labels" -}}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/instance: {{ .Release.Name }}

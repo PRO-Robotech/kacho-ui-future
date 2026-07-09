@@ -9,15 +9,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Form, Input, Alert } from "antd";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
-import { IAM, type Role, type Rule } from "@/api/iam";
-import { usePermissionCatalog } from "@/api/usePermissionCatalog";
-import { useIamMutation } from "@/components/organisms/iam/IamCommon";
+import { api } from "@shared/api/client";
+import { IAM, type Role, type Rule } from "@shared/api/iam";
+import { usePermissionCatalog } from "@shared/api/usePermissionCatalog";
+import { useIamMutation } from "@shared/components/organisms/iam/IamCommon";
 import { RulesEditor, emptyRule, rulesInvalid } from "@/components/organisms/iam/RulesEditor";
-import { ImmutableField } from "@/components/organisms/form/ImmutableField";
-import { FormShell } from "@/components/organisms/form/FormShell";
+import { ImmutableField } from "@shared/components/organisms/form/ImmutableField";
+import { FormShell } from "@shared/components/organisms/form/FormShell";
 import { FormSection } from "@/components/organisms/form/FormSection";
-import { FormFooter } from "@/components/organisms/form/FormFooter";
+import { FormFooter } from "@shared/components/organisms/form/FormFooter";
 
 /** Стабильная сигнатура набора rules — для diff (изменились ли правила). */
 function rulesSig(rules: Rule[]): string {

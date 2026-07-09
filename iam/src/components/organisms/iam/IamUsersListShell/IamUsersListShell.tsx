@@ -11,8 +11,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "antd";
 import { UserAddOutlined } from "@ant-design/icons";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
-import { REGISTRY } from "@/lib/resource-registry";
-import { useHeaderRight } from "@/components/molecules/PageHeaderSlot";
+import { REGISTRY } from "@shared/lib/resource-registry";
+import { useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
 
 export function IamUsersListShell() {
   const navigate = useNavigate();

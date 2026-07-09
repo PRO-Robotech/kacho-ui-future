@@ -13,9 +13,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
-import { REGISTRY } from "@/lib/resource-registry";
-import { useContext } from "@/lib/context-store";
-import { iamApi } from "@/api/iam";
+import { REGISTRY } from "@shared/lib/resource-registry";
+import { useContext } from "@shared/lib/context-store";
+import { iamApi } from "@shared/api/iam";
 
 export function RolesListShell() {
   const account = useContext((s) => s.account);

@@ -25,9 +25,9 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, Card, Input, Radio, Select, Space, Spin, Tag, Tooltip, Typography } from "antd";
 import { CloseOutlined, DeleteOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
-import type { PermissionCatalog, Rule, RuleArm } from "@/api/iam";
-import { ruleArm } from "@/api/iam";
-import { api } from "@/api/client";
+import type { PermissionCatalog, Rule, RuleArm } from "@shared/api/iam";
+import { ruleArm } from "@shared/api/iam";
+import { api } from "@shared/api/client";
 import {
   WILDCARD,
   catalogModules,
@@ -35,9 +35,9 @@ import {
   resourcesForModule,
   usePermissionCatalog,
   verbOptions,
-} from "@/api/usePermissionCatalog";
-import { instanceFetcherFor, type InstanceFetcher } from "@/lib/resourceInstanceFetchers";
-import { useContext } from "@/lib/context-store";
+} from "@shared/api/usePermissionCatalog";
+import { instanceFetcherFor, type InstanceFetcher } from "@shared/lib/resourceInstanceFetchers";
+import { useContext } from "@shared/lib/context-store";
 
 // Re-export WILDCARD для обратной совместимости импортёров RulesEditor.
 export { WILDCARD };

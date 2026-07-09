@@ -3,21 +3,21 @@ import type { FC, ReactNode } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App as AntdApp } from "antd";
-import { ThemeProvider } from "@/lib/theme-context";
-import { HeaderRightSlot, PageHeaderSlotProvider } from "@/components/molecules/PageHeaderSlot";
-import { GlobalResourceFormModal } from "@/components/organisms/GlobalResourceFormModal";
-import { OperationBanner } from "@/components/molecules/OperationBanner";
+import { ThemeProvider } from "@shared/lib/theme-context";
+import { HeaderRightSlot, PageHeaderSlotProvider } from "@shared/components/molecules/PageHeaderSlot";
+import { GlobalResourceFormModal } from "@shared/components/organisms/GlobalResourceFormModal";
+import { OperationBanner } from "@shared/components/molecules/OperationBanner";
 import { Toaster } from "@/components/molecules/Toaster";
 import { ResourceCreatePage } from "@/components/organisms/ResourceCreatePage";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
-import { ResourceShell } from "@/components/organisms/ResourceShell";
+import { ResourceShell } from "@shared/components/organisms/ResourceShell";
 import { NetworkInterfaceCreatePage } from "@/pages/NetworkInterfaceCreatePage";
 import { OperationsPage } from "@/pages/OperationsPage";
 import { SubnetCreatePage } from "@/pages/SubnetCreatePage";
-import { contextApi } from "@/lib/context-store";
-import { REGISTRY } from "@/lib/resource-registry";
-import "@/typography.css";
-import "@/index.css";
+import { contextApi } from "@shared/lib/context-store";
+import { REGISTRY } from "@shared/lib/resource-registry";
+import "@shared/typography.css";
+import "@shared/index.css";
 
 export interface VpcPageProps {
   context?: {

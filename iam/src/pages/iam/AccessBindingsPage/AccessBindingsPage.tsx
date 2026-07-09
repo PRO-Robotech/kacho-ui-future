@@ -11,15 +11,15 @@ import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Empty, Select, Space, Typography } from "antd";
 import { FilterOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { ResourceTable, type Column } from "@/components/organisms/ResourceTable";
-import { RowActionsMenu } from "@/components/molecules/RowActionsMenu";
-import { REGISTRY, getByPath } from "@/lib/resource-registry";
-import { buildSpecColumns } from "@/lib/spec-columns";
-import { iamApi, type AccessBindingList } from "@/api/iam";
-import { FormShell } from "@/components/organisms/form/FormShell";
-import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
+import { ResourceTable, type Column } from "@shared/components/organisms/ResourceTable";
+import { RowActionsMenu } from "@shared/components/molecules/RowActionsMenu";
+import { REGISTRY, getByPath } from "@shared/lib/resource-registry";
+import { buildSpecColumns } from "@shared/lib/spec-columns";
+import { iamApi, type AccessBindingList } from "@shared/api/iam";
+import { FormShell } from "@shared/components/organisms/form/FormShell";
+import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
+import { useContext } from "@shared/lib/context-store";
 import { IamListShell } from "@/components/organisms/iam/IamListShell";
-import { useContext } from "@/lib/context-store";
 import {
   AccessBindingCreateForm,
   type SubjectType,

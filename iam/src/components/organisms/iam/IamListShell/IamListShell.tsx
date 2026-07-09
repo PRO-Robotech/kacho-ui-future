@@ -9,8 +9,8 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Tag } from "antd";
-import { PanelHeader } from "@/components/molecules/PanelHeader";
-import { ResourceIcon } from "@/components/organisms/form/ResourceIcon";
+import { PanelHeader } from "@shared/components/molecules/PanelHeader";
+import { ResourceIcon } from "@shared/components/organisms/form/ResourceIcon";
 
 interface Props {
   /** specId для ResourceIcon (тот же глиф, что в сайдбаре): roles/groups/… */

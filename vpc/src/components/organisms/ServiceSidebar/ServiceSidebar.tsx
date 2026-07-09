@@ -16,10 +16,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Avatar, Dropdown, Spin, Tooltip, theme } from "antd";
 import { LoginOutlined, LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { KachoLogo } from "@/components/atoms/brand/KachoLogo";
-import { useContext } from "@/lib/context-store";
-import { useAuth } from "@/contexts/AuthContext";
-import { COMMON_BOTTOM, type NavLeaf } from "@/lib/service-modules";
-import { activeLeafKey, buildSidebarGroups } from "@/lib/sidebar-groups";
+import { useContext } from "@shared/lib/context-store";
+import { useAuth } from "@shared/contexts/AuthContext";
+import { COMMON_BOTTOM, type NavLeaf } from "@shared/lib/service-modules";
+import { activeLeafKey, buildSidebarGroups } from "@shared/lib/sidebar-groups";
 
 const RAIL_WIDTH = 56;
 const EXPANDED_WIDTH = 232;

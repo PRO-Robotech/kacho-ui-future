@@ -13,12 +13,12 @@ import { Button, Input, Popconfirm, Segmented, Space, Table, Tag, Typography } f
 import { PlusOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
-import { iamApi, IAM, type Role } from "@/api/iam";
-import { useIamMutation, fmtTs, CopyableMonoId, SystemTag } from "@/components/organisms/iam/IamCommon";
+import { iamApi, IAM, type Role } from "@shared/api/iam";
+import { useIamMutation, fmtTs, CopyableMonoId, SystemTag } from "@shared/components/organisms/iam/IamCommon";
 import { InlineRoleCreateForm } from "@/components/organisms/iam/InlineRoleCreateForm";
-import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
+import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
 import { IamListShell, useTableScrollY } from "@/components/organisms/iam/IamListShell";
-import { useContext } from "@/lib/context-store";
+import { useContext } from "@shared/lib/context-store";
 
 export function RolesPage() {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { jest } from "@jest/globals";
 import { MemoryRouter } from "react-router-dom";
-import { ApiError } from "@/api/client";
+import { ApiError } from "@shared/api/client";
 import type { ClusterAdminsPage as ClusterAdminsPageExport } from "./ClusterAdminsPage";
 
 type QueryState = { data?: unknown; error?: unknown; isLoading?: boolean; isFetching?: boolean };
@@ -45,7 +45,7 @@ jest.unstable_mockModule("@/lib/use-operation", () => ({
   useOperation: () => ({ data: undefined }),
 }));
 
-jest.unstable_mockModule("@/lib/toast", () => ({
+jest.unstable_mockModule("@shared/lib/toast", () => ({
   toast: { success: jest.fn(), error: jest.fn() },
 }));
 
@@ -53,7 +53,7 @@ jest.unstable_mockModule("@/components/organisms/system/GrantAdminModal", () => 
   GrantAdminModal: () => null,
 }));
 
-jest.unstable_mockModule("@/components/organisms/iam/IamCommon", () => ({
+jest.unstable_mockModule("@shared/components/organisms/iam/IamCommon", () => ({
   CopyableMonoId: () => null,
   fmtTs: () => "",
 }));

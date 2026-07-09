@@ -5,16 +5,24 @@ WORKDIR /app
 ARG KACHO_PUBLIC_BASE=/vpc-remote/
 ENV KACHO_PUBLIC_BASE=$KACHO_PUBLIC_BASE
 
-COPY vpc/package*.json ./
+# Workspace-aware install: the vpc remote shares source with the iam remote via
+# the @kacho-ui-future/shared workspace package, so the build needs the root
+# manifest + lockfile and every declared workspace manifest before npm ci.
+COPY package.json package-lock.json ./
+COPY shared/package.json shared/
+COPY vpc/package.json vpc/
+COPY iam/package.json iam/
 RUN npm ci
 
-COPY vpc/ ./
-RUN npm run build
+# Sources needed to build the vpc remote (its own tree + the shared package).
+COPY shared/ shared/
+COPY vpc/ vpc/
+RUN npm run build --workspace kacho-ui-future-vpc
 
 FROM nginx:1.27-alpine
 
 COPY vpc/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/vpc/dist /usr/share/nginx/html
 
 EXPOSE 80
 

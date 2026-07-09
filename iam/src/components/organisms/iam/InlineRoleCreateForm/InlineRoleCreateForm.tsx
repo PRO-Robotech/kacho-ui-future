@@ -9,13 +9,13 @@
 import { useMemo, useState } from "react";
 import { Form, Input, Select } from "antd";
 import { useQuery } from "@tanstack/react-query";
-import { iamApi, IAM, type Account, type Rule } from "@/api/iam";
-import { usePermissionCatalog } from "@/api/usePermissionCatalog";
-import { useIamMutation } from "@/components/organisms/iam/IamCommon";
+import { iamApi, IAM, type Account, type Rule } from "@shared/api/iam";
+import { usePermissionCatalog } from "@shared/api/usePermissionCatalog";
+import { useIamMutation } from "@shared/components/organisms/iam/IamCommon";
 import { RulesEditor, emptyRule, rulesInvalid } from "@/components/organisms/iam/RulesEditor";
-import { FormShell } from "@/components/organisms/form/FormShell";
+import { FormShell } from "@shared/components/organisms/form/FormShell";
 import { FormSection } from "@/components/organisms/form/FormSection";
-import { FormFooter } from "@/components/organisms/form/FormFooter";
+import { FormFooter } from "@shared/components/organisms/form/FormFooter";
 
 export function InlineRoleCreateForm({
   accountId,

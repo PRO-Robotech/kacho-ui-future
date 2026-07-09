@@ -1,13 +1,13 @@
 import { Outlet } from "react-router-dom";
 import { Layout as AntLayout, Tooltip, Button, theme } from "antd";
 import { Moon, Sun } from "lucide-react";
-import { useThemeMode } from "@/lib/theme-context";
+import { useThemeMode } from "@shared/lib/theme-context";
 import { ContextUrlSync } from "@/components/organisms/ContextUrlSync";
 import { ContextBreadcrumb } from "@/components/molecules/ContextBreadcrumb";
 import { ServiceSidebar } from "@/components/organisms/ServiceSidebar";
-import { HeaderRightSlot, PageHeaderSlotProvider } from "@/components/molecules/PageHeaderSlot";
-import { GlobalResourceFormModal } from "@/components/organisms/GlobalResourceFormModal";
-import { OperationBanner } from "@/components/molecules/OperationBanner";
+import { HeaderRightSlot, PageHeaderSlotProvider } from "@shared/components/molecules/PageHeaderSlot";
+import { GlobalResourceFormModal } from "@shared/components/organisms/GlobalResourceFormModal";
+import { OperationBanner } from "@shared/components/molecules/OperationBanner";
 // KAC-246: full-height sidebar (логотип сверху = левый верхний угол), от самого
 // верха до самого низа. Header — внутри правого под-лейаута, только НАД контентом
 // (а не во всю ширину поверх сайдбара). Сворачиватель убран.

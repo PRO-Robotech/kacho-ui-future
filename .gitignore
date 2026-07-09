@@ -1,3 +1,9 @@
+node_modules/
+dist/
+*.tsbuildinfo
+dev-*.log
+*.log
+.DS_Store
 
 # AI-оснастка (источник истины — kacho-workspace, локально синкается) — не коммитим
 .claude/

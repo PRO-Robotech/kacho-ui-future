@@ -5,8 +5,8 @@
 
 import type { CSSProperties } from "react";
 import { CheckCircle2, XCircle, Info, Loader2, X } from "lucide-react";
-import { useToasts, toast as toastApi } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { useToasts, toast as toastApi } from "@shared/lib/toast";
+import { cn } from "@shared/lib/utils";
 
 const VARIANT_ICONS = {
   success: CheckCircle2,

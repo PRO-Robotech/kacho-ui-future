@@ -4,7 +4,7 @@
 import { Avatar, Dropdown, Space, Typography, theme } from "antd";
 import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@shared/contexts/AuthContext";
 
 function initials(name?: string): string {
   if (!name) return "";

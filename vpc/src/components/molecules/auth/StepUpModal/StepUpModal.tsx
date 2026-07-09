@@ -12,10 +12,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal, Button, Alert, Space, Typography } from "antd";
 import { SafetyOutlined, KeyOutlined } from "@ant-design/icons";
-import { useAuth } from "@/contexts/AuthContext";
-import { kratos, findNode, csrfToken, type SelfServiceFlow } from "@/lib/kratos";
+import { useAuth } from "@shared/contexts/AuthContext";
+import { kratos, findNode, csrfToken, type SelfServiceFlow } from "@shared/lib/kratos";
 import { bufferToBase64Url } from "@/pages/auth/Login";
-import { config } from "@/lib/config";
+import { config } from "@shared/lib/config";
 
 const { Paragraph, Text } = Typography;
 

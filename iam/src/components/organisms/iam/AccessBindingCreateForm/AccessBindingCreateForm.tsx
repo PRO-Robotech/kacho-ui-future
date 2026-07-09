@@ -44,10 +44,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Form, Select, Tag, Typography } from "antd";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { api } from "@shared/api/client";
 import { FormSection } from "@/components/organisms/form/FormSection";
-import { FormFooter } from "@/components/organisms/form/FormFooter";
-import { useContext } from "@/lib/context-store";
+import { FormFooter } from "@shared/components/organisms/form/FormFooter";
+import { useContext } from "@shared/lib/context-store";
 import {
   iamApi,
   IAM,
@@ -60,8 +60,8 @@ import {
   type ScopeGroup,
   type SubjectPrivilege,
   type Subject,
-} from "@/api/iam";
-import { isAlreadyExistsError, mapApiErrorToMessage } from "@/lib/permissions";
+} from "@shared/api/iam";
+import { isAlreadyExistsError, mapApiErrorToMessage } from "@shared/lib/permissions";
 
 /** Русская плюрализация слова «роль» для счётчика в сообщении об ошибке. */
 function pluralRole(n: number): string {

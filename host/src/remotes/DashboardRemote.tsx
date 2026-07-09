@@ -1,20 +1,8 @@
-import { lazy, Suspense } from "react";
-import type { FC } from "react";
-import { Spin } from "antd";
-import { useNavigate } from "react-router-dom";
-import type { HostContext } from "../utils";
+import { makeRemote, type RemotePageProps } from "./makeRemote";
+import type { ComponentType } from "react";
 
-const DashboardPage = lazy(async () => {
-  const mod = await import("dashboard/DashboardPage");
-  return { default: mod.default ?? mod.DashboardPage };
-});
-
-export const DashboardRemote: FC<{ context: HostContext }> = ({ context }) => {
-  const navigate = useNavigate();
-
-  return (
-    <Suspense fallback={<Spin aria-label="Загрузка dashboard" />}>
-      <DashboardPage context={context} navigate={navigate} />
-    </Suspense>
-  );
-};
+export const DashboardRemote = makeRemote(
+  () => import("dashboard/DashboardPage"),
+  (mod) => (mod.default ?? mod.DashboardPage) as ComponentType<RemotePageProps> | undefined,
+  "Загрузка dashboard",
+);

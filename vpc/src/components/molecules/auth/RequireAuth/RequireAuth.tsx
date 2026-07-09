@@ -10,7 +10,7 @@
 
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Spin } from "antd";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@shared/contexts/AuthContext";
 
 interface RequireAuthProps {
   redirectTo?: string;

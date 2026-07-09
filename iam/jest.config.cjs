@@ -1,12 +1,14 @@
 module.exports = {
   testEnvironment: "jsdom",
   extensionsToTreatAsEsm: [".ts", ".tsx"],
-  setupFilesAfterEnv: ["<rootDir>/src/test/setup.ts"],
-  testMatch: ["<rootDir>/src/**/*.test.{ts,tsx}"],
+  roots: ["<rootDir>/src", "<rootDir>/../shared/src"],
+  setupFilesAfterEnv: ["<rootDir>/../shared/src/test/setup.ts"],
+  testMatch: ["<rootDir>/src/**/*.test.{ts,tsx}", "<rootDir>/../shared/src/**/*.test.{ts,tsx}"],
   moduleNameMapper: {
+    "\\.(css|scss)$": "<rootDir>/src/test/style-mock.ts",
+    "^@shared/(.*)$": "<rootDir>/../shared/src/$1",
     "^@/(.*)$": "<rootDir>/src/$1",
     "^(\\.{1,2}/.*)\\.js$": "$1",
-    "\\.(css|scss)$": "<rootDir>/src/test/style-mock.ts",
   },
   transform: {
     "^.+\\.(ts|tsx)$": [

@@ -24,14 +24,14 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import { CopyOutlined, DeleteOutlined, DownloadOutlined, PlusOutlined } from "@ant-design/icons";
 
-import { iamApi, userTokensPath } from "@/api/iam";
-import type { IssueUserTokenBody, IssueUserTokenResponse, UserOAuthClient } from "@/api/iam";
-import type { Operation } from "@/api/types";
-import { HeaderSlotPortal } from "@/components/organisms/DetailShell";
-import { CopyableMonoId, fmtTs, useIamMutation } from "@/components/organisms/iam/IamCommon";
+import { iamApi, userTokensPath } from "@shared/api/iam";
+import type { IssueUserTokenBody, IssueUserTokenResponse, UserOAuthClient } from "@shared/api/iam";
+import type { Operation } from "@shared/api/types";
+import { HeaderSlotPortal } from "@shared/components/organisms/DetailShell";
+import { CopyableMonoId, fmtTs, useIamMutation } from "@shared/components/organisms/iam/IamCommon";
 import { useTableScrollY } from "@/components/organisms/iam/IamListShell";
-import { toast } from "@/lib/toast";
-import { MAX_TTL_DAYS, TTL_PRESETS, expiryState, ttlDaysToSeconds } from "@/lib/tokens-util";
+import { toast } from "@shared/lib/toast";
+import { MAX_TTL_DAYS, TTL_PRESETS, expiryState, ttlDaysToSeconds } from "@shared/lib/tokens-util";
 
 // Бейдж срока действия токена: «Бессрочный» / «Истек» / «истекает через X».
 function ExpiryBadge({ expiresAt }: { expiresAt?: string }) {

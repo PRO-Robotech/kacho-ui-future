@@ -10,11 +10,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Empty, Input, Select, Tag, Typography } from "antd";
 import { HistoryOutlined, ReloadOutlined } from "@ant-design/icons";
-import { api } from "@/api/client";
-import { PanelHeader } from "@/components/molecules/PanelHeader";
-import { useBreadcrumb, useHeaderRight } from "@/components/molecules/PageHeaderSlot";
-import { OperationsTable, type Op, statusOf, type OperationStatus } from "@/components/molecules/OperationsTable";
-import { useContext } from "@/lib/context-store";
+import { api } from "@shared/api/client";
+import { PanelHeader } from "@shared/components/molecules/PanelHeader";
+import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
+import { OperationsTable, type Op, statusOf, type OperationStatus } from "@shared/components/molecules/OperationsTable";
+import { useContext } from "@shared/lib/context-store";
 
 interface ListAllResp {
   operations?: Op[];

@@ -2,8 +2,8 @@ import React, { type ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { jest } from "@jest/globals";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { contextApi, type AccountRef, type ProjectRef } from "@/lib/context-store";
-import type { ResourceSpec } from "@/lib/resource-registry";
+import { contextApi, type AccountRef, type ProjectRef } from "@shared/lib/context-store";
+import type { ResourceSpec } from "@shared/lib/resource-registry";
 import type { IamPage as IamPageExport } from "./IamPage";
 
 type IamPageComponent = typeof IamPageExport;
@@ -33,7 +33,7 @@ const authValue = {
   setStepUpHandler: jest.fn(),
 };
 
-jest.unstable_mockModule("@/contexts/AuthContext", () => ({
+jest.unstable_mockModule("@shared/contexts/AuthContext", () => ({
   AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useAuth: () => authValue,
 }));
@@ -42,22 +42,22 @@ jest.unstable_mockModule("@/components/molecules/auth/StepUpModal", () => ({
   StepUpModal: () => null,
 }));
 
-jest.unstable_mockModule("@/components/molecules/PageHeaderSlot", () => ({
+jest.unstable_mockModule("@shared/components/molecules/PageHeaderSlot", () => ({
   HeaderRightSlot: () => null,
   PageHeaderSlotProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useBreadcrumb: jest.fn(),
   useHeaderRight: jest.fn(),
 }));
 
-jest.unstable_mockModule("@/components/molecules/OperationBanner", () => ({
+jest.unstable_mockModule("@shared/components/molecules/OperationBanner", () => ({
   OperationBanner: () => null,
 }));
 
-jest.unstable_mockModule("@/components/organisms/GlobalResourceFormModal", () => ({
+jest.unstable_mockModule("@shared/components/organisms/GlobalResourceFormModal", () => ({
   GlobalResourceFormModal: () => null,
 }));
 
-jest.unstable_mockModule("@/lib/theme-context", () => ({
+jest.unstable_mockModule("@shared/lib/theme-context", () => ({
   ThemeProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useThemeMode: () => ({
     mode: "light",
@@ -66,7 +66,7 @@ jest.unstable_mockModule("@/lib/theme-context", () => ({
   }),
 }));
 
-jest.unstable_mockModule("@/lib/resource-registry", () => {
+jest.unstable_mockModule("@shared/lib/resource-registry", () => {
   const spec = (id: string, plural: string) => ({
     id,
     plural,
@@ -98,7 +98,7 @@ jest.unstable_mockModule("@/components/organisms/ResourceListPage", () => ({
   ResourceListPage: ({ spec }: { spec: ResourceSpec }) => <div>{spec.plural}</div>,
 }));
 
-jest.unstable_mockModule("@/components/organisms/ResourceShell", () => ({
+jest.unstable_mockModule("@shared/components/organisms/ResourceShell", () => ({
   ResourceShell: ({ spec }: { spec: ResourceSpec }) => (
     <div>
       <div>{spec.id === "accounts" ? "Account One" : spec.plural}</div>
