@@ -1,1 +1,1 @@
-export { default as ClusterAdminsPage } from "./ClusterAdminsPage";
+export { ClusterAdminsPage } from "./ClusterAdminsPage";

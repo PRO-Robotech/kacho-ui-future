@@ -61,3 +61,35 @@ spec:
     - name: http
       port: {{ .Values.iam.port }}
       targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ui.nlbName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+    {{- include "ui.nlbSelectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ui.nlbSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.nlb.port }}
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ui.registryName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+    {{- include "ui.registrySelectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ui.registrySelectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.registry.port }}
+      targetPort: http

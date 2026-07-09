@@ -11,6 +11,7 @@
 // резолвим его в email через глобальный справочник /iam/v1/users (scope:global).
 // Фоллбэк (нет матча / справочник не загрузился) — created_by/principal как есть.
 
+import { useEffect, useRef, useState } from "react";
 import { Empty, Space, Table, Typography } from "antd";
 import { CheckCircleFilled, CloseCircleFilled, LoadingOutlined, MinusCircleFilled } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
@@ -194,25 +195,47 @@ export function OperationsTable({ rows, loading, showResourceKind, empty }: Prop
     },
   ];
 
+  // Тело таблицы скроллится внутри области (h при широких колонках, v при длинном
+  // списке), шапка колонок фиксирована — как generic ResourceTable.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scrollY, setScrollY] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const recompute = () => {
+      const thead = el.querySelector(".ant-table-thead") as HTMLElement | null;
+      const avail = el.clientHeight - (thead?.offsetHeight ?? 40);
+      setScrollY(avail > 48 ? avail : undefined);
+    };
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    recompute();
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <Table<Op>
-      rowKey="id"
-      dataSource={rows}
-      columns={columns}
-      loading={loading}
-      size="small"
-      pagination={false}
-      locale={{
-        emptyText: (
-          <Empty
-            description={
-              <Typography.Text type="secondary">
-                {empty ? "По фильтру ничего не найдено." : "Операций пока нет."}
-              </Typography.Text>
-            }
-          />
-        ),
-      }}
-    />
+    <div ref={wrapRef} className="kc-table-fill" style={{ height: "100%", minHeight: 0, minWidth: 0 }}>
+      <Table<Op>
+        rowKey="id"
+        dataSource={rows}
+        columns={columns}
+        loading={loading}
+        size="small"
+        className="kc-table"
+        scroll={{ x: "max-content", y: scrollY }}
+        pagination={false}
+        locale={{
+          emptyText: (
+            <Empty
+              description={
+                <Typography.Text type="secondary">
+                  {empty ? "По фильтру ничего не найдено." : "Операций пока нет."}
+                </Typography.Text>
+              }
+            />
+          ),
+        }}
+      />
+    </div>
   );
 }

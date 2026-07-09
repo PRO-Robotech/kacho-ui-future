@@ -6,7 +6,7 @@ import { HeaderActions, HostBreadcrumb } from "../../molecules";
 import { loadHostContext, type HostContext } from "../../../utils";
 import { HostRail } from "../HostRail";
 
-const { Header, Sider, Content } = Layout;
+const { Header, Sider, Content, Footer } = Layout;
 
 const SIDEBAR_WIDTH = 56;
 const HEADER_HEIGHT = 48;
@@ -59,6 +59,9 @@ export const HostShell: FC<{
         </Header>
 
         <Content className="app-content">{typeof children === "function" ? children(hostContext) : children}</Content>
+
+        {/* Глобальный футер — вне Content, всегда виден внизу (как kacho-ui). */}
+        <Footer className="app-footer">PRO Robotech © {new Date().getFullYear()}</Footer>
       </Layout>
     </Layout>
   );

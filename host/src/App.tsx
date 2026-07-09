@@ -4,7 +4,7 @@ import { ConfigProvider, theme } from "antd";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { HostShell } from "./components";
 import { ModulePlaceholderPage, ReachabilityPage } from "./pages";
-import { DashboardRemote, IamRemote, VpcRemote } from "./remotes";
+import { DashboardRemote, IamRemote, NlbRemote, RegistryRemote, VpcRemote } from "./remotes";
 
 const THEME_STORAGE_KEY = "kacho-theme";
 
@@ -36,6 +36,9 @@ const App: FC = () => {
         token: {
           colorPrimary: "#3d8df5",
           borderRadius: 6,
+          // Базовый размер как в kacho-ui (эталон 13, не дефолтный AntD 14) —
+          // покрывает host-хром + dashboard; remotes задают полную тему сами.
+          fontSize: 13,
           fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         },
       }}
@@ -62,6 +65,8 @@ const AppRoutes: FC<{
           <Route path="/dashboard" element={<DashboardRemote context={context} />} />
           <Route path="/projects/:projectId/dashboard" element={<DashboardRemote context={context} />} />
           <Route path="/projects/:projectId/vpc/*" element={<VpcRemote context={context} />} />
+          <Route path="/projects/:projectId/nlb/*" element={<NlbRemote context={context} />} />
+          <Route path="/projects/:projectId/registry/*" element={<RegistryRemote context={context} />} />
           <Route path="/projects/:projectId/:moduleKey/*" element={<ModulePlaceholderPage />} />
           <Route path="/iam/*" element={<IamRemote context={context} />} />
           <Route path="/system/search" element={<ModulePlaceholderPage />} />

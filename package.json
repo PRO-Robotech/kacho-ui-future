@@ -9,8 +9,8 @@
   ],
   "scripts": {
     "dev": "powershell -ExecutionPolicy Bypass -File ./dev-federation.ps1",
-    "typecheck": "npm run typecheck --prefix host && npm run typecheck --prefix dashboard && npm run typecheck --prefix vpc && npm run typecheck --prefix iam",
-    "test": "npm test --prefix host && npm test --prefix dashboard && npm test --prefix vpc && npm test --prefix iam"
+    "typecheck": "npm run typecheck --prefix host && npm run typecheck --prefix dashboard && npm run typecheck --prefix vpc && npm run typecheck --prefix nlb && npm run typecheck --prefix iam",
+    "test": "npm test --prefix host && npm test --prefix dashboard && npm test --prefix vpc && npm test --prefix nlb && npm test --prefix iam"
   },
   "overrides": {
     "dompurify": "3.4.11"

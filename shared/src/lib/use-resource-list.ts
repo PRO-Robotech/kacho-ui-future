@@ -15,12 +15,14 @@ export function useResourceList<T = Record<string, unknown>>(
   spec: ResourceSpec,
   filterField: string | null,
   filterValue: string | null,
+  pageSize?: string,
 ) {
   return useQuery({
-    queryKey: [spec.id, "list", filterField, filterValue],
+    queryKey: [spec.id, "list", filterField, filterValue, pageSize ?? null],
     queryFn: () => {
       const q: Record<string, string> = {};
       if (filterField && filterValue) q[filterField] = filterValue;
+      if (pageSize) q.pageSize = pageSize;
       return api.list<Record<string, T[]>>(spec.apiPath, q);
     },
     refetchInterval: 3_000,

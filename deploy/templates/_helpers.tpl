@@ -149,6 +149,76 @@ app.kubernetes.io/name: {{ include "ui.iamName" . }}
 app.kubernetes.io/component: iam-remote
 {{- end -}}
 
+{{- define "ui.nlbName" -}}
+{{- default "ui-nlb" .Values.nlb.name -}}
+{{- end -}}
+
+{{- define "ui.nlbImage" -}}
+{{- if .Values.nlb.image -}}
+{{- .Values.nlb.image -}}
+{{- else -}}
+{{- $hostImage := include "ui.hostImage" . -}}
+{{- if contains "host" $hostImage -}}
+{{- replace "host" "nlb" $hostImage -}}
+{{- else -}}
+{{- "kacho-ui-future-nlb:dev" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.nlbImagePullPolicy" -}}
+{{- default (include "ui.hostImagePullPolicy" .) .Values.nlb.imagePullPolicy -}}
+{{- end -}}
+
+{{- define "ui.nlbUpstream" -}}
+{{- if .Values.host.upstreams.nlb -}}
+{{- .Values.host.upstreams.nlb -}}
+{{- else -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "ui.nlbName" .) .Release.Namespace .Values.nlb.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.nlbSelectorLabels" -}}
+app: {{ include "ui.nlbName" . }}
+app.kubernetes.io/name: {{ include "ui.nlbName" . }}
+app.kubernetes.io/component: nlb-remote
+{{- end -}}
+
+{{- define "ui.registryName" -}}
+{{- default "ui-registry" .Values.registry.name -}}
+{{- end -}}
+
+{{- define "ui.registryImage" -}}
+{{- if .Values.registry.image -}}
+{{- .Values.registry.image -}}
+{{- else -}}
+{{- $hostImage := include "ui.hostImage" . -}}
+{{- if contains "host" $hostImage -}}
+{{- replace "host" "registry" $hostImage -}}
+{{- else -}}
+{{- "kacho-ui-future-registry:dev" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.registryImagePullPolicy" -}}
+{{- default (include "ui.hostImagePullPolicy" .) .Values.registry.imagePullPolicy -}}
+{{- end -}}
+
+{{- define "ui.registryUpstream" -}}
+{{- if .Values.host.upstreams.registry -}}
+{{- .Values.host.upstreams.registry -}}
+{{- else -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "ui.registryName" .) .Release.Namespace .Values.registry.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.registrySelectorLabels" -}}
+app: {{ include "ui.registryName" . }}
+app.kubernetes.io/name: {{ include "ui.registryName" . }}
+app.kubernetes.io/component: registry-remote
+{{- end -}}
+
 {{- define "ui.hostResources" -}}
 {{- if .Values.host.resources }}
 {{- toYaml .Values.host.resources }}

@@ -37,7 +37,13 @@ import { TableSearch, ColumnSettings, useHiddenColumns, type ToggleCol } from "@
 import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
 import { detailExtension, type DescItem } from "@shared/components/organisms/ResourceDetailExtensions";
 import { api } from "@shared/api/client";
-import { REGISTRY, getByPath, resourceProjectPath, type ResourceSpec } from "@shared/lib/resource-registry";
+import {
+  REGISTRY,
+  getByPath,
+  resourceProjectPath,
+  resourceServicePrefix,
+  type ResourceSpec,
+} from "@shared/lib/resource-registry";
 import { buildSpecColumns } from "@shared/lib/spec-columns";
 import { useResourceList } from "@shared/lib/use-resource-list";
 import { useInvalidateResourceList } from "@shared/lib/use-operation";
@@ -85,7 +91,15 @@ function RelatedTable({
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [hidden, toggleHidden] = useHiddenColumns(`cols:${childSpec.id}`);
-  const { data, isLoading, isError, error } = useResourceList(childSpec, "project_id", projectId);
+  // Дочерний список тянется в scope своего родителя: account-scoped ресурсы
+  // (Project/ServiceAccount) требуют account_id = uid аккаунта-родителя; прочие —
+  // project_id из URL. Затем ownRows дофильтровывает по filterField.
+  const accountScoped = childSpec.scope === "account";
+  const { data, isLoading, isError, error } = useResourceList(
+    childSpec,
+    accountScoped ? "account_id" : "project_id",
+    accountScoped ? parentId : projectId,
+  );
   const all = (data?.[childSpec.payloadKey] as Record<string, unknown>[] | undefined) ?? [];
   // Фильтр по родителю (OR по нескольким полям — напр. subnet→addresses v4∪v6).
   const ownRows = all.filter((r) => filterFields.some((ff) => getByPath<string>(r, ff) === parentId));
@@ -103,7 +117,12 @@ function RelatedTable({
   // child-create — панель в зоне 3 shell РОДИТЕЛЯ (URI вложен под родителя).
   const createPath = `${detailBase}/${childSpec.route}/create`;
   // drill в ребёнка — на его собственный flat-URL (родитель → в хлебных крошках).
-  const flatChildBase = resourceProjectPath(childSpec.id, projectId) ?? `${detailBase}/${childSpec.route}`;
+  // IAM-ресурсы не project-scoped → flat-база /iam/<route> (иначе drill уходил бы
+  // в nested /iam/accounts/:uid/projects/:id, где нет detail-роута).
+  const flatChildBase =
+    resourceServicePrefix(childSpec.id) === "iam"
+      ? `/iam/${childSpec.route}`
+      : (resourceProjectPath(childSpec.id, projectId) ?? `${detailBase}/${childSpec.route}`);
   const createLabel = `Создать ${childSpec.singular.toLowerCase()}`;
 
   // Колонки: spec.columns без столбцов-ссылок на родителя (filterFields).
@@ -130,7 +149,7 @@ function RelatedTable({
   }
 
   return (
-    <div>
+    <div style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
       {/* Фильтры (поиск/колонки) поднимаются на уровень имени ресурса (зона 3,
           правый слот) через HeaderSlotPortal — req3. */}
       <HeaderSlotPortal>
@@ -180,6 +199,10 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
   const listHref = resourceProjectPath(spec.id, projectId);
   const breadcrumb = useMemo(() => {
     const childSpec = mode === "child-create" && childRoute ? specByRoute(childRoute) : undefined;
+    // Локализованная метка для кастомных child-create-роутов без REGISTRY-spec
+    // (privileges → «Привилегии»), чтобы breadcrumb не показывал raw route.
+    const CHILD_LABELS: Record<string, string> = { privileges: "Привилегии" };
+    const childLabel = childSpec?.plural ?? (childRoute ? CHILD_LABELS[childRoute] ?? childRoute : "");
     const sec = (txt: string) => <Typography.Text type="secondary">{txt}</Typography.Text>;
     const sep = <Typography.Text type="secondary">/</Typography.Text>;
     return (
@@ -200,7 +223,7 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
               <Typography.Text strong>Редактирование</Typography.Text>
             ) : (
               <>
-                <Link to={`${detailBase}/${childRoute}`}>{sec(childSpec?.plural ?? childRoute ?? "")}</Link>
+                <Link to={`${detailBase}/${childRoute}`}>{sec(childLabel)}</Link>
                 {sep}
                 <Typography.Text strong>Создание</Typography.Text>
               </>
@@ -254,6 +277,14 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
           Создать {childSpec.singular.toLowerCase()}
         </Button>
       );
+    }
+    // Активный extra-таб (напр. «Привилегии») может нести собственный header-CTA
+    // («Выдать доступ») — рендерим его в шапке страницы, как у related-табов.
+    if (data) {
+      const activeExtra = (ext?.extraTabs?.({ data, projectId: projectId ?? null, detailBase, navigate }) ?? []).find(
+        (t) => t.id === headerTabId,
+      );
+      if (activeExtra?.headerAction) return activeExtra.headerAction;
     }
     return null;
   }, [mode, headerTabId, data, spec, projectId, detailBase, ext, navigate]);
@@ -318,6 +349,8 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
       eyebrow: "Список",
       headerTitle: childSpec.plural,
       headerIcon: <ResourceIcon specId={childSpec.id} />,
+      // related-таблица заполняет зону-3 и скроллит себя (фикс. шапка колонок).
+      fill: true,
       render: () => (
         <RelatedTable
           childSpec={childSpec}
@@ -338,6 +371,7 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
     tabs.push({
       id: "operations",
       label: "Операции",
+      fill: true,
       render: () => <OperationsTab spec={spec} resourceId={getByPath<string>(data, "id") ?? uid ?? ""} />,
     });
   }
@@ -400,6 +434,11 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
           onSuccess={() => navigate(back)}
         />
       );
+    } else {
+      // childRoute не в REGISTRY → кастомная embedded create-форма расширения
+      // (напр. «privileges» → AccessBinding с залоченным субъектом). Форма сама
+      // навигирует через onSuccess/onCancel (extCtx.navigate).
+      mainOverride = ext?.childCreate?.(childRoute, extCtx) ?? undefined;
     }
   }
 
@@ -421,10 +460,27 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
   // Зона-2 шапка для форм (edit/child-create): действие + тип + иконка ресурса
   // формы — контекст переезжает в блок табов, форма в зоне 3 свою шапку не дублирует.
   const childForHeader = mode === "child-create" && childRoute ? specByRoute(childRoute) : undefined;
+  // Кастомные child-create-роуты (нет в REGISTRY): тип/иконка из небольшой карты,
+  // чтобы зона-2 не падала и показывала осмысленный заголовок (напр. privileges →
+  // «Привязка доступа» + иконка access-bindings).
+  const CUSTOM_CHILD_HEADER: Record<string, { title: string; specId: string }> = {
+    privileges: { title: "Привязка доступа", specId: "access-bindings" },
+  };
+  const customChild =
+    mode === "child-create" && childRoute && !childForHeader ? CUSTOM_CHILD_HEADER[childRoute] : undefined;
   const headerEyebrow = mode === "edit" ? "Редактирование" : mode === "child-create" ? "Создание" : undefined;
-  const headerTitle = mode === "edit" ? spec.plural : mode === "child-create" ? childForHeader?.plural : undefined;
+  const headerTitle =
+    mode === "edit"
+      ? spec.plural
+      : mode === "child-create"
+        ? childForHeader?.plural ?? customChild?.title
+        : undefined;
   const headerIcon =
-    mode === "child-create" && childForHeader ? <ResourceIcon specId={childForHeader.id} /> : undefined;
+    mode === "child-create" && childForHeader ? (
+      <ResourceIcon specId={childForHeader.id} />
+    ) : mode === "child-create" && customChild ? (
+      <ResourceIcon specId={customChild.specId} />
+    ) : undefined;
 
   return (
     // Прокидываем иконку ресурса вниз — все SectionHeader табов получают её

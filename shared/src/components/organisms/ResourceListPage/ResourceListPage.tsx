@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Input, Select, Typography, Space, Tag } from "antd";
+import { Button, Input, Segmented, Select, Typography, Tag } from "antd";
 import { ErrorResult } from "@shared/components/molecules/ErrorResult";
 import { PlusOutlined } from "@ant-design/icons";
 import { api } from "@shared/api/client";
@@ -19,26 +19,44 @@ import { ResourceEmptyState } from "@shared/components/molecules/ResourceEmptySt
 import { ProjectRequiredEmpty } from "@shared/components/molecules/ProjectRequiredEmpty";
 import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
 import { buildSpecColumns } from "@shared/lib/spec-columns";
+import { ColumnSettings, useHiddenColumns, type ToggleCol } from "@shared/components/molecules/TableToolbar";
 import { useResourceList } from "@shared/lib/use-resource-list";
 
 interface Props {
   spec: ResourceSpec;
   parentField?: string;
   parentParam?: string;
-  disableChildRoute?: boolean;
   /** Явное значение scope-фильтра (account-scoped IAM-ресурсы берут account
    *  из context-store, а не из URL-параметра). Имеет приоритет над parentParam. */
   parentValue?: string | null;
+  /** page_size запроса списка (Role — 1000: клиентский system/custom-фильтр
+   *  требует всю страницу, иначе custom-роли на 2-й странице выпадут). */
+  pageSize?: string;
+  /** Игнорировать spec.childRoute при drill (клик по строке ведёт на
+   *  `${basePath}/${id}` detail, а не на childRoute). Projects внутри IAM-секции
+   *  открывают IAM-деталь проекта, а не project-dashboard. */
+  disableChildRoute?: boolean;
 }
 
-export function ResourceListPage({ spec, parentField, parentParam, parentValue, disableChildRoute = false }: Props) {
+export function ResourceListPage({
+  spec,
+  parentField,
+  parentParam,
+  parentValue,
+  pageSize,
+  disableChildRoute = false,
+}: Props) {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const filterValue = parentValue ?? (parentParam ? (params[parentParam] ?? null) : null);
   const [query, setQuery] = useState("");
+  // Конфигуратор видимости колонок (⚙ рядом с поиском) — persist в localStorage
+  // по specId; те же toggles, что у related-таблиц detail-страниц.
+  const [hidden, toggleHidden] = useHiddenColumns(`cols:${spec.id}`);
+  const toggleCols: ToggleCol[] = spec.columns.map((c) => ({ key: c.header, label: c.header }));
 
-  const { data, isLoading, isError, error } = useResourceList(spec, parentField ?? null, filterValue);
+  const { data, isLoading, isError, error } = useResourceList(spec, parentField ?? null, filterValue, pageSize);
 
   const breadcrumb = useMemo(
     () => (
@@ -59,7 +77,7 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
   // KAC-231: модалки упразднены в пользу формы-страницы/панели (логика Network)
   // у модулей с полноценными panel/page-формами: VPC (ResourceShell edit-панель,
   // ResourceCreatePage) + admin (ResourceCreatePage/ResourceEditPage страницы).
-  // Compute/NLB остаются на модалках до своей раскатки (их detail ещё не
+  // Compute/NLB/IAM остаются на модалках до своей раскатки (их detail ещё не
   // ResourceShell, /edit редиректит в модалку). panelForms — этот гейт.
   const panelForms =
     resourceServicePrefix(spec.id) === "vpc" ||
@@ -93,6 +111,10 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
   // internal_ipv4_address.zone_id / external_ipv4_address.zone_id.
   const hasZoneFilter = spec.id === "subnets" || spec.id === "addresses";
   const [zone, setZone] = useState<string>("all");
+  // Для Role — доп. фильтр system/custom (Segmented [Все/Системные/Кастомные]),
+  // client-side по is_system. Тот же паттерн, что hasZoneFilter (паритет kacho-ui).
+  const hasSystemFilter = spec.id === "roles";
+  const [roleKind, setRoleKind] = useState<"all" | "system" | "custom">("all");
   const zoneSpec = REGISTRY["zones"];
   const { data: zoneData } = useQuery({
     queryKey: ["zones", "list-for-filter"],
@@ -137,29 +159,33 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
         if (!ext) return false;
       }
       if (hasZoneFilter && zone !== "all" && rowZone(row) !== zone) return false;
+      if (hasSystemFilter && roleKind !== "all") {
+        const isSystem =
+          getByPath<boolean>(row, "is_system") === true || getByPath<boolean>(row, "isSystem") === true;
+        if (roleKind === "system" && !isSystem) return false;
+        if (roleKind === "custom" && isSystem) return false;
+      }
       if (!q) return true;
       const name = (getByPath<string>(row, "name") ?? "").toLowerCase();
       const id = (getByPath<string>(row, "id") ?? "").toLowerCase();
       return name.includes(q) || id.includes(q);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, query, zone, hasZoneFilter, spec.id]);
+  }, [items, query, zone, hasZoneFilter, hasSystemFilter, roleKind, spec.id]);
 
   // params.projectId доступен для project-scoped listов (/projects/:projectId/...);
   // прокидываем в buildSpecColumns, чтобы format: "references" (used_by) мог
   // отрендерить ссылку на /projects/<projectId>/compute/instances/<id> и т.п.
   const columns: Column<Record<string, unknown>>[] = buildSpecColumns(spec, {
     projectId: params.projectId,
-  });
-
-  const actionSpec = disableChildRoute ? { ...spec, childRoute: undefined } : spec;
+  }).filter((c) => !hidden.has(c.header));
 
   columns.push({
     header: "",
     className: "text-right whitespace-nowrap",
     cell: (row) => (
       <RowActionsMenu
-        spec={actionSpec}
+        spec={spec}
         row={row}
         basePath={basePath}
         projectId={filterValue ?? null}
@@ -177,7 +203,8 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
     filteredItems.length === 0 &&
     spec.ops.create &&
     query.trim() === "" &&
-    (!hasZoneFilter || zone === "all");
+    (!hasZoneFilter || zone === "all") &&
+    (!hasSystemFilter || roleKind === "all");
 
   // Единая шапка списка (PanelHeader) — те же 3 части, что у табов/форм:
   // [иконка ресурса] + «Список» (действие) + plural (название) + счётчик.
@@ -217,7 +244,7 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
   // чтобы заголовок не «прыгал» и не выглядел инородно (KAC-246).
   if (showWelcome) {
     return (
-      <div className="kc-surface" style={{ padding: 20, minHeight: "100%" }}>
+      <div className="kc-surface" style={{ padding: 20, height: "100%", overflow: "auto" }}>
         {listHeader()}
         <ResourceEmptyState spec={spec} onCreate={() => navigate(createTarget)} />
       </div>
@@ -225,9 +252,13 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
   }
 
   return (
-    <div className="kc-surface" style={{ padding: 20 }}>
-      <Space direction="vertical" size={0} style={{ width: "100%" }}>
-        {/* Шапка списка: иконка + «Список» + plural + счётчик слева, фильтры справа. */}
+    <div
+      className="kc-surface"
+      style={{ padding: 20, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}
+    >
+      {/* Шапка списка (иконка + «Список» + plural + счётчик + фильтры) —
+          фиксирована сверху, НЕ скроллится вместе с телом таблицы. */}
+      <div style={{ flexShrink: 0, marginBottom: 12 }}>
         {listHeader(
           <>
             <Input.Search
@@ -238,9 +269,25 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
               allowClear
             />
             {hasZoneFilter && <Select value={zone} onChange={setZone} options={zoneOptions} style={{ width: 220 }} />}
+            {hasSystemFilter && (
+              <Segmented
+                value={roleKind}
+                onChange={(v) => setRoleKind(v as "all" | "system" | "custom")}
+                options={[
+                  { label: "Все", value: "all" },
+                  { label: "Системные", value: "system" },
+                  { label: "Кастомные", value: "custom" },
+                ]}
+              />
+            )}
+            <ColumnSettings columns={toggleCols} hidden={hidden} onToggle={toggleHidden} />
           </>,
         )}
+      </div>
 
+      {/* Тело таблицы заполняет остаток белой поверхности и скроллится внутри
+          (горизонтально при широких колонках, вертикально при длинном списке). */}
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
         {isError ? (
           <ErrorResult error={error} />
         ) : (
@@ -252,14 +299,15 @@ export function ResourceListPage({ spec, parentField, parentParam, parentValue, 
             onRowClick={(row) => {
               const id = getByPath<string>(row, "id");
               if (!id) return;
-              // childRoute шаблон: /projects/:id, ...
+              // childRoute шаблон: /projects/:id, ...; disableChildRoute → detail
+              // в текущей секции (`${basePath}/${id}`).
               const target =
-                !disableChildRoute && spec.childRoute ? spec.childRoute.replace(":id", id) : `${basePath}/${id}`;
+                spec.childRoute && !disableChildRoute ? spec.childRoute.replace(":id", id) : `${basePath}/${id}`;
               navigate(target);
             }}
           />
         )}
-      </Space>
+      </div>
     </div>
   );
 }

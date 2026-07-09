@@ -6,6 +6,7 @@ import {
   ApartmentOutlined,
   ApiOutlined,
   AppstoreOutlined,
+  BankOutlined,
   CameraOutlined,
   ClusterOutlined,
   DesktopOutlined,
@@ -13,22 +14,29 @@ import {
   GatewayOutlined,
   GlobalOutlined,
   HddOutlined,
+  HistoryOutlined,
+  KeyOutlined,
   NodeIndexOutlined,
+  ProjectOutlined,
+  RobotOutlined,
+  SafetyCertificateOutlined,
   SafetyOutlined,
+  TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import type { ReactNode } from "react";
 
 const ICONS: Record<string, ReactNode> = {
-  // iam (сайдбар: ApartmentOutlined / ClusterOutlined / UserOutlined /
-  // ApiOutlined / NodeIndexOutlined / SafetyOutlined / GatewayOutlined)
-  accounts: <ApartmentOutlined />,
-  projects: <ClusterOutlined />,
+  // iam (набор синхронизирован с сайдбаром: Bank/Project/User/Robot/Team/
+  // SafetyCertificate/Key + History для операций)
+  accounts: <BankOutlined />,
+  projects: <ProjectOutlined />,
   users: <UserOutlined />,
-  "service-accounts": <ApiOutlined />,
-  groups: <NodeIndexOutlined />,
-  roles: <SafetyOutlined />,
-  "access-bindings": <GatewayOutlined />,
+  "service-accounts": <RobotOutlined />,
+  groups: <TeamOutlined />,
+  roles: <SafetyCertificateOutlined />,
+  "access-bindings": <KeyOutlined />,
+  operations: <HistoryOutlined />,
   // vpc (сайдбар: ApartmentOutlined / ClusterOutlined / GlobalOutlined /
   // NodeIndexOutlined / SafetyOutlined / ApiOutlined / GatewayOutlined)
   networks: <ApartmentOutlined />,

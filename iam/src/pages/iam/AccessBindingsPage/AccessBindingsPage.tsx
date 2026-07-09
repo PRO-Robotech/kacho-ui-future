@@ -1,90 +1,118 @@
-// AccessBindingsPage — управление AccessBinding'ами.
-// View modes:
-//   - "byResource" → list per (resource_type + resource_id);
-//   - "bySubject" → list per (subject_type + subject_id).
-//   - "byAccount" → KAC item #1: admin-wide list по AccountID (новый RPC
-//      AccessBindingService.ListByAccount, доступен только admin'у account'а).
+// AccessBindingsPage — управление AccessBinding'ами (единая плоская таблица в
+// выбранном Account) + full-page scope-first форма создания привязки.
 //
-// Create — отдельная модалка: subject_type/id + role + resource_type/id +
-// поддержка resource_type=cluster (KAC item #5) для unified cluster-admin grant.
-// На 409 ALREADY_EXISTS → inline Alert с verbatim message (KAC item #3).
+// Create — отдельная full-page форма (AccessBindingCreatePage), рендерит
+// scope-first <AccessBindingCreateForm> (тот же body переиспользуется embedded в
+// зону-3 detail-страницы субъекта — ResourceShell child-create с залоченным
+// субъектом). CTA «Создать привязку доступа» делает navigate на неё.
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Alert, Button, Card, Form, Input, Popconfirm, Segmented, Select, Space, Table, Tag, Typography } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ColumnsType } from "antd/es/table";
-import { api, ApiError } from "@shared/api/client";
-import {
-  iamApi,
-  IAM,
-  type AccessBinding,
-  type AccessBindingList,
-  type User,
-  type ServiceAccount,
-  type Group,
-  type Account,
-} from "@shared/api/iam";
-import { useIamMutation, fmtTs, CopyableMonoId, groupedRoleOptions } from "@shared/components/organisms/iam/IamCommon";
-import { FormFooter } from "@shared/components/organisms/form/FormFooter";
+import { useMemo, useState } from "react";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Button, Empty, Select, Space, Typography } from "antd";
+import { FilterOutlined, PlusOutlined } from "@ant-design/icons";
+import { useQuery } from "@tanstack/react-query";
+import { ResourceTable, type Column } from "@shared/components/organisms/ResourceTable";
+import { RowActionsMenu } from "@shared/components/molecules/RowActionsMenu";
+import { REGISTRY, getByPath } from "@shared/lib/resource-registry";
+import { buildSpecColumns } from "@shared/lib/spec-columns";
+import { iamApi, type AccessBindingList } from "@shared/api/iam";
 import { FormShell } from "@shared/components/organisms/form/FormShell";
 import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
-import { useAuth } from "@shared/contexts/AuthContext";
 import { useContext } from "@shared/lib/context-store";
-import { usePermissions, isAlreadyExistsError, mapApiErrorToMessage } from "@shared/lib/permissions";
+import { IamListShell } from "@/components/organisms/iam/IamListShell";
+import {
+  AccessBindingCreateForm,
+  type SubjectType,
+  type ResourceType,
+} from "@/components/organisms/iam/AccessBindingCreateForm";
 
-type ViewMode = "byResource" | "bySubject" | "byAccount";
-type SubjectType = "user" | "service_account" | "group";
-// KAC-224 (RBAC v2): только высокоуровневые скоупы, принимаемые backend
-// validResourceTypes. Legacy resource-manager типы folder/organization/cloud
-// удалены (KAC-124 / KAC-223 mig0008) — их выбор давал backend
-// INVALID_ARGUMENT "Illegal argument resource_type". "cluster" — для unified
-// cluster-admin grant (item #5, resource_id = "cluster_kacho_root").
-type ResourceType = "account" | "project" | "cluster";
-
-const SUBJECT_TYPES: SubjectType[] = ["user", "service_account", "group"];
+// Высокоуровневые скоупы, принимаемые backend validResourceTypes. "cluster" — для
+// unified cluster-admin grant (resource_id = "cluster_kacho_root").
 export const RESOURCE_TYPES: ResourceType[] = ["account", "project", "cluster"];
 
-/** Cluster singleton id для resource_type="cluster" (KAC item #5). */
+/** Cluster singleton id для resource_type="cluster". */
 export const CLUSTER_RESOURCE_ID = "cluster_kacho_root";
 
 /** Cluster admin role id (для preset'ов / quick-grant link'ов). */
 export const CLUSTER_ADMIN_ROLE_ID = "roles/admin";
 
+// AccessBindingsPage — единая плоская таблица привязок доступа в выбранном
+// Account. Account берётся из context-store (пилюля в шапке), как и у прочих
+// account-scoped IAM-страниц. Показывается ОДНА таблица «кто какую роль имеет на
+// каком ресурсе» — GET /iam/v1/accounts/{id}/accessBindings (ListByAccount).
+//
+// Таблица — ТИПОВАЯ (как у generic-списков): ResourceTable + buildSpecColumns +
+// kebab-колонка RowActionsMenu (Просмотр + Отозвать = Delete). Create — отдельная
+// full-page форма (AccessBindingCreatePage); CTA «Создать привязку доступа» делает
+// navigate на неё. Detail — клик по строке.
 export function AccessBindingsPage() {
-  const { user } = useAuth();
-  const selectedAccount = useContext((s) => s.account);
+  const account = useContext((s) => s.account);
   const navigate = useNavigate();
-  const perms = usePermissions();
-  // KAC item #5: ClusterAdminsPage "Выдать через AccessBinding" CTA редиректит
-  // сюда с query-параметрами `?modal=cluster-admin&resource_type=cluster&...`.
-  // Авто-открываем модалку с preset'ом.
+  const abSpec = REGISTRY["access-bindings"];
+
+  // Legacy deep-link ?modal=cluster-admin / ?modal=access-bindings-create →
+  // редирект на full-page create, сохраняя preset-параметры.
   const [searchParams] = useSearchParams();
-  const presetFromUrl: AccessBindingPreset | undefined = useMemo(() => {
-    if (searchParams.get("modal") !== "cluster-admin") return undefined;
-    return {
-      resource_type: (searchParams.get("resource_type") as ResourceType | null) ?? "cluster",
-      resource_id: searchParams.get("resource_id") ?? CLUSTER_RESOURCE_ID,
-      role_id: searchParams.get("role_id") ?? CLUSTER_ADMIN_ROLE_ID,
-      subject_type: (searchParams.get("subject_type") as SubjectType | null) ?? "user",
-      subject_id: searchParams.get("subject_id") ?? undefined,
-    };
-  }, [searchParams]);
-  // KAC item #1: для админа дефолтная вкладка — "byAccount" (admin видит ВСЕ
-  // bindings в account'е). Non-admin → "byResource" (старое поведение).
-  // Дефолтное значение оставляем "byResource" на первом render'е (perms ещё не
-  // загружены), а как только perms подгрузились — авто-переключаем на byAccount
-  // (admin). User может потом сменить вручную — это поведение покрыто
-  // `userTouchedModeRef`.
-  const [mode, setMode] = useState<ViewMode>("byResource");
-  const userTouchedModeRef = useRef(false);
-  // KAC item #1: account-id для byAccount-режима. По умолчанию первый
-  // account из членства user'а.
-  const [accountIdForList, setAccountIdForList] = useState<string>("");
-  const [subjectTypeFilter, setSubjectTypeFilter] = useState<string>("");
+  const legacyModal = searchParams.get("modal");
+  const legacyRedirect = useMemo(() => {
+    if (legacyModal !== "cluster-admin" && legacyModal !== "access-bindings-create") return null;
+    const next = new URLSearchParams(searchParams);
+    next.delete("modal");
+    if (legacyModal === "cluster-admin") {
+      if (!next.get("resource_type")) next.set("resource_type", "cluster");
+      if (!next.get("resource_id")) next.set("resource_id", CLUSTER_RESOURCE_ID);
+      if (!next.get("role_id")) next.set("role_id", CLUSTER_ADMIN_ROLE_ID);
+    }
+    const qs = next.toString();
+    return `/iam/access-bindings/create${qs ? `?${qs}` : ""}`;
+  }, [legacyModal, searchParams]);
+
+  // Лёгкий фильтр-ряд: только активные / включая отозванные + опц. subject_type.
   const [includeRevoked, setIncludeRevoked] = useState(false);
-  const headerAction = useMemo(
+  const [subjectTypeFilter, setSubjectTypeFilter] = useState<string>("");
+
+  const accountId = account?.id ?? "";
+
+  // Единая таблица — все bindings, видимые в выбранном Account (account-scoped +
+  // project-scoped). Не запрашиваем, пока Account не выбран.
+  const bindingsQ = useQuery({
+    queryKey: ["iam", "access-bindings", "by-account", accountId, subjectTypeFilter, includeRevoked],
+    queryFn: () =>
+      iamApi.listAccessBindingsByAccount(accountId, {
+        page_size: 200,
+        subject_type_filter: subjectTypeFilter || undefined,
+        include_revoked: includeRevoked,
+      }),
+    enabled: !!accountId,
+    refetchInterval: 5_000,
+    staleTime: 0,
+  });
+  const bindings = (bindingsQ.data as AccessBindingList | undefined)?.access_bindings ?? [];
+
+  // Колонки — из REGISTRY + kebab-колонка. revoke = Delete (RowActionsMenu,
+  // spec.ops.delete); by-account query имеет refetchInterval 5s, строка уходит ≤5s.
+  const columns: Column<Record<string, unknown>>[] = useMemo(() => {
+    const cols = buildSpecColumns(abSpec);
+    cols.push({
+      header: "",
+      className: "text-right whitespace-nowrap",
+      cell: (row) => <RowActionsMenu spec={abSpec} row={row} basePath="/iam/access-bindings" projectId={null} />,
+    });
+    return cols;
+  }, [abSpec]);
+
+  // breadcrumb / CTA через header-слоты. Мемоизируем node'ы (useEffect на [node]).
+  const breadcrumbNode = useMemo(
+    () => (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Typography.Text type="secondary">{abSpec.serviceTitle}</Typography.Text>
+        <Typography.Text type="secondary">/</Typography.Text>
+        <Typography.Text strong>{abSpec.plural}</Typography.Text>
+      </span>
+    ),
+    [abSpec.serviceTitle, abSpec.plural],
+  );
+  const ctaNode = useMemo(
     () => (
       <Button
         type="primary"
@@ -92,336 +120,36 @@ export function AccessBindingsPage() {
         onClick={() => navigate("/iam/access-bindings/create")}
         data-testid="access-bindings-create-btn"
       >
-        Создать binding
+        Создать привязку доступа
       </Button>
     ),
     [navigate],
   );
-  useHeaderRight(headerAction);
+  useBreadcrumb(breadcrumbNode);
+  useHeaderRight(ctaNode);
 
-  // Авто-переключение на byAccount при первой загрузке perms для admin'а.
-  useEffect(() => {
-    if (!perms.loaded || userTouchedModeRef.current) return;
-    if (perms.isSystemAdmin) setMode("byAccount");
-    if (!accountIdForList && perms.accounts[0]?.account_id) {
-      setAccountIdForList(perms.accounts[0].account_id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perms.loaded, perms.isSystemAdmin, perms.accounts.length]);
+  if (legacyRedirect) return <Navigate to={legacyRedirect} replace />;
 
-  useEffect(() => {
-    if (!selectedAccount?.id || userTouchedModeRef.current) return;
-    setMode("byAccount");
-    setAccountIdForList((current) => current || selectedAccount.id);
-  }, [selectedAccount?.id]);
-
-  const handleSetMode = (v: ViewMode) => {
-    userTouchedModeRef.current = true;
-    setMode(v);
-  };
-
-  // Back-compat для старых quick-grant ссылок: переводим modal-параметры в create-page.
-  useEffect(() => {
-    if (!presetFromUrl) return;
-    const next = new URLSearchParams(searchParams);
-    next.delete("modal");
-    navigate(`/iam/access-bindings/create?${next.toString()}`, { replace: true });
-  }, [navigate, presetFromUrl, searchParams]);
-
-  // KAC-123: Мои AccessBinding'и — авто-вызов /iam/v1/accessBindings:listBySubject
-  // для текущего user'а, показываем сверху страницы.
-  const myBindings = useQuery({
-    queryKey: ["iam", "access-bindings", "by-subject", "user", user?.id ?? ""],
-    queryFn: () => iamApi.listAccessBindingsBySubject("user", user!.id, { pageSize: "200" }),
-    enabled: !!user?.id,
-    refetchInterval: 5_000,
-    staleTime: 0,
-  });
-
-  // byResource state
-  const [resType, setResType] = useState<ResourceType>("account");
-  const [resId, setResId] = useState<string>("");
-  // bySubject state
-  const [subjType, setSubjType] = useState<SubjectType>("user");
-  const [subjId, setSubjId] = useState<string>("");
-
-  const byResource = useQuery({
-    queryKey: ["iam", "access-bindings", "by-resource", resType, resId],
-    queryFn: () => iamApi.listAccessBindingsByResource(resType, resId, { pageSize: "200" }),
-    enabled: mode === "byResource" && !!resId,
-    refetchInterval: 5_000,
-    staleTime: 0,
-  });
-
-  const bySubject = useQuery({
-    queryKey: ["iam", "access-bindings", "by-subject", subjType, subjId],
-    queryFn: () => iamApi.listAccessBindingsBySubject(subjType, subjId, { pageSize: "200" }),
-    enabled: mode === "bySubject" && !!subjId,
-    refetchInterval: 5_000,
-    staleTime: 0,
-  });
-
-  // KAC item #1: ListByAccount — admin видит ВСЕ bindings в account'е.
-  const byAccount = useQuery({
-    queryKey: ["iam", "access-bindings", "by-account", accountIdForList, subjectTypeFilter, includeRevoked],
-    queryFn: () =>
-      iamApi.listAccessBindingsByAccount(accountIdForList, {
-        page_size: 200,
-        subject_type_filter: subjectTypeFilter || undefined,
-        include_revoked: includeRevoked,
-      }),
-    enabled: mode === "byAccount" && !!accountIdForList,
-    refetchInterval: 5_000,
-    staleTime: 0,
-  });
-
-  const data = mode === "byResource" ? byResource : mode === "bySubject" ? bySubject : byAccount;
-  const bindings = (data?.data as AccessBindingList | undefined)?.access_bindings ?? [];
-
-  const del = useIamMutation({
-    method: "DELETE",
-    path: (b) => `${IAM.accessBindings}/${b as string}`,
-    invalidateKeys: [["iam", "access-bindings"]],
-    successText: "AccessBinding удалён",
-  });
-
-  // Helpers for selectors
-  const accounts = useQuery({
-    queryKey: ["iam", "accounts", "list"],
-    queryFn: () => iamApi.listAccounts({ pageSize: "1000" }),
-    staleTime: 30_000,
-  });
-
-  const users = useQuery({
-    queryKey: ["iam", "users", "list"],
-    queryFn: () => iamApi.listUsers({ pageSize: "1000" }),
-    // KAC item #1: для byAccount-режима тоже нужен users lookup (Subject column
-    // должен показать email вместо просто id).
-    enabled: subjType === "user" || mode === "byAccount",
-    staleTime: 30_000,
-  });
-
-  // KAC-127: resolve role_id → name в таблице bindings.
-  const rolesList = useQuery({
-    queryKey: ["iam", "roles", "list"],
-    queryFn: () => iamApi.listRoles({ pageSize: "1000" }),
-    staleTime: 30_000,
-  });
-  const roleNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const r of rolesList.data?.roles ?? []) m.set(r.id, r.name);
-    return m;
-  }, [rolesList.data]);
-  const userByIdLookup = useMemo(() => {
-    const m = new Map<string, User>();
-    for (const u of users.data?.users ?? []) m.set(u.id, u);
-    return m;
-  }, [users.data]);
-
-  const columns: ColumnsType<AccessBinding> = [
-    {
-      title: "Субъект",
-      key: "subject",
-      render: (_v, row) => {
-        const u = row.subject_type === "user" ? userByIdLookup.get(row.subject_id) : undefined;
-        const human = u?.email || u?.display_name;
-        return (
-          <Space size={6} wrap>
-            <Tag color={subjectColor(row.subject_type)}>{row.subject_type}</Tag>
-            {human && (
-              <Typography.Text strong style={{ fontSize: 12 }}>
-                {human}
-              </Typography.Text>
-            )}
-            <CopyableMonoId id={row.subject_id} />
-          </Space>
-        );
-      },
-    },
-    {
-      title: "Роль",
-      dataIndex: "role_id",
-      key: "role",
-      render: (v: string) => {
-        const name = roleNameById.get(v);
-        return (
-          <Space size={6}>
-            {name && <Typography.Text strong>{name}</Typography.Text>}
-            <CopyableMonoId id={v} />
-          </Space>
-        );
-      },
-    },
-    {
-      title: "Ресурс",
-      key: "resource",
-      render: (_v, row) => (
-        <Space size={6}>
-          <Tag>{row.resource_type}</Tag>
-          <CopyableMonoId id={row.resource_id} />
-        </Space>
-      ),
-    },
-    {
-      // RBAC v2 (KAC-224): output-only scope tier из ответа AccessBinding.
-      title: "Область",
-      dataIndex: "scope",
-      key: "scope",
-      width: 120,
-      render: (v?: string) =>
-        v && v !== "SCOPE_UNSPECIFIED" ? (
-          <Tag color={scopeColor(v)}>{v}</Tag>
-        ) : (
-          <Typography.Text type="secondary">—</Typography.Text>
-        ),
-    },
-    {
-      title: "Создано",
-      dataIndex: "created_at",
-      key: "created_at",
-      width: 180,
-      render: (v) => fmtTs(v),
-    },
-    {
-      title: "",
-      key: "actions",
-      width: 60,
-      render: (_v, row) => (
-        <Popconfirm
-          title="Удалить AccessBinding?"
-          okText="Удалить"
-          okButtonProps={{ danger: true }}
-          cancelText="Отмена"
-          onConfirm={() => void del.run(row.id)}
-        >
-          <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-        </Popconfirm>
-      ),
-    },
-  ];
-
-  const myBindingsRows = myBindings.data?.access_bindings ?? [];
+  if (!account) {
+    return (
+      <IamListShell specId="access-bindings" title={abSpec.plural}>
+        <Empty
+          description="Выберите Account вверху секции, чтобы увидеть привязки доступа."
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          style={{ padding: "48px 0" }}
+        />
+      </IamListShell>
+    );
+  }
 
   return (
-    <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <Typography.Title level={3} className="t-page-title" style={{ margin: 0 }}>
-        Access Bindings
-      </Typography.Title>
-
-      {user?.id && (
-        <Card
-          size="small"
-          title={
-            <Space>
-              <span>Мои AccessBinding&apos;и</span>
-              <Tag color="blue">{myBindingsRows.length}</Tag>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                субъект: <code>user:{user.id}</code>
-              </Typography.Text>
-            </Space>
-          }
-        >
-          {myBindingsRows.length === 0 ? (
-            <Typography.Text type="secondary">У вас нет привязанных ролей.</Typography.Text>
-          ) : (
-            <Table<AccessBinding>
-              rowKey="id"
-              size="small"
-              loading={myBindings.isLoading}
-              dataSource={myBindingsRows}
-              columns={columns.filter((c) => c.key !== "subject")}
-              pagination={false}
-            />
-          )}
-        </Card>
-      )}
-
-      <Space size={12} wrap>
-        <Segmented
-          value={mode}
-          onChange={(v) => handleSetMode(v as ViewMode)}
-          options={[
-            // KAC item #1: "По account'у" (admin tab) — первый, если user — admin.
-            ...(perms.isSystemAdmin || perms.accounts.length > 0 || selectedAccount?.id
-              ? [{ label: "По account'у (admin)", value: "byAccount" }]
-              : []),
-            { label: "По ресурсу", value: "byResource" },
-            { label: "По subject'у", value: "bySubject" },
-          ]}
-          data-testid="access-bindings-mode"
-        />
-      </Space>
-
-      {mode === "byResource" && (
-        <Space size={8} wrap>
-          <Select
-            value={resType}
-            onChange={(v) => setResType(v)}
-            options={RESOURCE_TYPES.map((t) => ({ value: t, label: t }))}
-            style={{ width: 180 }}
-          />
-          <ResourceIdInput
-            resourceType={resType}
-            value={resId}
-            onChange={setResId}
-            accountList={accounts.data?.accounts ?? []}
-          />
-        </Space>
-      )}
-      {mode === "bySubject" && (
-        <Space size={8} wrap>
-          <Select
-            value={subjType}
-            onChange={(v) => setSubjType(v)}
-            options={SUBJECT_TYPES.map((t) => ({ value: t, label: t }))}
-            style={{ width: 180 }}
-          />
-          {subjType === "user" ? (
-            <Select
-              style={{ width: 420 }}
-              value={subjId || undefined}
-              onChange={(v) => setSubjId(v ?? "")}
-              placeholder="Выберите User"
-              showSearch
-              optionFilterProp="label"
-              options={(users.data?.users ?? []).map((u: User) => ({
-                value: u.id,
-                label: `${u.email || u.display_name || u.id} · ${u.id}`,
-              }))}
-            />
-          ) : (
-            <Input
-              placeholder={`${subjType} id (sva-... / grp-...)`}
-              value={subjId}
-              onChange={(e) => setSubjId(e.target.value.trim())}
-              style={{ width: 420, fontFamily: "monospace" }}
-            />
-          )}
-        </Space>
-      )}
-      {mode === "byAccount" && (
-        <Space size={8} wrap>
-          <Select
-            placeholder="Account"
-            value={accountIdForList || undefined}
-            onChange={(v) => setAccountIdForList(v ?? "")}
-            options={(accounts.data?.accounts ?? []).map((a) => ({
-              value: a.id,
-              label: `${a.name} · ${a.id}`,
-            }))}
-            style={{ width: 360 }}
-            showSearch
-            optionFilterProp="label"
-            data-testid="access-bindings-account-select"
-          />
-          <Select
-            placeholder="subject_type (все)"
-            value={subjectTypeFilter || undefined}
-            onChange={(v) => setSubjectTypeFilter(v ?? "")}
-            allowClear
-            options={SUBJECT_TYPES.map((t) => ({ value: t, label: t }))}
-            style={{ width: 200 }}
-          />
+    <IamListShell
+      specId="access-bindings"
+      title={abSpec.plural}
+      count={bindings.length}
+      right={
+        <Space size={8} align="center" wrap>
+          <FilterOutlined style={{ opacity: 0.4, fontSize: 14 }} />
           <Select
             value={includeRevoked ? "true" : "false"}
             onChange={(v) => setIncludeRevoked(v === "true")}
@@ -429,106 +157,44 @@ export function AccessBindingsPage() {
               { value: "false", label: "Только активные" },
               { value: "true", label: "Включая отозванные" },
             ]}
-            style={{ width: 200 }}
+            style={{ width: 190 }}
+            data-testid="access-bindings-revoked-filter"
+          />
+          <Select
+            placeholder="Тип субъекта: все"
+            value={subjectTypeFilter || undefined}
+            onChange={(v) => setSubjectTypeFilter(v ?? "")}
+            allowClear
+            options={[
+              { value: "user", label: "Пользователь" },
+              { value: "service_account", label: "Сервисный аккаунт" },
+              { value: "group", label: "Группа" },
+            ]}
+            style={{ width: 190 }}
+            data-testid="access-bindings-subject-filter"
           />
         </Space>
-      )}
-
-      {emptyHint(mode, resId, subjId, accountIdForList) ? (
-        <Typography.Text type="secondary">{emptyHint(mode, resId, subjId, accountIdForList)}</Typography.Text>
-      ) : (
-        <Table<AccessBinding>
-          rowKey="id"
-          size="small"
-          loading={data?.isLoading}
-          dataSource={bindings}
+      }
+    >
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0 }} data-testid="access-bindings-table">
+        <ResourceTable
+          rows={bindings as unknown as Record<string, unknown>[]}
           columns={columns}
-          pagination={false}
-          locale={{ emptyText: "AccessBinding'ов нет." }}
-          data-testid="access-bindings-table"
+          rowKey={(r) => getByPath<string>(r, "id") ?? Math.random().toString()}
+          loading={bindingsQ.isLoading}
+          onRowClick={(row) => {
+            const id = getByPath<string>(row, "id");
+            if (id) navigate(`/iam/access-bindings/${id}`);
+          }}
         />
-      )}
-    </Space>
-  );
-}
-
-function subjectColor(t: string): string {
-  switch (t) {
-    case "user":
-      return "blue";
-    case "service_account":
-      return "gold";
-    case "group":
-      return "purple";
-    default:
-      return "default";
-  }
-}
-
-/** RBAC v2 (KAC-224): цвет тега scope-tier'а. */
-function scopeColor(s: string): string {
-  switch (s) {
-    case "CLUSTER":
-      return "red";
-    case "ACCOUNT":
-      return "blue";
-    case "PROJECT":
-      return "green";
-    default:
-      return "default";
-  }
-}
-
-/** Подсказка для пустого селектора — что нужно выбрать чтобы увидеть данные. */
-function emptyHint(mode: ViewMode, resId: string, subjId: string, accountId: string): string | null {
-  if (mode === "byResource" && !resId) return "Введите resource_id для просмотра bindings.";
-  if (mode === "bySubject" && !subjId) return "Выберите subject для просмотра bindings.";
-  if (mode === "byAccount" && !accountId) return "Выберите account для просмотра bindings.";
-  return null;
-}
-
-function ResourceIdInput({
-  resourceType,
-  value,
-  onChange,
-  accountList,
-}: {
-  resourceType: string;
-  value: string;
-  onChange: (v: string) => void;
-  accountList: Account[];
-}) {
-  // Если ресурс = account — даём drop-down из доступных Account.
-  if (resourceType === "account") {
-    return (
-      <Select
-        style={{ width: 420 }}
-        value={value || undefined}
-        onChange={(v) => onChange(v ?? "")}
-        placeholder="Выберите Account"
-        showSearch
-        optionFilterProp="label"
-        options={accountList.map((a) => ({
-          value: a.id,
-          label: `${a.name} · ${a.id}`,
-        }))}
-      />
-    );
-  }
-  return (
-    <Input
-      style={{ width: 420, fontFamily: "monospace" }}
-      placeholder={`${resourceType} id`}
-      value={value}
-      onChange={(e) => onChange(e.target.value.trim())}
-    />
+      </div>
+    </IamListShell>
   );
 }
 
 /**
- * Preset для модалки — pre-fill полей (KAC item #5 "Grant Cluster Admin" CTA).
- * Если передать `resource_type: "cluster"` + `resource_id: "cluster_kacho_root"` +
- * `role_id: "roles/admin"` — модалка откроется с pre-fixated cluster-admin grant.
+ * Preset для create-формы — pre-fill полей deep-link'а (cluster-admin grant из
+ * ClusterAdminsPage; grant с залоченным субъектом из вкладки «Привилегии»).
  */
 export interface AccessBindingPreset {
   subject_type?: SubjectType;
@@ -538,275 +204,75 @@ export interface AccessBindingPreset {
   resource_id?: string;
 }
 
+// AccessBindingCreatePage — full-page обёртка scope-first формы создания привязки.
+// Тело формы — переиспользуемый <AccessBindingCreateForm> (тот же body рендерится
+// embedded в зону-3 detail-страницы субъекта). Preset/deep-link через
+// query-параметры (subject_type/subject_id/role_id/resource_type/resource_id);
+// lock_subject=1 → субъект залочен (реконсайл-режим).
 export function AccessBindingCreatePage() {
   const navigate = useNavigate();
+  const abSpec = REGISTRY["access-bindings"];
+
   const [searchParams] = useSearchParams();
+  const presetSubjectType = (searchParams.get("subject_type") as SubjectType | null) ?? undefined;
+  const presetSubjectId = searchParams.get("subject_id") ?? undefined;
+  const lockSubject = searchParams.get("lock_subject") === "1";
+
   const preset: AccessBindingPreset = useMemo(
     () => ({
+      subject_type: presetSubjectType,
+      subject_id: presetSubjectId,
+      role_id: searchParams.get("role_id") ?? undefined,
       resource_type: (searchParams.get("resource_type") as ResourceType | null) ?? undefined,
       resource_id: searchParams.get("resource_id") ?? undefined,
-      role_id: searchParams.get("role_id") ?? undefined,
-      subject_type: (searchParams.get("subject_type") as SubjectType | null) ?? undefined,
-      subject_id: searchParams.get("subject_id") ?? undefined,
     }),
-    [searchParams],
+    [searchParams, presetSubjectType, presetSubjectId],
   );
-  const [form] = Form.useForm();
-  const [subjectType, setSubjectType] = useState<SubjectType>(preset?.subject_type ?? "user");
-  const [resourceType, setResourceType] = useState<ResourceType>(preset?.resource_type ?? "account");
-  useHeaderRight(useMemo(() => null, []));
-  useBreadcrumb(
-    useMemo(
-      () => (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <Typography.Text type="secondary">IAM</Typography.Text>
-          <Typography.Text type="secondary">/</Typography.Text>
-          <Link to="/iam/access-bindings">
-            <Typography.Text type="secondary">Access Bindings</Typography.Text>
-          </Link>
-          <Typography.Text type="secondary">/</Typography.Text>
-          <Typography.Text strong>Создать</Typography.Text>
-        </span>
-      ),
-      [],
+
+  const lockedSubject =
+    lockSubject && presetSubjectType && presetSubjectId
+      ? { type: presetSubjectType, id: presetSubjectId }
+      : undefined;
+
+  const breadcrumb = useMemo(
+    () => (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Typography.Text type="secondary">{abSpec.serviceTitle}</Typography.Text>
+        <Typography.Text type="secondary">/</Typography.Text>
+        <Typography.Text type="secondary">{abSpec.plural}</Typography.Text>
+        <Typography.Text type="secondary">/</Typography.Text>
+        <Typography.Text strong>Создать</Typography.Text>
+      </span>
     ),
+    [abSpec.serviceTitle, abSpec.plural],
   );
-  // KAC item #3: при 409 ALREADY_EXISTS / любой другой ошибке — inline
-  // Alert внутри модалки, форма НЕ закрывается (см. CLAUDE.md §3.5).
-  const [inlineError, setInlineError] = useState<{
-    type: "warning" | "error";
-    message: string;
-  } | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const qc = useQueryClient();
+  useBreadcrumb(breadcrumb);
+  useHeaderRight(useMemo(() => null, []));
 
-  // Сбрасываем форму при открытии (если был preset — применить).
-  useEffect(() => {
-    setInlineError(null);
-    setSubjectType(preset?.subject_type ?? "user");
-    setResourceType(preset?.resource_type ?? "account");
-    form.setFieldsValue({
-      subject_type: preset?.subject_type ?? "user",
-      subject_id: preset?.subject_id ?? undefined,
-      role_id: preset?.role_id ?? undefined,
-      resource_type: preset?.resource_type ?? "account",
-      resource_id: preset?.resource_id ?? undefined,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preset?.subject_type, preset?.subject_id, preset?.role_id, preset?.resource_type, preset?.resource_id]);
-
-  const users = useQuery({
-    queryKey: ["iam", "users", "list"],
-    queryFn: () => iamApi.listUsers({ pageSize: "1000" }),
-    staleTime: 30_000,
-  });
-  const roles = useQuery({
-    queryKey: ["iam", "roles", "list"],
-    queryFn: () => iamApi.listRoles({ pageSize: "1000" }),
-    staleTime: 30_000,
-  });
-  const sas = useQuery({
-    queryKey: ["iam", "service-accounts", "all"],
-    queryFn: async () => {
-      const accs = await iamApi.listAccounts({ pageSize: "1000" });
-      const all: ServiceAccount[] = [];
-      for (const a of accs.accounts) {
-        const r = await iamApi.listServiceAccounts({
-          account_id: a.id,
-          pageSize: "1000",
-        });
-        all.push(...(r.service_accounts ?? []));
-      }
-      return all;
-    },
-    enabled: subjectType === "service_account",
-    staleTime: 30_000,
-  });
-  const groups = useQuery({
-    queryKey: ["iam", "groups", "all"],
-    queryFn: async () => {
-      const accs = await iamApi.listAccounts({ pageSize: "1000" });
-      const all: Group[] = [];
-      for (const a of accs.accounts) {
-        const r = await iamApi.listGroups({
-          account_id: a.id,
-          pageSize: "1000",
-        });
-        all.push(...(r.groups ?? []));
-      }
-      return all;
-    },
-    enabled: subjectType === "group",
-    staleTime: 30_000,
-  });
-
-  const subjectOptions = useMemo(() => {
-    switch (subjectType) {
-      case "user":
-        return (users.data?.users ?? []).map((u: User) => ({
-          value: u.id,
-          label: `${u.email || u.display_name || u.id} · ${u.id}`,
-        }));
-      case "service_account":
-        return (sas.data ?? []).map((sa) => ({
-          value: sa.id,
-          label: `${sa.name} · ${sa.id}`,
-        }));
-      case "group":
-        return (groups.data ?? []).map((g) => ({
-          value: g.id,
-          label: `${g.name} · ${g.id}`,
-        }));
+  // Success-навигация: lock_subject → на вкладку «Привилегии» субъекта; иначе на
+  // список привязок. (Инвалидация query-кэша — внутри формы.)
+  const onSuccess = () => {
+    if (lockedSubject) {
+      const route =
+        lockedSubject.type === "service_account"
+          ? "service-accounts"
+          : lockedSubject.type === "group"
+            ? "groups"
+            : "users";
+      navigate(`/iam/${route}/${lockedSubject.id}/privileges`);
+      return;
     }
-  }, [subjectType, users.data, sas.data, groups.data]);
-
-  // Submit: вызов POST /iam/v1/accessBindings напрямую через `api.create`,
-  // чтобы поймать 409 ALREADY_EXISTS (verbatim сообщение
-  // "these permissions are already granted to <subject_id> on
-  // <resource_type>:<resource_id>") — KAC item #3.
-  const onFinish = async (v: Record<string, string>) => {
-    setSubmitting(true);
-    setInlineError(null);
-    const body = {
-      subject_type: v.subject_type,
-      subject_id: v.subject_id,
-      role_id: v.role_id,
-      resource_type: v.resource_type,
-      // KAC item #5: для cluster — auto-fill cluster_kacho_root, если user не
-      // ввёл (Input может быть disabled = preset на cluster).
-      resource_id: v.resource_type === "cluster" ? v.resource_id || CLUSTER_RESOURCE_ID : v.resource_id,
-    };
-    try {
-      await api.create(IAM.accessBindings, body);
-      // Sync success или Operation envelope — invalidate всё и закрываем.
-      void qc.invalidateQueries({ queryKey: ["iam", "access-bindings"] });
-      void qc.invalidateQueries({ queryKey: ["cluster-admins"] });
-      form.resetFields();
-      setSubmitting(false);
-      navigate("/iam/access-bindings");
-    } catch (e) {
-      setSubmitting(false);
-      if (isAlreadyExistsError(e)) {
-        // KAC item #3: верность verbatim текста ("these permissions are
-        // already granted to <subject_id> on <resource_type>:<resource_id>").
-        setInlineError({
-          type: "warning",
-          message: (e instanceof ApiError && e.message) || "These permissions are already granted",
-        });
-        return;
-      }
-      setInlineError({
-        type: "error",
-        message: mapApiErrorToMessage(e),
-      });
-    }
+    navigate("/iam/access-bindings");
   };
 
   return (
-    <FormShell specId="access-bindings" mode="create" singular="AccessBinding">
-      {inlineError && (
-        <Alert
-          type={inlineError.type}
-          showIcon
-          style={{ marginBottom: 12 }}
-          message={inlineError.message}
-          closable
-          onClose={() => setInlineError(null)}
-          data-testid="access-bindings-create-error"
-        />
-      )}
-      <Form
-        form={form}
-        layout="horizontal"
-        labelCol={{ flex: "200px" }}
-        wrapperCol={{ flex: "auto" }}
-        labelAlign="left"
-        colon={false}
-        initialValues={{
-          subject_type: preset?.subject_type ?? "user",
-          resource_type: preset?.resource_type ?? "account",
-          resource_id:
-            preset?.resource_type === "cluster" ? (preset?.resource_id ?? CLUSTER_RESOURCE_ID) : preset?.resource_id,
-          subject_id: preset?.subject_id,
-          role_id: preset?.role_id,
-        }}
-        onFinish={onFinish}
-      >
-        <Form.Item label="Subject type" name="subject_type" required>
-          <Select
-            options={SUBJECT_TYPES.map((t) => ({ value: t, label: t }))}
-            onChange={(v) => {
-              setSubjectType(v as SubjectType);
-              form.setFieldValue("subject_id", undefined);
-            }}
-          />
-        </Form.Item>
-        <Form.Item label="Subject" name="subject_id" required rules={[{ required: true, message: "Выберите subject" }]}>
-          <Select
-            placeholder={`Выберите ${subjectType}`}
-            options={subjectOptions}
-            showSearch
-            optionFilterProp="label"
-            loading={users.isLoading || sas.isLoading || groups.isLoading}
-          />
-        </Form.Item>
-        <Form.Item label="Role" name="role_id" required rules={[{ required: true, message: "Выберите role" }]}>
-          <Select
-            placeholder="Выберите Role"
-            options={groupedRoleOptions(roles.data?.roles ?? [])}
-            showSearch
-            optionFilterProp="label"
-            loading={roles.isLoading}
-          />
-        </Form.Item>
-        <Form.Item label="Resource type" name="resource_type" required>
-          <Select
-            options={RESOURCE_TYPES.map((t) => ({ value: t, label: t }))}
-            onChange={(v) => {
-              const rt = v as ResourceType;
-              setResourceType(rt);
-              // KAC item #5: cluster → auto-fill singleton id.
-              if (rt === "cluster") {
-                form.setFieldValue("resource_id", CLUSTER_RESOURCE_ID);
-              } else if (form.getFieldValue("resource_id") === CLUSTER_RESOURCE_ID) {
-                form.setFieldValue("resource_id", undefined);
-              }
-            }}
-          />
-        </Form.Item>
-        <Form.Item
-          label="Resource"
-          name="resource_id"
-          required
-          rules={[{ required: true, message: "Введите resource_id" }]}
-        >
-          <Input
-            style={{ fontFamily: "monospace" }}
-            placeholder={resourceType === "cluster" ? CLUSTER_RESOURCE_ID : "acc-... / prj-... / любой идентификатор"}
-            disabled={resourceType === "cluster"}
-          />
-        </Form.Item>
-        <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 0, marginLeft: 200 }}>
-          {resourceType === "cluster" ? (
-            <>
-              Cluster admin grant: subject получит cluster-wide роль на singleton <code>{CLUSTER_RESOURCE_ID}</code>.
-              Эквивалент legacy
-              <code> POST /iam/v1/internal/cluster/admins</code> (KAC item #5).
-            </>
-          ) : (
-            <>
-              Подсказка: для resource_type=account → используйте id из вкладки Accounts; для project → из вкладки
-              Projects.
-            </>
-          )}
-        </Typography.Paragraph>
-        <FormFooter
-          submitLabel="Создать"
-          submitting={submitting}
-          onSubmit={() => form.submit()}
-          onCancel={() => navigate("/iam/access-bindings")}
-        />
-      </Form>
+    <FormShell specId="access-bindings" mode="create" singular={abSpec.singular}>
+      <AccessBindingCreateForm
+        lockedSubject={lockedSubject}
+        preset={preset}
+        onSuccess={onSuccess}
+        onCancel={() => navigate("/iam/access-bindings")}
+      />
     </FormShell>
   );
 }

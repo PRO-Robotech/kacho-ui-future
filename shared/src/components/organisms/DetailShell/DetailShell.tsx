@@ -46,6 +46,14 @@ export interface DetailTab {
   /** Зона-2 иконка предмета таба. Default: иконка мастер-ресурса (ctxIcon).
    *  Напр. связанный таб → иконка дочернего ресурса. */
   headerIcon?: ReactNode;
+  /** true — контент таба заполняет область зоны-3 и скроллит СЕБЯ (таблица с
+   *  фиксированной шапкой колонок + h/v-скролл тела), а не всю зону-3. Для
+   *  related-таблиц. Content-табы (Обзор/JSON) — false: скроллится вся зона-3. */
+  fill?: boolean;
+  /** CTA в ШАПКЕ страницы (правый верхний угол), показывается когда этот таб
+   *  активен. Напр. таб «Привилегии» → кнопка «Выдать доступ». Рендерится через
+   *  useHeaderRight в ResourceShell, не в зоне-2. */
+  headerAction?: ReactNode;
 }
 
 export interface DocLink {
@@ -133,10 +141,13 @@ export function DetailShell({
         display: "flex",
         alignItems: "stretch",
         overflow: "hidden",
-        // Высота под viewport: header h=48 + Content padding 20+20 + small.
-        // (marginTop:-8 убран — list-страница его не имеет, иначе фон прыгал
-        // вверх на 8px при переходе list↔detail.)
-        minHeight: "100%",
+        // Detail-поверхность заполняет ограниченную content-область host'а
+        // (header + content + footer в 100vh; .app-content overflow:hidden →
+        // .vpc-remote-content flex:1 → .kc-surface height:100%). Рейл табов
+        // (зона-2) и шапка зоны-3 не двигаются, скроллится только контент
+        // зоны-3. Единый размер с list-поверхностью (обе height:100%).
+        height: "100%",
+        maxHeight: "100%",
       }}
     >
       {/* KAC-246: рейл табов — часть единой detail-поверхности. Без своего
@@ -149,7 +160,8 @@ export function DetailShell({
           maxWidth: SUB_PANE_WIDTH,
           flexGrow: 0,
           flexShrink: 0,
-          overflow: "hidden",
+          overflowX: "hidden",
+          overflowY: "auto",
           display: "flex",
           flexDirection: "column",
           borderRight: "1px solid var(--kc-border-secondary)",
@@ -300,7 +312,16 @@ export function DetailShell({
         )}
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, padding: "20px 24px" }}>
+      <main
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: "20px 24px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
         {/* Зона 3 (main) верх — ТОЛЬКО название активного таба (дубль). Структура
             ЗЕРКАЛИТ зону-2: невидимый eyebrow-спейсер (та же высота, что caps-тип
             в рейле) → title встаёт ровно на строку ИМЕНИ зоны-2 (req3). minHeight
@@ -318,6 +339,8 @@ export function DetailShell({
             // → нижние линии зоны-2/зоны-3 на одной y (req2). Контент-область 42,
             // текст центрируется в ней как у зоны-2 → title на строке имени (req3).
             minHeight: 56,
+            // Шапка зоны-3 фиксирована (не скроллится) — flexShrink:0.
+            flexShrink: 0,
             paddingBottom: 14,
             marginBottom: 18,
             borderBottom: "1px solid var(--kc-border-secondary)",
@@ -360,27 +383,42 @@ export function DetailShell({
           </div>
         </div>
 
-        {mainOverride ? (
-          mainOverride
-        ) : (
-          <>
-            {secondaryActions && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  marginBottom: 16,
-                  paddingBottom: 12,
-                  borderBottom: "1px solid var(--kc-border-secondary)",
-                }}
-              >
-                {secondaryActions}
-              </div>
-            )}
-            <HeaderSlotContext.Provider value={slotEl}>{active?.render()}</HeaderSlotContext.Provider>
-          </>
-        )}
+        {/* Зона-3 контент: fill-таб (related-таблица) заполняет область и
+            скроллит СЕБЯ (thead фиксирован), content-таб (Обзор/JSON/форма) —
+            скроллится целиком. Внешний контейнер overflow:hidden + flex-column,
+            скролл живёт во внутренней обёртке per-case. */}
+        <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {mainOverride ? (
+            <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: "auto" }}>{mainOverride}</div>
+          ) : (
+            <>
+              {secondaryActions && (
+                <div
+                  style={{
+                    flexShrink: 0,
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginBottom: 16,
+                    paddingBottom: 12,
+                    borderBottom: "1px solid var(--kc-border-secondary)",
+                  }}
+                >
+                  {secondaryActions}
+                </div>
+              )}
+              <HeaderSlotContext.Provider value={slotEl}>
+                {active?.fill ? (
+                  <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                    {active.render()}
+                  </div>
+                ) : (
+                  <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: "auto" }}>{active?.render()}</div>
+                )}
+              </HeaderSlotContext.Provider>
+            </>
+          )}
+        </div>
       </main>
     </div>
   );

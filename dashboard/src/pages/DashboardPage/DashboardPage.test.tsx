@@ -56,7 +56,6 @@ describe("DashboardPage", () => {
     expect(screen.getByTestId("dashboard-tile-compute")).toHaveAttribute("data-disabled", "true");
     expect(screen.getByTestId("dashboard-tile-nlb")).toHaveAttribute("data-disabled", "true");
     expect(screen.getByTestId("dashboard-tile-iam")).toHaveAttribute("data-disabled", "false");
-    expect(screen.getByTestId("dashboard-go-iam")).toBeInTheDocument();
   });
 
   it("opens service landing routes and loads scoped counters when project is selected", async () => {

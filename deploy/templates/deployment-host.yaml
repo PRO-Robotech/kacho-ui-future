@@ -34,8 +34,8 @@ spec:
             name: {{ include "ui.hostName" . }}-nginx
             defaultMode: 0755
             items:
-              - key: resolver-from-resolvconf.sh
-                path: 05-resolver-from-resolvconf.sh
+              - key: resolver-from-resolvconf.envsh
+                path: 05-resolver-from-resolvconf.envsh
       containers:
         - name: host
           image: {{ include "ui.hostImage" . | quote }}
@@ -58,14 +58,18 @@ spec:
               value: {{ include "ui.vpcUpstream" . | quote }}
             - name: KACHO_UI_IAM_UPSTREAM
               value: {{ include "ui.iamUpstream" . | quote }}
+            - name: KACHO_UI_NLB_UPSTREAM
+              value: {{ include "ui.nlbUpstream" . | quote }}
+            - name: KACHO_UI_REGISTRY_UPSTREAM
+              value: {{ include "ui.registryUpstream" . | quote }}
           volumeMounts:
             - name: nginx-template
               mountPath: /etc/nginx/templates/default.conf.template
               subPath: default.conf.template
               readOnly: true
             - name: nginx-entrypoint
-              mountPath: /docker-entrypoint.d/05-resolver-from-resolvconf.sh
-              subPath: 05-resolver-from-resolvconf.sh
+              mountPath: /docker-entrypoint.d/05-resolver-from-resolvconf.envsh
+              subPath: 05-resolver-from-resolvconf.envsh
               readOnly: true
           readinessProbe:
             httpGet:
