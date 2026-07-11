@@ -2390,8 +2390,11 @@ export const REGISTRY: Record<string, ResourceSpec> = {
 
   // ====== System (kacho-only admin: Region / Zone / AddressPool) ======
   // Admin-only: эти ресурсы exposed через apiGW REST для admin UI.
-  // На external TLS endpoint НЕ публикуются — см. kacho-vpc CLAUDE.md.
-  // Sync RPC (без Operation envelope), backend handler возвращает ресурс напрямую.
+  // На external TLS endpoint НЕ публикуются — admin-CRUD идёт через internal mux.
+  // Geography (Region/Zone) обслуживает kacho-geo (`/geo/v1/*`, эпик #82):
+  //   read  = geo.v1.{Region,Zone}Service (Get/List, sync);
+  //   admin = geo.v1.Internal{Region,Zone}Service (Create/Update/Delete → Operation).
+  // AddressPool — kacho-vpc (`/vpc/v1/addressPools`). Все мутации async → Operation.
 
   regions: {
     id: "regions",

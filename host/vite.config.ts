@@ -28,6 +28,7 @@ export default defineConfig({
         iam: process.env.KACHO_IAM_REMOTE || "http://localhost:4177/assets/remoteEntry.js",
         nlb: process.env.KACHO_NLB_REMOTE || "http://localhost:4178/assets/remoteEntry.js",
         registry: process.env.KACHO_REGISTRY_REMOTE || "http://localhost:4179/assets/remoteEntry.js",
+        system: process.env.KACHO_SYSTEM_REMOTE || "http://localhost:4180/assets/remoteEntry.js",
       },
       shared: ["antd", "lucide-react", "react", "react-dom", "react-router-dom"],
     }),
@@ -42,6 +43,7 @@ export default defineConfig({
         target: apiGateway,
         changeOrigin: true,
       },
+      // System remote (mounted at /system/*) reads regions/zones from geo.
       "/geo": {
         target: apiGateway,
         changeOrigin: true,

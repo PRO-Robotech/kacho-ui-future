@@ -14,6 +14,10 @@
 {{- default "ui-iam" .Values.iam.name -}}
 {{- end -}}
 
+{{- define "ui.systemName" -}}
+{{- default "ui-system" .Values.system.name -}}
+{{- end -}}
+
 {{- define "ui.hostImage" -}}
 {{- default .Values.image .Values.host.image -}}
 {{- end -}}
@@ -73,6 +77,23 @@
 {{- default (include "ui.hostImagePullPolicy" .) .Values.iam.imagePullPolicy -}}
 {{- end -}}
 
+{{- define "ui.systemImage" -}}
+{{- if .Values.system.image -}}
+{{- .Values.system.image -}}
+{{- else -}}
+{{- $hostImage := include "ui.hostImage" . -}}
+{{- if contains "host" $hostImage -}}
+{{- replace "host" "system" $hostImage -}}
+{{- else -}}
+{{- "kacho-ui-future-system:dev" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.systemImagePullPolicy" -}}
+{{- default (include "ui.hostImagePullPolicy" .) .Values.system.imagePullPolicy -}}
+{{- end -}}
+
 {{- define "ui.dashboardUpstream" -}}
 {{- if .Values.host.upstreams.dashboard -}}
 {{- .Values.host.upstreams.dashboard -}}
@@ -94,6 +115,14 @@
 {{- .Values.host.upstreams.iam -}}
 {{- else -}}
 {{- printf "%s.%s.svc.cluster.local:%v" (include "ui.iamName" .) .Release.Namespace .Values.iam.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.systemUpstream" -}}
+{{- if .Values.host.upstreams.system -}}
+{{- .Values.host.upstreams.system -}}
+{{- else -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "ui.systemName" .) .Release.Namespace .Values.system.port -}}
 {{- end -}}
 {{- end -}}
 
@@ -217,6 +246,12 @@ app.kubernetes.io/component: nlb-remote
 app: {{ include "ui.registryName" . }}
 app.kubernetes.io/name: {{ include "ui.registryName" . }}
 app.kubernetes.io/component: registry-remote
+{{- end -}}
+
+{{- define "ui.systemSelectorLabels" -}}
+app: {{ include "ui.systemName" . }}
+app.kubernetes.io/name: {{ include "ui.systemName" . }}
+app.kubernetes.io/component: system-remote
 {{- end -}}
 
 {{- define "ui.hostResources" -}}

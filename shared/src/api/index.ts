@@ -1,6 +1,7 @@
 export * from "./client";
 export * from "./cluster";
 export * from "./resources";
+export * from "./tokens";
 export * from "./types";
 export { authApi, extractDenyReasons, hasPermission } from "./auth";
 export type {
