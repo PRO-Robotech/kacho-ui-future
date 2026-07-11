@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Form, Input, Popconfirm, Select, Space, Table, Tag, Typography, Alert, Tooltip } from "antd";
+import { Button, Cascader, Form, Input, Popconfirm, Select, Space, Table, Tag, Typography, Alert, Tooltip } from "antd";
 import { DeleteOutlined, UserAddOutlined, LinkOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
@@ -18,6 +18,7 @@ import { useIamMutation, fmtTs, CopyableMonoId, groupedRoleOptions } from "@shar
 import { FormFooter } from "@shared/components/organisms/form/FormFooter";
 import { FormShell } from "@shared/components/organisms/form/FormShell";
 import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
+import { IamListShell, useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { useContext } from "@shared/lib/context-store";
 import { toast } from "@shared/lib/toast";
 
@@ -55,6 +56,7 @@ export function UsersPage() {
   });
 
   const users = data?.users ?? [];
+  const { wrapRef, scrollY } = useTableScrollY();
 
   const del = useIamMutation({
     method: "DELETE",
@@ -122,15 +124,12 @@ export function UsersPage() {
   ];
 
   return (
-    <Space direction="vertical" size={12} style={{ width: "100%" }}>
-      <Typography.Title level={3} className="t-page-title" style={{ margin: 0 }}>
-        Users
-      </Typography.Title>
-
+    <IamListShell specId="users" title="Пользователи" count={users.length}>
       {users.length === 0 && !isLoading && (
         <Alert
           type="info"
           showIcon
+          style={{ flexShrink: 0 }}
           message="User'ов нет"
           description={
             <span>
@@ -141,23 +140,33 @@ export function UsersPage() {
         />
       )}
 
-      <Table<User>
-        rowKey="id"
-        size="small"
-        loading={isLoading}
-        dataSource={users}
-        columns={columns}
-        pagination={false}
-        locale={{ emptyText: "User'ов нет." }}
-      />
-    </Space>
+      <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+        <Table<User>
+          rowKey="id"
+          size="small"
+          className="kc-table"
+          loading={isLoading}
+          dataSource={users}
+          columns={columns}
+          pagination={false}
+          scroll={{ x: "max-content", y: scrollY }}
+          onRow={(row) => ({
+            onClick: (e) => {
+              if ((e.target as HTMLElement)?.closest("button, a, .ant-dropdown, .ant-popover, .ant-select")) return;
+              navigate(`/iam/users/${row.id}`);
+            },
+            style: { cursor: "pointer" },
+          })}
+          locale={{ emptyText: "User'ов нет." }}
+        />
+      </div>
+    </IamListShell>
   );
 }
 
 export function InviteUserPage() {
   const account = useContext((s) => s.account);
   const accountId = account?.id ?? "";
-  const accountName = account?.name ?? "";
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -181,12 +190,32 @@ export function InviteUserPage() {
   );
   useBreadcrumb(breadcrumb);
 
-  const projects = useQuery({
-    queryKey: ["iam", "projects", "by-account", accountId],
-    queryFn: () => iamApi.listProjects({ account_id: accountId, pageSize: "1000" }),
-    enabled: !!accountId,
+  // Каскадер «Аккаунт → проект»: eager-грузим все аккаунты и их проекты, чтобы
+  // работал поиск по всему дереву (lazy-load ломает showSearch по неоткрытым
+  // ветвям). Значение [accId, prjId?]; changeOnSelect → можно выбрать только
+  // аккаунт (проект необязателен).
+  const cascaderQuery = useQuery({
+    queryKey: ["iam", "invite-cascader", "accounts-projects"],
+    queryFn: async () => {
+      const accs = (await iamApi.listAccounts({ pageSize: "1000" })).accounts ?? [];
+      return Promise.all(
+        accs.map(async (a) => {
+          const prs = (await iamApi.listProjects({ account_id: a.id, pageSize: "1000" })).projects ?? [];
+          return {
+            value: a.id,
+            label: a.name || a.id,
+            children: prs.map((p) => ({ value: p.id, label: p.name || p.id })),
+          };
+        }),
+      );
+    },
     staleTime: 30_000,
   });
+  // Значение каскадера: по умолчанию — аккаунт из контекста (level 1).
+  const [scope, setScope] = useState<string[]>(accountId ? [accountId] : []);
+  const scopeAccountId = scope[0] ?? accountId;
+  const scopeProjectId = scope[1];
+
   const roles = useQuery({
     queryKey: ["iam", "roles", "list"],
     queryFn: () => iamApi.listRoles({ pageSize: "1000" }),
@@ -200,14 +229,18 @@ export function InviteUserPage() {
     navigate("/iam/users");
   };
 
-  const onFinish = async (v: { email: string; display_name?: string; project_id?: string; role_id?: string }) => {
+  const onFinish = async (v: { email: string; display_name?: string; role_id?: string }) => {
+    if (!scopeAccountId) {
+      toast.error("Выберите аккаунт");
+      return;
+    }
     setSubmitting(true);
     try {
       const resp = await iamApi.inviteUser({
-        account_id: accountId,
+        account_id: scopeAccountId,
         email: v.email,
         ...(v.display_name ? { display_name: v.display_name } : {}),
-        ...(v.project_id ? { project_id: v.project_id } : {}),
+        ...(scopeProjectId ? { project_id: scopeProjectId } : {}),
         ...(v.role_id ? { role_id: v.role_id } : {}),
       });
       if (resp.error) {
@@ -268,13 +301,23 @@ export function InviteUserPage() {
           colon={false}
           onFinish={onFinish}
         >
-          <Form.Item label="Account">
-            <Typography.Text>
-              {accountName || accountId}{" "}
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                · {accountId}
-              </Typography.Text>
-            </Typography.Text>
+          <Form.Item label="Аккаунт / проект" required>
+            <Cascader
+              options={cascaderQuery.data ?? []}
+              value={scope}
+              onChange={(val) => setScope((val as string[]) ?? [])}
+              loading={cascaderQuery.isLoading}
+              changeOnSelect
+              allowClear={false}
+              expandTrigger="hover"
+              showSearch={{
+                filter: (input, path) =>
+                  path.some((o) => String(o.label).toLowerCase().includes(input.toLowerCase())),
+              }}
+              placeholder="Сначала аккаунт, затем проект (необязательно)"
+              displayRender={(labels) => labels.join(" / ")}
+              style={{ width: "100%" }}
+            />
           </Form.Item>
           <Form.Item
             label="Email"
@@ -289,19 +332,6 @@ export function InviteUserPage() {
           </Form.Item>
           <Form.Item label="Отображаемое имя" name="display_name">
             <Input placeholder="Иван Петров" />
-          </Form.Item>
-          <Form.Item label="Проект" name="project_id">
-            <Select
-              allowClear
-              placeholder="Без проекта"
-              loading={projects.isLoading}
-              showSearch
-              optionFilterProp="label"
-              options={(projects.data?.projects ?? []).map((p) => ({
-                value: p.id,
-                label: `${p.name || p.id} · ${p.id}`,
-              }))}
-            />
           </Form.Item>
           <Form.Item label="Роль" name="role_id">
             <Select

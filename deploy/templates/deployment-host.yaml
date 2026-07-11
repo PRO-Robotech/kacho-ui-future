@@ -23,25 +23,19 @@ spec:
     spec:
       enableServiceLinks: false
       volumes:
-        - name: nginx-template-src
+        - name: nginx-template
           configMap:
             name: {{ include "ui.hostName" . }}-nginx
             items:
               - key: default.conf.template
                 path: default.conf.template
-        # Writable templates dir: the configMap mount is read-only, so the resolver
-        # init-script (05-*) copies the DNS-substituted template here for nginx's
-        # own envsubst step (20-*) to read — an in-place `sed -i` on the read-only
-        # subPath mount fails with "Resource busy".
-        - name: nginx-templates
-          emptyDir: {}
         - name: nginx-entrypoint
           configMap:
             name: {{ include "ui.hostName" . }}-nginx
             defaultMode: 0755
             items:
-              - key: resolver-from-resolvconf.sh
-                path: 05-resolver-from-resolvconf.sh
+              - key: resolver-from-resolvconf.envsh
+                path: 05-resolver-from-resolvconf.envsh
       containers:
         - name: host
           image: {{ include "ui.hostImage" . | quote }}
@@ -64,18 +58,20 @@ spec:
               value: {{ include "ui.vpcUpstream" . | quote }}
             - name: KACHO_UI_IAM_UPSTREAM
               value: {{ include "ui.iamUpstream" . | quote }}
+            - name: KACHO_UI_NLB_UPSTREAM
+              value: {{ include "ui.nlbUpstream" . | quote }}
+            - name: KACHO_UI_REGISTRY_UPSTREAM
+              value: {{ include "ui.registryUpstream" . | quote }}
             - name: KACHO_UI_SYSTEM_UPSTREAM
               value: {{ include "ui.systemUpstream" . | quote }}
           volumeMounts:
-            - name: nginx-template-src
-              mountPath: /etc/nginx/templates-src/default.conf.template
+            - name: nginx-template
+              mountPath: /etc/nginx/templates/default.conf.template
               subPath: default.conf.template
               readOnly: true
-            - name: nginx-templates
-              mountPath: /etc/nginx/templates
             - name: nginx-entrypoint
-              mountPath: /docker-entrypoint.d/05-resolver-from-resolvconf.sh
-              subPath: 05-resolver-from-resolvconf.sh
+              mountPath: /docker-entrypoint.d/05-resolver-from-resolvconf.envsh
+              subPath: 05-resolver-from-resolvconf.envsh
               readOnly: true
           readinessProbe:
             httpGet:

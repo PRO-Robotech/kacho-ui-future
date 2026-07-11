@@ -9,11 +9,22 @@
 // Рендерится и generic-телом (ResourceFormBody), и кастом-формами
 // (InlineSubnet/SG/NIC/AddressPool) → визуальный паритет всех форм.
 // Theme-aware (--kc-*): чисто в DARK и LIGHT.
+import { createContext, useContext, type ReactNode } from "react";
 import { ResourceIcon } from "@shared/components/organisms/form/ResourceIcon";
 import { PanelHeader, useDetailHeaderIcon } from "@shared/components/molecules/PanelHeader";
 
 /** Единый стандарт ширины формы (modal width / page maxWidth / card maxWidth). */
 export const FORM_WIDTH = 820;
+
+// FormBareContext — форма внутри модалки: сама модалка уже даёт поверхность и
+// рамку, поэтому FormShell рисует шапку (иконка+действие+тип) + поля БЕЗ своей
+// kc-surface-карточки (иначе двойной лайаут: карточка внутри карточки-модалки).
+const FormBareContext = createContext(false);
+
+/** Оборачивает форму в модалке — FormShell рендерит шапку без kc-surface-подложки. */
+export function FormBareProvider({ children }: { children: ReactNode }) {
+  return <FormBareContext.Provider value={true}>{children}</FormBareContext.Provider>;
+}
 
 interface Props {
   specId: string;
@@ -38,6 +49,7 @@ export function FormShell({ specId, mode, singular, title, subtitle, children }:
   // шапки таба (padding карточки) → «прыжок» иконки/названия/действия при
   // переключении таб↔форма. Embedded → без карточки, шапка ровно как у таба.
   const embedded = useDetailHeaderIcon() !== undefined;
+  const bare = useContext(FormBareContext);
 
   const header = (
     <PanelHeader icon={<ResourceIcon specId={specId} />} eyebrow={verb} title={heading} subtitle={subtitle} />
@@ -47,6 +59,17 @@ export function FormShell({ specId, mode, singular, title, subtitle, children }:
     // Внутри detail-страницы шапку (иконка+действие+тип) показывает ЗОНА 2
     // (DetailShell.headerEyebrow/Title/Icon) — здесь её НЕ дублируем, только поля.
     return <div style={{ maxWidth: FORM_WIDTH, width: "100%", margin: 0 }}>{children}</div>;
+  }
+
+  if (bare) {
+    // Внутри модалки: шапка (иконка+действие+тип) + поля, БЕЗ kc-surface-карточки
+    // (поверхность — сама модалка). Единый лайаут, без вложенных карточек.
+    return (
+      <div style={{ width: "100%", margin: 0 }}>
+        {header}
+        {children}
+      </div>
+    );
   }
 
   return (

@@ -50,7 +50,7 @@ export const IAM_NAVIGATION: RemoteNavSection[] = [
       { key: "iam-groups", icon: "git-branch", label: "Группы", path: "/iam/groups" },
       { key: "iam-roles", icon: "lock", label: "Роли", path: "/iam/roles" },
       { key: "iam-access-bindings", icon: "shield", label: "Связки прав", path: "/iam/access-bindings" },
-      { key: "iam-access", icon: "users", label: "Права доступа", path: "/iam/access" },
+      { key: "iam-operations", icon: "activity", label: "Операции", path: "/iam/operations" },
     ],
   },
 ];

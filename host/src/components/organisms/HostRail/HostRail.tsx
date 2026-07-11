@@ -23,6 +23,28 @@ import {
   Shield,
   Users,
 } from "lucide-react";
+import {
+  ApartmentOutlined,
+  ApiOutlined,
+  AppstoreOutlined,
+  BankOutlined,
+  CameraOutlined,
+  ClusterOutlined,
+  DesktopOutlined,
+  FileImageOutlined,
+  GatewayOutlined,
+  GlobalOutlined,
+  HddOutlined,
+  HistoryOutlined,
+  KeyOutlined,
+  NodeIndexOutlined,
+  ProjectOutlined,
+  RobotOutlined,
+  SafetyCertificateOutlined,
+  SafetyOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 import { KachoLogo, RailButton } from "../../atoms";
 import { loginUrl } from "../../../utils/auth";
 import type { HostContext } from "../../../utils";
@@ -59,6 +81,49 @@ const iconByName: Record<RemoteIconName, ReactElement> = {
 };
 const fallbackIcon = <Layers size={iconSize} />;
 
+// Иконки ресурсных пунктов сайдбара — те же AntD Outlined-иконки, что таблицы/
+// шапки деталей (ResourceIcon.ICONS в remote'ах). Ключ — specId (= последний
+// сегмент nav-path). Синхронизация: пользователь видит один глиф ресурса и в
+// рейле, и в таблице. Модульные (section) иконки остаются lucide.
+const antdSize = { fontSize: iconSize };
+const antdIconBySpec: Record<string, ReactElement> = {
+  // vpc
+  networks: <ApartmentOutlined style={antdSize} />,
+  subnets: <ClusterOutlined style={antdSize} />,
+  addresses: <GlobalOutlined style={antdSize} />,
+  "route-tables": <NodeIndexOutlined style={antdSize} />,
+  "security-groups": <SafetyOutlined style={antdSize} />,
+  "network-interfaces": <ApiOutlined style={antdSize} />,
+  gateways: <GatewayOutlined style={antdSize} />,
+  // nlb
+  "load-balancers": <ApartmentOutlined style={antdSize} />,
+  listeners: <ApiOutlined style={antdSize} />,
+  "target-groups": <ClusterOutlined style={antdSize} />,
+  // iam
+  accounts: <BankOutlined style={antdSize} />,
+  projects: <ProjectOutlined style={antdSize} />,
+  users: <UserOutlined style={antdSize} />,
+  "service-accounts": <RobotOutlined style={antdSize} />,
+  groups: <TeamOutlined style={antdSize} />,
+  roles: <SafetyCertificateOutlined style={antdSize} />,
+  "access-bindings": <KeyOutlined style={antdSize} />,
+  operations: <HistoryOutlined style={antdSize} />,
+  // compute
+  instances: <DesktopOutlined style={antdSize} />,
+  disks: <HddOutlined style={antdSize} />,
+  images: <FileImageOutlined style={antdSize} />,
+  snapshots: <CameraOutlined style={antdSize} />,
+  // admin / system
+  "address-pools": <AppstoreOutlined style={antdSize} />,
+  regions: <AppstoreOutlined style={antdSize} />,
+  zones: <AppstoreOutlined style={antdSize} />,
+};
+
+// specId ресурса = последний сегмент nav-path ("nlb/load-balancers" → "load-balancers").
+function specIdFromPath(path: string): string {
+  return path.split("/").filter(Boolean).pop() ?? "";
+}
+
 const commonTop: ShellNavItem[] = [
   {
     key: "dashboard",
@@ -93,7 +158,13 @@ export const HostRail: FC<{
   useEffect(() => {
     let cancelled = false;
 
-    void Promise.allSettled([import("dashboard/navigation"), import("vpc/navigation"), import("iam/navigation")])
+    void Promise.allSettled([
+      import("dashboard/navigation"),
+      import("vpc/navigation"),
+      import("nlb/navigation"),
+      import("registry/navigation"),
+      import("iam/navigation"),
+    ])
       .then((results) => {
         if (!cancelled) {
           setSections(
@@ -183,7 +254,9 @@ function activeSection(sections: RemoteNavSection[], pathname: string) {
 function toShellItem(item: RemoteNavItem): ShellNavItem {
   return {
     key: item.key,
-    icon: iconByName[item.icon] ?? fallbackIcon,
+    // Иконка ресурса синхронизирована с таблицами (AntD ResourceIcon по specId);
+    // lucide item.icon — fallback для пунктов без ресурс-иконки.
+    icon: antdIconBySpec[specIdFromPath(item.path)] ?? iconByName[item.icon] ?? fallbackIcon,
     label: item.label,
     to: (projectId) => remotePath(projectId, item.path),
     matches: (pathname) => matchesRemotePath(pathname, item.path),

@@ -10,7 +10,7 @@ import { ErrorResult } from "@shared/components/molecules/ErrorResult";
 import { ResourceFormBody } from "@shared/components/organisms/form/ResourceFormBody";
 import { FORM_WIDTH } from "@shared/components/organisms/form/FormShell";
 import { extractOperationId } from "@shared/components/molecules/OperationDialog";
-import { computeUpdateMask, snakeToCamelPath } from "@shared/components/organisms/ResourceFormDialog";
+import { computeUpdateMask, snakeToCamelPath } from "@shared/lib/update-mask";
 import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
 import { ApiError, api } from "@shared/api/client";
 import { applyFieldDefaults, type ResourceSpec } from "@shared/lib/resource-registry";

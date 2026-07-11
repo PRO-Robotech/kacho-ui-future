@@ -28,3 +28,22 @@ export function safeInternalPath(raw: string | null | undefined, fallback: strin
   const path = `${url.pathname}${url.search}${url.hash}`;
   return path.startsWith("/") ? path : fallback;
 }
+
+/**
+ * Resolve the post-auth navigation target after a Kratos login/registration flow.
+ *
+ * Both `flowReturnTo` (from the flow response) and `queryReturnTo` (from the
+ * `?return_to=` query param) are caller-supplied, so each is constrained to a
+ * same-origin in-app path (CWE-601). The flow value takes precedence; when it is
+ * absent or off-origin we drop to the query value, and finally to `fallback`.
+ *
+ * Shared by Login and Register so the same-origin guarantee cannot drift between
+ * the two auth entry points.
+ */
+export function resolvePostAuthTarget(
+  flowReturnTo: string | null | undefined,
+  queryReturnTo: string | null | undefined,
+  fallback: string = DEFAULT_FALLBACK,
+): string {
+  return safeInternalPath(flowReturnTo, safeInternalPath(queryReturnTo, fallback));
+}

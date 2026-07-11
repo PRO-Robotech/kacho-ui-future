@@ -40,9 +40,12 @@ export function useModuleCounts(module: ServiceModule, scopeId: string | null, s
     }
 
     void loadCounts();
+    // Фоновое обновление редкое: счётчики плиток меняются нечасто, а каждый тик —
+    // до 12 списочных запросов (по 1000 элементов). 60с вместо 15с снимает
+    // основную фоновую нагрузку/подтормаживание дашборда.
     const timer = window.setInterval(() => {
       void loadCounts();
-    }, 15_000);
+    }, 60_000);
 
     return () => {
       cancelled = true;

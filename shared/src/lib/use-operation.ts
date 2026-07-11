@@ -71,10 +71,12 @@ export function useInvalidateResourceList() {
     void _projectId;
     // Немедленная инвалидация (рефетч активных + неактивных списков/detail).
     invalidateResourceKeys(qc, resourceId);
-    // Отложенная safety-инвалидация: мутации асинхронные (Operation), и хотя
-    // worker помечает Operation done после commit'а строки, повторный сброс
-    // через ~1.2с защищает от любого краткого окна «done, но List ещё отдал
-    // старое». Идемпотентно и безвредно (qc стабилен, повторный рефетч дёшев).
-    setTimeout(() => invalidateResourceKeys(qc, resourceId), 1200);
+    // Poll-retry по всему окну FGA-пропагации. Мутации асинхронные (Operation);
+    // после commit'а строки owner/creator-tuple пишется в FGA и появляется в
+    // authz-filtered List НЕ мгновенно (пропагация ~0.6–2с, редко до ~3–4с).
+    // Единичный refetch «сразу» отдаёт старый список → пользователь «не видит
+    // созданное». Поэтому доинвалидируем несколько раз, покрывая всё окно:
+    // ресурс подтянется, как только tuple пропагируется. Идемпотентно и дёшево.
+    [700, 1500, 2800, 4200].forEach((ms) => setTimeout(() => invalidateResourceKeys(qc, resourceId), ms));
   };
 }

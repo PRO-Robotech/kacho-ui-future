@@ -244,9 +244,40 @@ body {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  padding: 16px;
-  overflow: auto;
-  scrollbar-gutter: stable;
+  /* Вертикальный отступ подтянут (8px) — симметричный зазор header↔surface и
+     surface↔footer, без «воздуха». Горизонталь 16px (визуальные поля страницы). */
+  padding: 8px 16px;
+  /* Content-область ограничена по высоте (header + content + footer в 100vh);
+     сама НЕ скроллится — белая поверхность (.kc-surface) фиксированного размера
+     заполняет её и скроллит контент внутри себя. flex-column — чтобы дочерний
+     remote-frame заполнял высоту через flex:1 (percentage-height через
+     block-границу в Chrome не резолвится → поверхность «висела» короткой). */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Обёртка antd <App> (`.ant-app`) каждого remote рендерится прямым ребёнком
+   .app-content, но по умолчанию display:block/height:auto — рвёт flex-цепочку
+   заполнения высоты (remote-frame flex:1 не срабатывал, поверхность «висела»
+   короткой над футером). Делаем её flex-fill звеном. */
+.app-content > .ant-app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-footer {
+  flex-shrink: 0;
+  padding: 9px 16px 11px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--kc-text-tertiary, rgb(127 127 127 / 0.7));
+  border-top: 1px solid var(--kc-border-secondary, rgb(127 127 127 / 0.18));
+  background: transparent;
+  height: auto;
 }
 
 .workbench {

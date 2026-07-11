@@ -56,6 +56,32 @@ data:
             proxy_send_timeout 30s;
         }
 
+        location ^~ /nlb-remote/ {
+            set $nlb_upstream "${KACHO_UI_NLB_UPSTREAM}";
+            rewrite ^/nlb-remote/(.*)$ /$1 break;
+            proxy_pass http://$nlb_upstream;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 30s;
+            proxy_send_timeout 30s;
+        }
+
+        location ^~ /registry-remote/ {
+            set $registry_upstream "${KACHO_UI_REGISTRY_UPSTREAM}";
+            rewrite ^/registry-remote/(.*)$ /$1 break;
+            proxy_pass http://$registry_upstream;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 30s;
+            proxy_send_timeout 30s;
+        }
+
         location ^~ /system-remote/ {
             set $system_upstream "${KACHO_UI_SYSTEM_UPSTREAM}";
             rewrite ^/system-remote/(.*)$ /$1 break;
@@ -176,21 +202,18 @@ data:
         gzip_types text/plain text/css application/javascript application/json image/svg+xml;
         gzip_min_length 1024;
     }
-  resolver-from-resolvconf.sh: |
-    #!/bin/sh
-    set -eu
+  resolver-from-resolvconf.envsh: |
+    # Sourced (.envsh) до nginx 20-envsubst: экспортирует адрес кластерного DNS из
+    # /etc/resolv.conf в KUBE_DNS_SERVER, чтобы envsubst подставил его в
+    # `resolver ${KUBE_DNS_SERVER}` шаблона. Экспорт (не sed по read-only
+    # ConfigMap-mount) — mount доступен только на чтение, in-place правка невозможна.
     ns="$(awk '/^nameserver/ {print $2; exit}' /etc/resolv.conf)"
     if [ -z "$ns" ]; then
       echo "[05-resolver] FATAL: no nameserver in /etc/resolv.conf" >&2
-      exit 1
+      return 1 2>/dev/null || exit 1
     fi
-    # The configMap-mounted source is read-only (sed -i would fail "Resource
-    # busy"); write the DNS-substituted template into the writable templates
-    # emptyDir that nginx's own envsubst step (20-*) then processes.
-    src=/etc/nginx/templates-src/default.conf.template
-    dst=/etc/nginx/templates/default.conf.template
-    sed "s|\${KUBE_DNS_SERVER}|$ns|g" "$src" > "$dst"
-    echo "[05-resolver] nameserver $ns from /etc/resolv.conf applied to $dst"
+    export KUBE_DNS_SERVER="$ns"
+    echo "[05-resolver] KUBE_DNS_SERVER=$ns exported for envsubst"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -361,6 +384,88 @@ data:
             expires 1y;
             add_header Cache-Control "public, immutable";
             {{- include "ui.securityHeaders" . | nindent 12 }}
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        gzip on;
+        gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+        gzip_min_length 1024;
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ui.nlbName" . }}-nginx
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+data:
+  default.conf.template: |
+    server {
+        listen {{ .Values.nlb.port }};
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location = /healthz {
+            access_log off;
+            add_header Content-Type text/plain;
+            return 200 "ok\n";
+        }
+
+        location = /index.html {
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+        }
+
+        location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+            try_files $uri =404;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        gzip on;
+        gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+        gzip_min_length 1024;
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ui.registryName" . }}-nginx
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+data:
+  default.conf.template: |
+    server {
+        listen {{ .Values.registry.port }};
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location = /healthz {
+            access_log off;
+            add_header Content-Type text/plain;
+            return 200 "ok\n";
+        }
+
+        location = /index.html {
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+        }
+
+        location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+            try_files $uri =404;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
         }
 
         location / {

@@ -7,20 +7,27 @@ import { AuthProvider } from "@shared/contexts/AuthContext";
 import { StepUpModal } from "@/components/molecules/auth/StepUpModal";
 import { HeaderRightSlot, PageHeaderSlotProvider } from "@shared/components/molecules/PageHeaderSlot";
 import { OperationBanner } from "@shared/components/molecules/OperationBanner";
+import { Toaster } from "@/components/molecules/Toaster";
 import { GlobalResourceFormModal } from "@shared/components/organisms/GlobalResourceFormModal";
 import { ResourceCreatePage } from "@/components/organisms/ResourceCreatePage";
 import { ResourceListPage } from "@/components/organisms/ResourceListPage";
 import { ResourceShell } from "@shared/components/organisms/ResourceShell";
 import { IamScopedListShell } from "@/components/organisms/iam/IamScopedListShell";
+import { RolesListShell } from "@/components/organisms/iam/RolesListShell";
+import { IamUsersListShell } from "@/components/organisms/iam/IamUsersListShell";
 import { AccessBindingCreatePage, AccessBindingsPage } from "@/pages/iam/AccessBindingsPage";
 import { AccessGrantPage, AccessPage } from "@/pages/iam/AccessPage";
-import { GroupCreatePage, GroupEditPage, GroupsPage } from "@/pages/iam/GroupsPage";
-import { RoleCreatePage, RoleEditPage, RolesPage } from "@/pages/iam/RolesPage";
-import { InviteUserPage, UsersPage } from "@/pages/iam/UsersPage";
+import { GroupCreatePage } from "@/pages/iam/GroupsPage";
+import { RoleCreatePage } from "@/pages/iam/RolesPage";
+import { IamOperationsPage } from "@/pages/iam/IamOperationsPage";
+import { InviteUserPage } from "@/pages/iam/UsersPage";
 import { contextApi, useContext as useIamContext } from "@shared/lib/context-store";
 import { REGISTRY } from "@shared/lib/resource-registry";
 import "@shared/typography.css";
 import "@shared/index.css";
+// Регистрирует доменные IAM-расширения detail-страниц и inline-форм (side-effect,
+// до рендера страниц) в app-agnostic shared-реестрах.
+import "@/registerExtensions";
 
 export interface IamPageProps {
   context?: {
@@ -76,6 +83,10 @@ export const IamPage: FC<IamPageProps> = ({ context }) => {
                   <Route path="accounts/create" element={<ResourceCreatePage spec={REGISTRY.accounts} />} />
                   <Route path="accounts/:uid" element={<ResourceShell spec={REGISTRY.accounts} />} />
                   <Route path="accounts/:uid/edit" element={<ResourceShell spec={REGISTRY.accounts} mode="edit" />} />
+                  <Route
+                    path="accounts/:uid/:childRoute/create"
+                    element={<ResourceShell spec={REGISTRY.accounts} mode="child-create" />}
+                  />
                   <Route path="accounts/:uid/:tab" element={<ResourceShell spec={REGISTRY.accounts} />} />
                   <Route path="projects" element={<IamScopedListShell spec={REGISTRY.projects} disableChildRoute />} />
                   <Route
@@ -96,19 +107,40 @@ export const IamPage: FC<IamPageProps> = ({ context }) => {
                     element={<ResourceShell spec={REGISTRY["service-accounts"]} mode="edit" />}
                   />
                   <Route
+                    path="service-accounts/:uid/:childRoute/create"
+                    element={<ResourceShell spec={REGISTRY["service-accounts"]} mode="child-create" />}
+                  />
+                  <Route
                     path="service-accounts/:uid/:tab"
                     element={<ResourceShell spec={REGISTRY["service-accounts"]} />}
                   />
-                  <Route path="users" element={<UsersPage />} />
+                  <Route path="users" element={<IamUsersListShell />} />
                   <Route path="users/invite" element={<InviteUserPage />} />
-                  <Route path="groups" element={<GroupsPage />} />
+                  <Route path="users/:uid" element={<ResourceShell spec={REGISTRY.users} />} />
+                  <Route
+                    path="users/:uid/:childRoute/create"
+                    element={<ResourceShell spec={REGISTRY.users} mode="child-create" />}
+                  />
+                  <Route path="users/:uid/:tab" element={<ResourceShell spec={REGISTRY.users} />} />
+                  <Route path="groups" element={<IamScopedListShell spec={REGISTRY.groups} />} />
                   <Route path="groups/create" element={<GroupCreatePage />} />
-                  <Route path="groups/:uid/edit" element={<GroupEditPage />} />
-                  <Route path="roles" element={<RolesPage />} />
+                  <Route path="groups/:uid/edit" element={<ResourceShell spec={REGISTRY.groups} mode="edit" />} />
+                  <Route path="groups/:uid" element={<ResourceShell spec={REGISTRY.groups} />} />
+                  <Route
+                    path="groups/:uid/:childRoute/create"
+                    element={<ResourceShell spec={REGISTRY.groups} mode="child-create" />}
+                  />
+                  <Route path="groups/:uid/:tab" element={<ResourceShell spec={REGISTRY.groups} />} />
+                  <Route path="roles" element={<RolesListShell />} />
                   <Route path="roles/create" element={<RoleCreatePage />} />
-                  <Route path="roles/:uid/edit" element={<RoleEditPage />} />
+                  <Route path="roles/:uid/edit" element={<ResourceShell spec={REGISTRY.roles} mode="edit" />} />
+                  <Route path="roles/:uid" element={<ResourceShell spec={REGISTRY.roles} />} />
+                  <Route path="roles/:uid/:tab" element={<ResourceShell spec={REGISTRY.roles} />} />
                   <Route path="access-bindings" element={<AccessBindingsPage />} />
                   <Route path="access-bindings/create" element={<AccessBindingCreatePage />} />
+                  <Route path="access-bindings/:uid" element={<ResourceShell spec={REGISTRY["access-bindings"]} />} />
+                  <Route path="access-bindings/:uid/:tab" element={<ResourceShell spec={REGISTRY["access-bindings"]} />} />
+                  <Route path="operations" element={<IamOperationsPage />} />
                   <Route path="access" element={<AccessPage />} />
                   <Route path="access/grant" element={<AccessGrantPage />} />
                   <Route path="*" element={<Navigate to="/iam/accounts" replace />} />
@@ -134,6 +166,7 @@ function IamFrame({ children }: { children: ReactNode }) {
       <OperationBanner />
       <div className="vpc-remote-content">{children}</div>
       <GlobalResourceFormModal />
+      <Toaster />
     </section>
   );
 }

@@ -12,12 +12,13 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Modal } from "antd";
+import { Modal, Select } from "antd";
 import { api } from "@shared/api/client";
 import { getResource } from "@shared/lib/resource-registry";
 import { useProjectStore } from "@shared/lib/context-store";
 import { ErrorResult } from "@shared/components/molecules/ErrorResult";
 import { InlineResourceCreateForm } from "@shared/components/organisms/InlineResourceCreateForm";
+import { FormBareProvider } from "@shared/components/organisms/form/FormShell";
 
 interface Props {
   refResource: string;
@@ -99,38 +100,34 @@ export function RefSelect({
 
   return (
     <div className="space-y-1">
-      <select
+      <Select
         id={id}
-        value={value ?? ""}
-        onChange={(e) => {
-          if (e.target.value === CREATE_SENTINEL) {
-            // Sentinel — это действие, а не значение: возвращаем DOM-select на
-            // текущее value. Иначе controlled-select остаётся на «Создать…»
-            // (value-prop не меняется → React не сбрасывает selectedIndex), и
-            // повторный выбор того же пункта НЕ триггерит change → модалка не
-            // открывается снова после отмены.
-            e.target.value = value ?? "";
+        showSearch
+        allowClear
+        value={value || undefined}
+        placeholder={placeholder ?? `Выбрать ${spec.singular}…`}
+        disabled={disabled || !enabled}
+        style={{ width: "100%" }}
+        optionFilterProp="label"
+        // CREATE_SENTINEL — действие (открыть inline-create modal), не значение:
+        // не зовём onChange (value не меняется → controlled Select откатывается).
+        onChange={(v) => {
+          if (v === CREATE_SENTINEL) {
             setCreating(true);
             return;
           }
-          onChange(e.target.value);
+          onChange(v || "");
         }}
-        className="flex h-9 w-full rounded-md border border-border bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={disabled || !enabled}
-      >
-        <option value="">{placeholder ?? `Выбрать ${spec.singular}…`}</option>
-        {options.map((o) => {
-          const head = o.name || o.uid;
-          const tail = o.extra ? ` · ${o.extra}` : "";
-          return (
-            <option key={o.uid} value={o.uid}>
-              {head}
-              {tail}
-            </option>
-          );
-        })}
-        {createSpec && <option value={CREATE_SENTINEL}>+ Создать {createSpec.singular.toLowerCase()}…</option>}
-      </select>
+        options={[
+          ...options.map((o) => ({
+            value: o.uid as string,
+            label: `${o.name || o.uid}${o.extra ? ` · ${o.extra}` : ""}`,
+          })),
+          ...(createSpec
+            ? [{ value: CREATE_SENTINEL, label: `+ Создать ${createSpec.singular.toLowerCase()}…` }]
+            : []),
+        ]}
+      />
       {refProjectScoped && !project && <p className="text-xs text-amber-600">Выберите проект в шапке для загрузки.</p>}
       {needsDynParam && !dynParamValue && (
         <p className="text-xs text-amber-600">Сначала выберите «{refQueryFromField!.field}» выше.</p>
@@ -147,11 +144,13 @@ export function RefSelect({
           open
           footer={null}
           onCancel={() => setCreating(false)}
-          width={640}
+          width={720}
           destroyOnClose
-          title={createTitle ?? `Создать ${createSpec.singular.toLowerCase()}`}
+          title={null}
+          styles={{ body: { padding: "12px 24px 20px" } }}
         >
-          <InlineResourceCreateForm
+          <FormBareProvider>
+            <InlineResourceCreateForm
             spec={createSpec}
             ctx={{
               projectId: project?.id,
@@ -174,7 +173,8 @@ export function RefSelect({
                 if (fresh) onChange(fresh.id);
               });
             }}
-          />
+            />
+          </FormBareProvider>
         </Modal>
       )}
     </div>
@@ -232,6 +232,21 @@ function extraInfoFor(refResource: string, row: Record<string, unknown>): string
     case "security-groups": {
       const net = (row.network_id as string | undefined) ?? "";
       return net ? `net:${net.slice(0, 8)}` : "";
+    }
+    // NLB-типы: показываем регион (+ схему) — как «адресную» инфу vpc-ресурсов.
+    case "load-balancers":
+    case "network-load-balancers": {
+      const region = (row.region_id as string | undefined) ?? "";
+      const scheme = (row.type as string | undefined) ?? "";
+      return [region, scheme].filter(Boolean).join(" · ");
+    }
+    case "target-groups": {
+      return (row.region_id as string | undefined) ?? "";
+    }
+    // Geo Region: name — head-label, id (ru-central1) — полезный extra.
+    case "regions":
+    case "compute-regions": {
+      return (row.id as string | undefined) ?? "";
     }
     default:
       return "";

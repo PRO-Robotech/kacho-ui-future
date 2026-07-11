@@ -45,6 +45,20 @@ export interface InlineResourceFormProps {
   onSuccess: () => void;
 }
 
+// Кастомные inline-формы, зарегистрированные app'ом на старте (напр. IAM-remote
+// регистрирует Role create/edit). Так shared-диспетчер остаётся app-agnostic:
+// доменная форма инжектится потребителем, а не хардкодится здесь. Ключ —
+// `${specId}::${action}`; регистрация перекрывает generic/custom-ветку ниже.
+export type InlineFormRenderer = (props: InlineResourceFormProps) => ReactNode;
+
+const registeredInlineForms: Record<string, InlineFormRenderer> = {};
+
+// registerInlineForm — подключает доменную inline-форму для (specId, action)
+// (вызывается app'ом на старте, до открытия форм).
+export function registerInlineForm(specId: string, action: "create" | "edit", render: InlineFormRenderer): void {
+  registeredInlineForms[`${specId}::${action}`] = render;
+}
+
 export function InlineResourceForm(props: InlineResourceFormProps): ReactNode {
   const {
     spec,
@@ -63,6 +77,10 @@ export function InlineResourceForm(props: InlineResourceFormProps): ReactNode {
     onSuccess,
   } = props;
   const specId = spec.id;
+
+  // ── Доменные формы, зарегистрированные app'ом (напр. IAM Role) ──
+  const registered = registeredInlineForms[`${specId}::${action}`];
+  if (registered) return registered(props);
 
   // ── Custom resource-specific формы по spec.id ──
   if (specId === "subnets" && action === "create") {

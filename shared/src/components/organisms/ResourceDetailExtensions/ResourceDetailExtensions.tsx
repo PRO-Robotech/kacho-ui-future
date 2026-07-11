@@ -47,6 +47,11 @@ export interface DetailExtension {
   overviewBelow?: (ctx: DetailExtCtx) => ReactNode;
   headerActions?: (ctx: DetailExtCtx) => ReactNode;
   extraTabs?: (ctx: DetailExtCtx) => DetailTab[];
+  /** Кастомная embedded create-форма для child-create-роута, которого НЕТ в
+   *  REGISTRY (напр. "privileges" → AccessBindingCreateForm с залоченным
+   *  субъектом). ResourceShell зовёт это в child-create branch, когда REGISTRY-spec
+   *  для childRoute не найден. Форма сама навигирует через onSuccess/onCancel. */
+  childCreate?: (childRoute: string, ctx: DetailExtCtx) => ReactNode;
   hideOperations?: boolean;
   title?: (data: Record<string, unknown>) => string | undefined;
 }
@@ -338,6 +343,18 @@ export const DETAIL_EXTENSIONS: Record<string, DetailExtension> = {
   },
 };
 
+// Расширения, зарегистрированные app'ом на старте (напр. IAM-remote регистрирует
+// доменные детейл-расширения своих ресурсов). Так shared остаётся app-agnostic:
+// доменная специфика инжектится потребителем, а не хардкодится здесь. Регистрация
+// перекрывает базовую DETAIL_EXTENSIONS для того же specId.
+const registeredExtensions: Record<string, DetailExtension> = {};
+
+// registerDetailExtension — подключает доменное расширение detail-страницы для
+// ресурса specId (вызывается app'ом на старте, до рендера detail-страниц).
+export function registerDetailExtension(specId: string, ext: DetailExtension): void {
+  registeredExtensions[specId] = ext;
+}
+
 export function detailExtension(specId: string): DetailExtension | undefined {
-  return DETAIL_EXTENSIONS[specId];
+  return registeredExtensions[specId] ?? DETAIL_EXTENSIONS[specId];
 }

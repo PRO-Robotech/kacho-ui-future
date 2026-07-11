@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Card, Input, Space, Switch, Tooltip, Typography, Button as AntButton } from "antd";
+import { Card, Input, Select, Space, Switch, Tooltip, Typography, Button as AntButton } from "antd";
 import { DeleteOutlined, PlusOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { Label } from "@shared/components/atoms/ui/Input";
 import { RefSelect } from "@shared/components/organisms/form/RefSelect";
@@ -170,20 +170,18 @@ function ScalarFieldRenderer({
         />
       )}
       {field.type === "enum" && (
-        <select
+        <Select
           id={id}
-          value={(cur as string | undefined) ?? ""}
-          onChange={(e) => set(e.target.value || undefined)}
-          className="flex h-9 w-full rounded-md border border-border bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+          showSearch
+          allowClear
+          value={(cur as string | undefined) || undefined}
+          onChange={(v) => set(v || undefined)}
+          placeholder="— Не выбрано —"
           disabled={disabled}
-        >
-          <option value="">— Не выбрано —</option>
-          {field.options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          style={{ width: "100%" }}
+          optionFilterProp="label"
+          options={field.options.map((o) => ({ value: o.value, label: o.label }))}
+        />
       )}
       {field.type === "ref" && (
         <RefSelect

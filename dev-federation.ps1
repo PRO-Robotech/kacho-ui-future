@@ -5,9 +5,11 @@ $HostDir = Join-Path $Root "host"
 $DashboardDir = Join-Path $Root "dashboard"
 $VpcDir = Join-Path $Root "vpc"
 $IamDir = Join-Path $Root "iam"
+$NlbDir = Join-Path $Root "nlb"
 $DashboardRemoteEntry = Join-Path $DashboardDir "dist\assets\remoteEntry.js"
 $VpcRemoteEntry = Join-Path $VpcDir "dist\assets\remoteEntry.js"
 $IamRemoteEntry = Join-Path $IamDir "dist\assets\remoteEntry.js"
+$NlbRemoteEntry = Join-Path $NlbDir "dist\assets\remoteEntry.js"
 
 $jobs = @()
 
@@ -66,10 +68,12 @@ trap {
 Stop-WorkspaceListener -Port 4175
 Stop-WorkspaceListener -Port 4176
 Stop-WorkspaceListener -Port 4177
+Stop-WorkspaceListener -Port 4178
 Stop-WorkspaceListener -Port 5174
 Stop-WorkspaceListener -Port 5175
 Stop-WorkspaceListener -Port 5176
 Stop-WorkspaceListener -Port 5177
+Stop-WorkspaceListener -Port 5178
 
 Write-Host "Building dashboard remote once..."
 Push-Location $DashboardDir
@@ -98,6 +102,15 @@ finally {
   Pop-Location
 }
 
+Write-Host "Building NLB remote once..."
+Push-Location $NlbDir
+try {
+  npm run build
+}
+finally {
+  Pop-Location
+}
+
 Write-Host "Starting dashboard build watcher..."
 $jobs += Start-NpmJob -Name "dashboard:watch" -WorkingDirectory $DashboardDir -Script "dev:remote:watch"
 
@@ -106,6 +119,9 @@ $jobs += Start-NpmJob -Name "vpc:watch" -WorkingDirectory $VpcDir -Script "dev:r
 
 Write-Host "Starting IAM build watcher..."
 $jobs += Start-NpmJob -Name "iam:watch" -WorkingDirectory $IamDir -Script "dev:remote:watch"
+
+Write-Host "Starting NLB build watcher..."
+$jobs += Start-NpmJob -Name "nlb:watch" -WorkingDirectory $NlbDir -Script "dev:remote:watch"
 
 Write-Host "Waiting for dashboard remote entry..."
 $deadline = (Get-Date).AddSeconds(60)
@@ -137,6 +153,16 @@ while (-not (Test-Path $IamRemoteEntry)) {
   Start-Sleep -Milliseconds 500
 }
 
+Write-Host "Waiting for NLB remote entry..."
+$deadline = (Get-Date).AddSeconds(60)
+while (-not (Test-Path $NlbRemoteEntry)) {
+  if ((Get-Date) -gt $deadline) {
+    throw "Timed out waiting for $NlbRemoteEntry"
+  }
+  Receive-Job -Job $jobs | ForEach-Object { Write-Host $_ }
+  Start-Sleep -Milliseconds 500
+}
+
 Write-Host "Starting dashboard preview on http://localhost:4175 ..."
 $jobs += Start-NpmJob -Name "dashboard:preview" -WorkingDirectory $DashboardDir -Script "preview"
 
@@ -145,6 +171,9 @@ $jobs += Start-NpmJob -Name "vpc:preview" -WorkingDirectory $VpcDir -Script "pre
 
 Write-Host "Starting IAM preview on http://localhost:4177 ..."
 $jobs += Start-NpmJob -Name "iam:preview" -WorkingDirectory $IamDir -Script "preview"
+
+Write-Host "Starting NLB preview on http://localhost:4178 ..."
+$jobs += Start-NpmJob -Name "nlb:preview" -WorkingDirectory $NlbDir -Script "preview"
 
 Write-Host "Starting host dev on http://localhost:5174 ..."
 $jobs += Start-NpmJob -Name "host:dev" -WorkingDirectory $HostDir -Script "dev"
@@ -155,6 +184,7 @@ Write-Host "  host             http://localhost:5174"
 Write-Host "  dashboard remote http://localhost:4175/assets/remoteEntry.js"
 Write-Host "  VPC remote       http://localhost:4176/assets/remoteEntry.js"
 Write-Host "  IAM remote       http://localhost:4177/assets/remoteEntry.js"
+Write-Host "  NLB remote       http://localhost:4178/assets/remoteEntry.js"
 Write-Host ""
 Write-Host "Press Ctrl+C to stop all jobs."
 
