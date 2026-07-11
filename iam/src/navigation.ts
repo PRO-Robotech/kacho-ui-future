@@ -53,6 +53,38 @@ export const IAM_NAVIGATION: RemoteNavSection[] = [
       { key: "iam-access", icon: "users", label: "Права доступа", path: "/iam/access" },
     ],
   },
+  // Stage 3 — System / Administration (admin-only, kacho-only global-ресурсы).
+  // Обслуживаются iam-remote под /iam/system/* (см. IamPage SystemRoutes).
+  {
+    key: "system",
+    segment: "system",
+    icon: "globe",
+    label: "Администрирование",
+    landingPath: "/iam/system/regions",
+    items: [
+      { key: "system-regions", icon: "globe", label: "Регионы", path: "/iam/system/regions" },
+      { key: "system-zones", icon: "route", label: "Зоны", path: "/iam/system/zones" },
+      { key: "system-address-pools", icon: "network", label: "Пулы адресов", path: "/iam/system/address-pools" },
+      { key: "system-cluster-admins", icon: "shield", label: "Cluster admins", path: "/iam/system/cluster/admins" },
+    ],
+  },
+  // Stage 4 — Tokens & keys (выпуск OAuth-креденшалов). Под /iam/tokens/*.
+  {
+    key: "tokens",
+    segment: "tokens",
+    icon: "key",
+    label: "Токены и ключи",
+    landingPath: "/iam/tokens/service-account-keys",
+    items: [
+      {
+        key: "tokens-sa-keys",
+        icon: "key",
+        label: "Ключи сервисных аккаунтов",
+        path: "/iam/tokens/service-account-keys",
+      },
+      { key: "tokens-user-tokens", icon: "lock", label: "Токены пользователей", path: "/iam/tokens/user-tokens" },
+    ],
+  },
 ];
 
 export const DASHBOARD_NAVIGATION = IAM_NAVIGATION;

@@ -17,6 +17,11 @@ export default defineConfig({
       exposes: {
         "./IamPage": "./src/pages/IamPage/index.ts",
         "./navigation": "./src/navigation.ts",
+        // Stage 3/4 — самодостаточные federated exposes (RemoteShell-обвязка).
+        // Основной путь всё равно через IamPage (роуты /iam/system/* и /iam/tokens/*),
+        // эти exposes — для прямого MF-mount'а области целиком.
+        "./SystemPage": "./src/pages/SystemPage/index.ts",
+        "./TokensPage": "./src/pages/TokensPage/index.ts",
       },
       shared: ["antd", "lucide-react", "react", "react-dom", "react-router-dom"],
     }),
@@ -30,6 +35,20 @@ export default defineConfig({
   server: {
     proxy: {
       "/iam/v1": {
+        target: apiGateway,
+        changeOrigin: true,
+      },
+      // Stage 3 System-области ходят в geo (regions/zones) и vpc (addressPools);
+      // compute — на всякий (compute-* read-only refResource'ы в тех же формах).
+      "/geo": {
+        target: apiGateway,
+        changeOrigin: true,
+      },
+      "/vpc": {
+        target: apiGateway,
+        changeOrigin: true,
+      },
+      "/compute": {
         target: apiGateway,
         changeOrigin: true,
       },
