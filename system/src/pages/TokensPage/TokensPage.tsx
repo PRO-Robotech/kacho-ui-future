@@ -1,6 +1,6 @@
-// TokensPage — Stage 4 «Токены и ключи» область iam-remote.
+// TokensPage — «Токены и ключи» область system-remote.
 //
-// TokensRoutes (named) — <Routes>-блок, монтируется IamPage под `/iam/tokens/*`.
+// TokensRoutes (named) — <Routes>-блок, монтируется SystemPage под `/system/tokens/*`.
 // TokensPage (default) — self-contained federated expose (RemoteShell + TokensRoutes).
 //
 // Страницы (кастомные antd, выпуск через Operation-poll + one-time-secret модалка):

@@ -1,7 +1,7 @@
-import { lazy, Suspense, useEffect, useMemo, type FC, type ReactNode } from "react";
+import { useEffect, useMemo, type FC, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { App as AntdApp, Spin } from "antd";
+import { App as AntdApp } from "antd";
 import { ThemeProvider } from "@shared/lib/theme-context";
 import { AuthProvider } from "@shared/contexts/AuthContext";
 import { StepUpModal } from "@/components/molecules/auth/StepUpModal";
@@ -21,19 +21,6 @@ import { contextApi, useContext as useIamContext } from "@shared/lib/context-sto
 import { REGISTRY } from "@shared/lib/resource-registry";
 import "@shared/typography.css";
 import "@shared/index.css";
-
-// Stage 3/4: System (admin: regions/zones/address-pools/cluster-admins) и Tokens
-// (SA-keys / user-tokens) области. Lazy — тяжёлые generic-страницы и токен-страницы
-// грузятся только при заходе на /iam/system/* или /iam/tokens/* (не тянут в
-// стартовый IAM-бандл, не ломают unit-тесты IamPage, которые эти маршруты не открывают).
-const SystemRoutes = lazy(() => import("@/pages/SystemPage").then((m) => ({ default: m.SystemRoutes })));
-const TokensRoutes = lazy(() => import("@/pages/TokensPage").then((m) => ({ default: m.TokensRoutes })));
-
-const remoteSpin = (
-  <div style={{ padding: 48, textAlign: "center" }}>
-    <Spin size="large" />
-  </div>
-);
 
 export interface IamPageProps {
   context?: {
@@ -124,10 +111,6 @@ export const IamPage: FC<IamPageProps> = ({ context }) => {
                   <Route path="access-bindings/create" element={<AccessBindingCreatePage />} />
                   <Route path="access" element={<AccessPage />} />
                   <Route path="access/grant" element={<AccessGrantPage />} />
-                  {/* Stage 3 — System / Administration (admin-only, kacho-only). */}
-                  <Route path="system/*" element={<Suspense fallback={remoteSpin}>{<SystemRoutes />}</Suspense>} />
-                  {/* Stage 4 — Tokens & keys (SA keys / user personal tokens). */}
-                  <Route path="tokens/*" element={<Suspense fallback={remoteSpin}>{<TokensRoutes />}</Suspense>} />
                   <Route path="*" element={<Navigate to="/iam/accounts" replace />} />
                 </Routes>
               </IamFrame>

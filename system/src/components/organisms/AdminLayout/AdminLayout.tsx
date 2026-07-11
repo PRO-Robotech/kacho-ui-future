@@ -1,12 +1,12 @@
-// AdminLayout — обёртка над admin-страницами /iam/system/{regions,zones,
-// address-pools,cluster/admins} в iam-remote. Рендерит горизонтальные табы
-// навигации между admin-ресурсами (Stage 3).
+// AdminLayout — обёртка над admin-страницами /system/{regions,zones,
+// address-pools,cluster/admins} в system-remote. Рендерит горизонтальные табы
+// навигации между admin-ресурсами.
 //
 // Применяется только для list/cluster страниц. Detail/Create/Edit ресурсов
 // используют ResourceDetailPage/CreatePage/EditPage как обычно.
 //
-// GlobalResourceFormModal здесь НЕ монтируется: IamFrame (IamPage) / SystemPage
-// монтируют его на уровне фрейма; regions/zones/address-pools используют
+// GlobalResourceFormModal здесь НЕ монтируется: RemoteShell (SystemPage)
+// монтирует его на уровне фрейма; regions/zones/address-pools используют
 // panel/page-формы (ResourceCreatePage/EditPage), а не ?modal-флоу.
 
 import { useMemo } from "react";
@@ -22,16 +22,16 @@ interface AdminTab {
 }
 
 const TABS: AdminTab[] = [
-  { key: "/iam/system/regions", label: "Регионы" },
-  { key: "/iam/system/zones", label: "Зоны" },
+  { key: "/system/regions", label: "Регионы" },
+  { key: "/system/zones", label: "Зоны" },
   {
-    key: "/iam/system/address-pools",
+    key: "/system/address-pools",
     label: "Пулы адресов",
     // AddressPool — admin-only (FGA admin@cluster:cluster_kacho_root).
     visible: (p) => p.isSystemAdmin,
   },
   {
-    key: "/iam/system/cluster/admins",
+    key: "/system/cluster/admins",
     label: "Cluster admins",
     // /iam/v1/internal/cluster/* требует system_admin.
     visible: (p) => p.isSystemAdmin,

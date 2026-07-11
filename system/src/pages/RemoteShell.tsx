@@ -1,9 +1,9 @@
 // RemoteShell — провайдеры + фрейм, общие для self-contained федеративных
-// exposes iam-remote (SystemPage / TokensPage). Зеркалит провайдер-обвязку
-// IamPage (ThemeProvider / AntdApp / QueryClient / AuthProvider / StepUpModal /
-// PageHeaderSlotProvider) + рамку (HeaderRightSlot / OperationBanner /
-// GlobalResourceFormModal). Требует Router-предка (как IamPage — host
-// предоставляет BrowserRouter; в standalone — App.tsx).
+// exposes system-remote (SystemPage / TokensPage). Провайдер-обвязка
+// (ThemeProvider / AntdApp / QueryClient / AuthProvider / StepUpModal /
+// PageHeaderSlotProvider) + рамка (HeaderRightSlot / OperationBanner /
+// GlobalResourceFormModal). Требует Router-предка (host предоставляет
+// BrowserRouter; в standalone — App.tsx).
 
 import { useEffect, useMemo, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

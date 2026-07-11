@@ -64,6 +64,8 @@ spec:
               value: {{ include "ui.vpcUpstream" . | quote }}
             - name: KACHO_UI_IAM_UPSTREAM
               value: {{ include "ui.iamUpstream" . | quote }}
+            - name: KACHO_UI_SYSTEM_UPSTREAM
+              value: {{ include "ui.systemUpstream" . | quote }}
           volumeMounts:
             - name: nginx-template-src
               mountPath: /etc/nginx/templates-src/default.conf.template

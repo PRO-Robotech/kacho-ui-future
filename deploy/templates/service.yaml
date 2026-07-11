@@ -61,3 +61,19 @@ spec:
     - name: http
       port: {{ .Values.iam.port }}
       targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ui.systemName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+    {{- include "ui.systemSelectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ui.systemSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.system.port }}
+      targetPort: http

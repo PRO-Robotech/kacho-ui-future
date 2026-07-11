@@ -159,10 +159,10 @@ export const HostRail: FC<{
 
       <div className="rail-bottom">
         <RailButton
-          active={(currentPath.startsWith("/system/") || currentPath.startsWith("/iam/system")) && !showReachability}
+          active={currentPath.startsWith("/system/") && !showReachability}
           label="Администрирование"
           icon={<Settings size={iconSize} />}
-          onClick={() => navigate("/iam/system/regions")}
+          onClick={() => navigate("/system/regions")}
         />
         <RailButton label="Войти" icon={<LogIn size={iconSize} />} onClick={() => window.location.assign(loginUrl())} />
       </div>

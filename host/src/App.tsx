@@ -4,7 +4,7 @@ import { ConfigProvider, theme } from "antd";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { HostShell } from "./components";
 import { ModulePlaceholderPage, ReachabilityPage } from "./pages";
-import { DashboardRemote, IamRemote, VpcRemote } from "./remotes";
+import { DashboardRemote, IamRemote, SystemRemote, VpcRemote } from "./remotes";
 
 const THEME_STORAGE_KEY = "kacho-theme";
 
@@ -14,15 +14,6 @@ const readStoredTheme = (): boolean => {
   } catch {
     return false;
   }
-};
-
-// The System admin module lives inside the iam remote under /iam/system/* (region/
-// zone/addressPools/cluster-admins). Legacy /system/* links (the "Администрирование"
-// rail button, old-ui parity) redirect there instead of the ModulePlaceholderPage.
-const SystemRedirect: FC = () => {
-  const location = useLocation();
-  const target = location.pathname.replace(/^\/system/, "/iam/system") + location.search;
-  return <Navigate to={target} replace />;
 };
 
 const App: FC = () => {
@@ -73,7 +64,7 @@ const AppRoutes: FC<{
           <Route path="/projects/:projectId/vpc/*" element={<VpcRemote context={context} />} />
           <Route path="/projects/:projectId/:moduleKey/*" element={<ModulePlaceholderPage />} />
           <Route path="/iam/*" element={<IamRemote context={context} />} />
-          <Route path="/system/*" element={<SystemRedirect />} />
+          <Route path="/system/*" element={<SystemRemote context={context} />} />
           <Route path="/dev/reachability" element={<ReachabilityPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

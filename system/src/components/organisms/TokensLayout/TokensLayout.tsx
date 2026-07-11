@@ -1,13 +1,13 @@
 // TokensLayout — обёртка над страницами выпуска credential'ов
-// /iam/tokens/{service-account-keys,user-tokens} (Stage 4). Горизонтальные табы
+// /system/tokens/{service-account-keys,user-tokens}. Горизонтальные табы
 // переключения между SA-ключами и персональными токенами пользователей.
 
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Space, Tabs, Typography } from "antd";
 
 const TABS = [
-  { key: "/iam/tokens/service-account-keys", label: "Ключи сервисных аккаунтов" },
-  { key: "/iam/tokens/user-tokens", label: "Токены пользователей" },
+  { key: "/system/tokens/service-account-keys", label: "Ключи сервисных аккаунтов" },
+  { key: "/system/tokens/user-tokens", label: "Токены пользователей" },
 ];
 
 export function TokensLayout() {

@@ -12,10 +12,14 @@ export default defineConfig({
   plugins: [
     react(),
     federation({
-      name: "iam",
+      name: "system",
       filename: "remoteEntry.js",
       exposes: {
-        "./IamPage": "./src/pages/IamPage/index.ts",
+        // System (regions/zones/address-pools/cluster-admins) + Tokens (SA keys /
+        // user tokens) — self-contained federated exposes. Основной путь — SystemPage
+        // (host монтирует его под /system/*; внутренние роуты /system/* и /system/tokens/*).
+        "./SystemPage": "./src/pages/SystemPage/index.ts",
+        "./TokensPage": "./src/pages/TokensPage/index.ts",
         "./navigation": "./src/navigation.ts",
       },
       shared: ["antd", "lucide-react", "react", "react-dom", "react-router-dom"],
@@ -30,6 +34,20 @@ export default defineConfig({
   server: {
     proxy: {
       "/iam/v1": {
+        target: apiGateway,
+        changeOrigin: true,
+      },
+      // System-области ходят в geo (regions/zones) и vpc (addressPools);
+      // compute — на всякий (compute-* read-only refResource'ы в тех же формах).
+      "/geo": {
+        target: apiGateway,
+        changeOrigin: true,
+      },
+      "/vpc": {
+        target: apiGateway,
+        changeOrigin: true,
+      },
+      "/compute": {
         target: apiGateway,
         changeOrigin: true,
       },

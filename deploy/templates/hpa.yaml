@@ -106,3 +106,27 @@ spec:
           type: Utilization
           averageUtilization: {{ .Values.iam.autoscaling.targetCPUUtilizationPercentage }}
 {{- end }}
+{{- if .Values.system.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ui.systemName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "ui.systemName" . }}
+  minReplicas: {{ .Values.system.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.system.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.system.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

@@ -1,8 +1,9 @@
-// SystemPage — Stage 3 «System / Administration» область iam-remote.
+// SystemPage — «System / Administration» + «Токены и ключи» области system-remote.
 //
-// SystemRoutes (named) — <Routes>-блок для admin-ресурсов, монтируется IamPage
-// под `/iam/system/*`. SystemPage (default) — self-contained federated expose
-// (RemoteShell-обвязка + SystemRoutes), для прямого MF-mount'а.
+// SystemRoutes (named) — <Routes>-блок для admin-ресурсов (regions/zones/
+// address-pools/cluster-admins). SystemPage (default) — self-contained federated
+// expose (RemoteShell-обвязка + System- и Tokens-роуты), host монтирует его под
+// /system/* (внутренние роуты /system/* и /system/tokens/*).
 //
 // Ресурсы (registry-driven, generic ResourceListPage/CreatePage/DetailPage/
 // EditPage — location-relative, панель/страница-формы):
@@ -17,14 +18,15 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Spin } from "antd";
 import { REGISTRY } from "@shared/lib/resource-registry";
 import { AdminLayout } from "@/components/organisms/AdminLayout";
-import { ResourceListPage } from "@/components/organisms/ResourceListPage";
-import { ResourceCreatePage } from "@/components/organisms/ResourceCreatePage";
+import { ResourceListPage } from "@shared/components/organisms/ResourceListPage";
+import { ResourceCreatePage } from "@shared/components/organisms/ResourceCreatePage";
 import { ResourceDetailPage } from "@shared/components/organisms/ResourceDetailPage";
 import { ResourceEditPage } from "@shared/components/organisms/ResourceEditPage";
-import { AddressPoolDetailPage } from "@/pages/AddressPoolDetailPage";
+import { AddressPoolDetailPage } from "@shared/pages/AddressPoolDetailPage";
 import { RemoteShell } from "@/pages/RemoteShell";
+import { TokensRoutes } from "@/pages/TokensPage";
 
-const ClusterAdminsPage = lazy(() => import("@/pages/system/ClusterAdminsPage"));
+const ClusterAdminsPage = lazy(() => import("@shared/pages/system/ClusterAdminsPage"));
 
 const spin = (
   <div style={{ padding: 48, textAlign: "center" }}>
@@ -73,7 +75,12 @@ export function SystemRoutes() {
 export default function SystemPage() {
   return (
     <RemoteShell>
-      <SystemRoutes />
+      <Routes>
+        {/* Токены и ключи — под /system/tokens/*. */}
+        <Route path="tokens/*" element={<TokensRoutes />} />
+        {/* Всё остальное под /system/* — admin-ресурсы. */}
+        <Route path="*" element={<SystemRoutes />} />
+      </Routes>
     </RemoteShell>
   );
 }

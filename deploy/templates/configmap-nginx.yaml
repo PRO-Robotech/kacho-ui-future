@@ -56,6 +56,19 @@ data:
             proxy_send_timeout 30s;
         }
 
+        location ^~ /system-remote/ {
+            set $system_upstream "${KACHO_UI_SYSTEM_UPSTREAM}";
+            rewrite ^/system-remote/(.*)$ /$1 break;
+            proxy_pass http://$system_upstream;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 30s;
+            proxy_send_timeout 30s;
+        }
+
         location ~ ^/(vpc|compute|geo|nlb|registry|operations)/ {
             set $api_gw_upstream "${KACHO_UI_API_GATEWAY_UPSTREAM}";
             proxy_pass http://$api_gw_upstream;
@@ -190,6 +203,51 @@ data:
   default.conf.template: |
     server {
         listen {{ .Values.iam.port }};
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+        {{- include "ui.securityHeaders" . | nindent 8 }}
+
+        location = /healthz {
+            access_log off;
+            add_header Content-Type text/plain;
+            {{- include "ui.securityHeaders" . | nindent 12 }}
+            return 200 "ok\n";
+        }
+
+        location = /index.html {
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
+        }
+
+        location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+            try_files $uri =404;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            {{- include "ui.securityHeaders" . | nindent 12 }}
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        gzip on;
+        gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+        gzip_min_length 1024;
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ui.systemName" . }}-nginx
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+data:
+  default.conf.template: |
+    server {
+        listen {{ .Values.system.port }};
         server_name _;
 
         root /usr/share/nginx/html;
