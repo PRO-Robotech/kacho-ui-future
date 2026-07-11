@@ -23,12 +23,18 @@ spec:
     spec:
       enableServiceLinks: false
       volumes:
-        - name: nginx-template
+        - name: nginx-template-src
           configMap:
             name: {{ include "ui.hostName" . }}-nginx
             items:
               - key: default.conf.template
                 path: default.conf.template
+        # Writable templates dir: the configMap mount is read-only, so the resolver
+        # init-script (05-*) copies the DNS-substituted template here for nginx's
+        # own envsubst step (20-*) to read — an in-place `sed -i` on the read-only
+        # subPath mount fails with "Resource busy".
+        - name: nginx-templates
+          emptyDir: {}
         - name: nginx-entrypoint
           configMap:
             name: {{ include "ui.hostName" . }}-nginx
@@ -59,10 +65,12 @@ spec:
             - name: KACHO_UI_IAM_UPSTREAM
               value: {{ include "ui.iamUpstream" . | quote }}
           volumeMounts:
-            - name: nginx-template
-              mountPath: /etc/nginx/templates/default.conf.template
+            - name: nginx-template-src
+              mountPath: /etc/nginx/templates-src/default.conf.template
               subPath: default.conf.template
               readOnly: true
+            - name: nginx-templates
+              mountPath: /etc/nginx/templates
             - name: nginx-entrypoint
               mountPath: /docker-entrypoint.d/05-resolver-from-resolvconf.sh
               subPath: 05-resolver-from-resolvconf.sh

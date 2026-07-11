@@ -171,9 +171,13 @@ data:
       echo "[05-resolver] FATAL: no nameserver in /etc/resolv.conf" >&2
       exit 1
     fi
-    tpl=/etc/nginx/templates/default.conf.template
-    sed -i "s|\${KUBE_DNS_SERVER}|$ns|g" "$tpl"
-    echo "[05-resolver] nameserver $ns from /etc/resolv.conf applied to $tpl"
+    # The configMap-mounted source is read-only (sed -i would fail "Resource
+    # busy"); write the DNS-substituted template into the writable templates
+    # emptyDir that nginx's own envsubst step (20-*) then processes.
+    src=/etc/nginx/templates-src/default.conf.template
+    dst=/etc/nginx/templates/default.conf.template
+    sed "s|\${KUBE_DNS_SERVER}|$ns|g" "$src" > "$dst"
+    echo "[05-resolver] nameserver $ns from /etc/resolv.conf applied to $dst"
 ---
 apiVersion: v1
 kind: ConfigMap
