@@ -16,6 +16,15 @@ const readStoredTheme = (): boolean => {
   }
 };
 
+// The System admin module lives inside the iam remote under /iam/system/* (region/
+// zone/addressPools/cluster-admins). Legacy /system/* links (the "Администрирование"
+// rail button, old-ui parity) redirect there instead of the ModulePlaceholderPage.
+const SystemRedirect: FC = () => {
+  const location = useLocation();
+  const target = location.pathname.replace(/^\/system/, "/iam/system") + location.search;
+  return <Navigate to={target} replace />;
+};
+
 const App: FC = () => {
   const [dark, setDark] = useState(readStoredTheme);
 
@@ -64,8 +73,7 @@ const AppRoutes: FC<{
           <Route path="/projects/:projectId/vpc/*" element={<VpcRemote context={context} />} />
           <Route path="/projects/:projectId/:moduleKey/*" element={<ModulePlaceholderPage />} />
           <Route path="/iam/*" element={<IamRemote context={context} />} />
-          <Route path="/system/search" element={<ModulePlaceholderPage />} />
-          <Route path="/system/:systemSection/*" element={<ModulePlaceholderPage />} />
+          <Route path="/system/*" element={<SystemRedirect />} />
           <Route path="/dev/reachability" element={<ReachabilityPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
