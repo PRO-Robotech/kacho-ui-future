@@ -19,8 +19,12 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { formatDateTime } from "@/lib/datetime";
 import { CopyableId } from "@/components/atoms/CopyableId";
+import { statusOf, statusLabel, matchesOutcome, type OperationStatus, type OutcomeFilter } from "./opFilter";
 
-export type OperationStatus = "running" | "done" | "error" | "cancelled";
+// Пере-экспорт чистой фильтр-логики (opFilter) — потребители импортируют её из
+// OperationsTable как единой точки. Юнит-тесты тянут opFilter напрямую (без antd).
+export { statusOf, statusLabel, matchesOutcome };
+export type { OperationStatus, OutcomeFilter };
 
 export interface Op {
   id: string;
@@ -50,27 +54,6 @@ interface IamUser {
 /** userFallback — что показать без справочника: created_by/principal как есть. */
 function userFallback(op: Op): string {
   return op.created_by || op.principal_display_name || op.principal_id || "";
-}
-
-export function statusOf(op: Op): OperationStatus {
-  if (!op.done) return "running";
-  if (op.error) {
-    return Number(op.error.code) === 1 ? "cancelled" : "error";
-  }
-  return "done";
-}
-
-export function statusLabel(s: OperationStatus): string {
-  switch (s) {
-    case "running":
-      return "Выполняется";
-    case "done":
-      return "Выполнена";
-    case "error":
-      return "Ошибка";
-    case "cancelled":
-      return "Отменена";
-  }
 }
 
 function statusCell(op: Op) {
