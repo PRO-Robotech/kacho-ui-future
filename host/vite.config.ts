@@ -29,6 +29,8 @@ export default defineConfig({
         nlb: process.env.KACHO_NLB_REMOTE || "http://localhost:4178/assets/remoteEntry.js",
         registry: process.env.KACHO_REGISTRY_REMOTE || "http://localhost:4179/assets/remoteEntry.js",
         system: process.env.KACHO_SYSTEM_REMOTE || "http://localhost:4180/assets/remoteEntry.js",
+        compute: process.env.KACHO_COMPUTE_REMOTE || "http://localhost:4181/assets/remoteEntry.js",
+        storage: process.env.KACHO_STORAGE_REMOTE || "http://localhost:4182/assets/remoteEntry.js",
       },
       shared: ["antd", "lucide-react", "react", "react-dom", "react-router-dom"],
     }),
@@ -40,6 +42,10 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/compute": {
+        target: apiGateway,
+        changeOrigin: true,
+      },
+      "/storage": {
         target: apiGateway,
         changeOrigin: true,
       },

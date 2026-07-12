@@ -4,7 +4,16 @@ import { ConfigProvider, theme } from "antd";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { HostShell } from "./components";
 import { ModulePlaceholderPage, ReachabilityPage } from "./pages";
-import { DashboardRemote, IamRemote, NlbRemote, RegistryRemote, SystemRemote, VpcRemote } from "./remotes";
+import {
+  ComputeRemote,
+  DashboardRemote,
+  IamRemote,
+  NlbRemote,
+  RegistryRemote,
+  StorageRemote,
+  SystemRemote,
+  VpcRemote,
+} from "./remotes";
 
 const THEME_STORAGE_KEY = "kacho-theme";
 
@@ -65,6 +74,8 @@ const AppRoutes: FC<{
           <Route path="/dashboard" element={<DashboardRemote context={context} />} />
           <Route path="/projects/:projectId/dashboard" element={<DashboardRemote context={context} />} />
           <Route path="/projects/:projectId/vpc/*" element={<VpcRemote context={context} />} />
+          <Route path="/projects/:projectId/compute/*" element={<ComputeRemote context={context} />} />
+          <Route path="/projects/:projectId/storage/*" element={<StorageRemote context={context} />} />
           <Route path="/projects/:projectId/nlb/*" element={<NlbRemote context={context} />} />
           <Route path="/projects/:projectId/registry/*" element={<RegistryRemote context={context} />} />
           <Route path="/projects/:projectId/:moduleKey/*" element={<ModulePlaceholderPage />} />

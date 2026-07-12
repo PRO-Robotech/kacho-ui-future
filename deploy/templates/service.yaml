@@ -109,3 +109,35 @@ spec:
     - name: http
       port: {{ .Values.system.port }}
       targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ui.computeName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+    {{- include "ui.computeSelectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ui.computeSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.compute.port }}
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ui.storageName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+    {{- include "ui.storageSelectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ui.storageSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.storage.port }}
+      targetPort: http

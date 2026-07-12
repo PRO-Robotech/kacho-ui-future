@@ -64,6 +64,10 @@ spec:
               value: {{ include "ui.registryUpstream" . | quote }}
             - name: KACHO_UI_SYSTEM_UPSTREAM
               value: {{ include "ui.systemUpstream" . | quote }}
+            - name: KACHO_UI_COMPUTE_UPSTREAM
+              value: {{ include "ui.computeUpstream" . | quote }}
+            - name: KACHO_UI_STORAGE_UPSTREAM
+              value: {{ include "ui.storageUpstream" . | quote }}
           volumeMounts:
             - name: nginx-template
               mountPath: /etc/nginx/templates/default.conf.template

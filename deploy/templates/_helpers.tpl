@@ -254,6 +254,76 @@ app.kubernetes.io/name: {{ include "ui.systemName" . }}
 app.kubernetes.io/component: system-remote
 {{- end -}}
 
+{{- define "ui.computeName" -}}
+{{- default "ui-compute" .Values.compute.name -}}
+{{- end -}}
+
+{{- define "ui.computeImage" -}}
+{{- if .Values.compute.image -}}
+{{- .Values.compute.image -}}
+{{- else -}}
+{{- $hostImage := include "ui.hostImage" . -}}
+{{- if contains "host" $hostImage -}}
+{{- replace "host" "compute" $hostImage -}}
+{{- else -}}
+{{- "kacho-ui-future-compute:dev" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.computeImagePullPolicy" -}}
+{{- default (include "ui.hostImagePullPolicy" .) .Values.compute.imagePullPolicy -}}
+{{- end -}}
+
+{{- define "ui.computeUpstream" -}}
+{{- if .Values.host.upstreams.compute -}}
+{{- .Values.host.upstreams.compute -}}
+{{- else -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "ui.computeName" .) .Release.Namespace .Values.compute.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.computeSelectorLabels" -}}
+app: {{ include "ui.computeName" . }}
+app.kubernetes.io/name: {{ include "ui.computeName" . }}
+app.kubernetes.io/component: compute-remote
+{{- end -}}
+
+{{- define "ui.storageName" -}}
+{{- default "ui-storage" .Values.storage.name -}}
+{{- end -}}
+
+{{- define "ui.storageImage" -}}
+{{- if .Values.storage.image -}}
+{{- .Values.storage.image -}}
+{{- else -}}
+{{- $hostImage := include "ui.hostImage" . -}}
+{{- if contains "host" $hostImage -}}
+{{- replace "host" "storage" $hostImage -}}
+{{- else -}}
+{{- "kacho-ui-future-storage:dev" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.storageImagePullPolicy" -}}
+{{- default (include "ui.hostImagePullPolicy" .) .Values.storage.imagePullPolicy -}}
+{{- end -}}
+
+{{- define "ui.storageUpstream" -}}
+{{- if .Values.host.upstreams.storage -}}
+{{- .Values.host.upstreams.storage -}}
+{{- else -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "ui.storageName" .) .Release.Namespace .Values.storage.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "ui.storageSelectorLabels" -}}
+app: {{ include "ui.storageName" . }}
+app.kubernetes.io/name: {{ include "ui.storageName" . }}
+app.kubernetes.io/component: storage-remote
+{{- end -}}
+
 {{- define "ui.hostResources" -}}
 {{- if .Values.host.resources }}
 {{- toYaml .Values.host.resources }}
