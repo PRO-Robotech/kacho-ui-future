@@ -244,6 +244,13 @@ data:
             {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
+        # remoteEntry.js: stable name, content changes every build → must revalidate
+        # (else Module-Federation clients keep loading stale chunks; hashed chunks stay immutable).
+        location ~* /remoteEntry\.js$ {
+            try_files $uri =404;
+            add_header Cache-Control "no-cache" always;
+            add_header X-Content-Type-Options "nosniff" always;
+        }
         location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
             try_files $uri =404;
             expires 1y;
@@ -289,6 +296,13 @@ data:
             {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
+        # remoteEntry.js: stable name, content changes every build → must revalidate
+        # (else Module-Federation clients keep loading stale chunks; hashed chunks stay immutable).
+        location ~* /remoteEntry\.js$ {
+            try_files $uri =404;
+            add_header Cache-Control "no-cache" always;
+            add_header X-Content-Type-Options "nosniff" always;
+        }
         location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
             try_files $uri =404;
             expires 1y;
@@ -334,6 +348,13 @@ data:
             {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
+        # remoteEntry.js: stable name, content changes every build → must revalidate
+        # (else Module-Federation clients keep loading stale chunks; hashed chunks stay immutable).
+        location ~* /remoteEntry\.js$ {
+            try_files $uri =404;
+            add_header Cache-Control "no-cache" always;
+            add_header X-Content-Type-Options "nosniff" always;
+        }
         location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
             try_files $uri =404;
             expires 1y;
@@ -379,6 +400,13 @@ data:
             {{- include "ui.securityHeaders" . | nindent 12 }}
         }
 
+        # remoteEntry.js: stable name, content changes every build → must revalidate
+        # (else Module-Federation clients keep loading stale chunks; hashed chunks stay immutable).
+        location ~* /remoteEntry\.js$ {
+            try_files $uri =404;
+            add_header Cache-Control "no-cache" always;
+            add_header X-Content-Type-Options "nosniff" always;
+        }
         location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
             try_files $uri =404;
             expires 1y;
@@ -421,6 +449,13 @@ data:
             add_header Cache-Control "no-store, no-cache, must-revalidate";
         }
 
+        # remoteEntry.js: stable name, content changes every build → must revalidate
+        # (else Module-Federation clients keep loading stale chunks; hashed chunks stay immutable).
+        location ~* /remoteEntry\.js$ {
+            try_files $uri =404;
+            add_header Cache-Control "no-cache" always;
+            add_header X-Content-Type-Options "nosniff" always;
+        }
         location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
             try_files $uri =404;
             expires 1y;
@@ -462,6 +497,13 @@ data:
             add_header Cache-Control "no-store, no-cache, must-revalidate";
         }
 
+        # remoteEntry.js: stable name, content changes every build → must revalidate
+        # (else Module-Federation clients keep loading stale chunks; hashed chunks stay immutable).
+        location ~* /remoteEntry\.js$ {
+            try_files $uri =404;
+            add_header Cache-Control "no-cache" always;
+            add_header X-Content-Type-Options "nosniff" always;
+        }
         location ~* \.(?:js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
             try_files $uri =404;
             expires 1y;
