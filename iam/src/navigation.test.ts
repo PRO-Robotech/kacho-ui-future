@@ -14,7 +14,7 @@ describe("IAM navigation", () => {
       "/iam/groups",
       "/iam/roles",
       "/iam/access-bindings",
-      "/iam/access",
+      "/iam/operations",
     ]);
   });
 });

@@ -81,12 +81,29 @@ jest.unstable_mockModule("@shared/lib/resource-registry", () => {
     template: () => ({}),
   });
 
+  const REGISTRY: Record<string, ReturnType<typeof spec>> = {
+    accounts: spec("accounts", "Accounts"),
+    projects: spec("projects", "Projects"),
+    "service-accounts": spec("service-accounts", "Service Accounts"),
+  };
+
+  // The full named-export surface of `@shared/lib/resource-registry` must be
+  // present on the mock: shared components in IamPage's (unmocked) transitive
+  // graph — RefSelect, ResourceRefChips, resourceInstanceFetchers — statically
+  // `import { getResource, getByPath, ... }` from this module, and the ESM VM
+  // linker fails the whole graph if any named binding is missing on the mock.
   return {
-    REGISTRY: {
-      accounts: spec("accounts", "Accounts"),
-      projects: spec("projects", "Projects"),
-      "service-accounts": spec("service-accounts", "Service Accounts"),
-    },
+    REGISTRY,
+    getResource: (id: string) => REGISTRY[id],
+    getByPath: (obj: unknown, path: string): unknown =>
+      path.split(".").reduce<unknown>((acc, key) => (acc == null ? undefined : (acc as Record<string, unknown>)[key]), obj),
+    resourceServicePrefix: () => "iam" as const,
+    resourceProjectPath: () => null,
+    applyFieldDefaults: (obj: Record<string, unknown>) => obj,
+    sanitizeSgRule: (r: Record<string, unknown>) => r,
+    sanitizeInstanceCreate: (obj: Record<string, unknown>) => obj,
+    fmtBytesGiB: () => "",
+    gibToBytes: () => undefined,
   };
 });
 
@@ -151,6 +168,29 @@ jest.unstable_mockModule("@/pages/iam/UsersPage", () => ({
   InviteUserPage: () => <div>Invite user</div>,
   UsersPage: () => <div>Users</div>,
 }));
+
+// IamPage's route table also mounts these dedicated list shells / pages and the
+// toaster; the `@/registerExtensions` module runs `registerDetailExtension` /
+// `registerInlineForm` at import time. They are unrelated to IamPage's routing
+// behaviour under test and drag the full shared graph (plus eval-time
+// side-effects) into the ESM VM, so they are stubbed like the other children.
+jest.unstable_mockModule("@/components/molecules/Toaster", () => ({
+  Toaster: () => null,
+}));
+
+jest.unstable_mockModule("@/components/organisms/iam/RolesListShell", () => ({
+  RolesListShell: () => <div>Roles</div>,
+}));
+
+jest.unstable_mockModule("@/components/organisms/iam/IamUsersListShell", () => ({
+  IamUsersListShell: () => <div>Users</div>,
+}));
+
+jest.unstable_mockModule("@/pages/iam/IamOperationsPage", () => ({
+  IamOperationsPage: () => <div>Operations</div>,
+}));
+
+jest.unstable_mockModule("@/registerExtensions", () => ({}));
 
 function renderIam(path: string, context?: Parameters<IamPageComponent>[0]["context"]) {
   hostContext = context;
