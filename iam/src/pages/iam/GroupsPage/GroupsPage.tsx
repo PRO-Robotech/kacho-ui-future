@@ -19,6 +19,8 @@ import { FormShell } from "@shared/components/organisms/form/FormShell";
 import { useBreadcrumb, useHeaderRight } from "@shared/components/molecules/PageHeaderSlot";
 import { IamListShell, useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { useContext } from "@shared/lib/context-store";
+import { LabelsEditor, labelsFromEntries, type LabelEntry } from "@shared/components/organisms/LabelsEditor";
+import { groupDetailPathFromOp } from "./groupNav";
 
 export function GroupsPage() {
   const account = useContext((s) => s.account);
@@ -153,6 +155,7 @@ export function GroupCreatePage() {
   const accountId = account?.id ?? null;
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const [labels, setLabels] = useState<LabelEntry[]>([]);
   useHeaderRight(useMemo(() => null, []));
   useBreadcrumb(
     useMemo(
@@ -175,9 +178,9 @@ export function GroupCreatePage() {
     path: IAM.groups,
     invalidateKeys: [["iam", "groups", "list"]],
     successText: "Group создана",
-    onSuccess: () => {
+    onSuccess: (op) => {
       form.resetFields();
-      navigate("/iam/groups");
+      navigate(groupDetailPathFromOp(op));
     },
   });
 
@@ -197,12 +200,11 @@ export function GroupCreatePage() {
             name: v.name,
           };
           if (v.description) body.description = v.description;
+          const labelMap = labelsFromEntries(labels);
+          if (Object.keys(labelMap).length > 0) body.labels = labelMap;
           void mut.run(body);
         }}
       >
-        <Form.Item label="Account">
-          <Typography.Text code>{accountId ?? "—"}</Typography.Text>
-        </Form.Item>
         <Form.Item
           label="Имя"
           name="name"
@@ -216,6 +218,9 @@ export function GroupCreatePage() {
           ]}
         >
           <Input placeholder="developers" />
+        </Form.Item>
+        <Form.Item label="Метки">
+          <LabelsEditor value={labels} onChange={setLabels} />
         </Form.Item>
         <Form.Item label="Описание" name="description">
           <Input.TextArea rows={2} />

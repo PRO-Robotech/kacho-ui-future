@@ -26,8 +26,9 @@ import { StatusBadge } from "@shared/components/atoms/StatusBadge";
 import { CopyableId } from "@shared/components/atoms/CopyableId";
 import { ResourceIcon } from "@shared/components/organisms/form/ResourceIcon";
 import { CopyableMonoId, fmtTs } from "@shared/components/organisms/iam/IamCommon";
+import { ErrorResult } from "@shared/components/molecules/ErrorResult";
 import { getByPath } from "@shared/lib/resource-registry";
-import { iamApi, type AccessBinding, type Group, type User } from "@shared/api/iam";
+import { iamApi, type AccessBinding, type Group, type SubjectPrivilege, type User } from "@shared/api/iam";
 
 import { useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { GroupMembersPanel } from "@/pages/iam/GroupsPage";
@@ -84,20 +85,143 @@ function scopeColor(s: string): string {
   }
 }
 
-// SubjectPrivilegesTab — таблица AccessBinding'ов, отфильтрованных по субъекту
-// (listBySubject) или по ресурсу-скоупу (listByResource). Колонки зеркалят
-// страницу «Привязки доступа»; фиксированная строка «своей» оси скрывается.
+// SubjectPrivilegesTab — «Привилегии»-вкладка. По оси субъекта (User/SA/Group)
+// показывает SubjectPrivilege'и (listSubjectPrivileges: self ИЛИ account-admin →
+// админ видит привилегии SA/юзера), по оси ресурса-скоупа (Account) —
+// AccessBinding'и (listByResource). Только чтение; выдача/отзыв — на «Привязках».
 function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
+  return mode.kind === "subject" ? (
+    <SubjectPrivilegesSubjectTable mode={mode} />
+  ) : (
+    <SubjectPrivilegesResourceTable mode={mode} />
+  );
+}
+
+// PrivilegesTableShell — общий каркас таблицы привилегий: fill-контейнер + скролл.
+// Ошибку запроса поднимаем через ErrorResult (различаем 403/недоступность от
+// честного «пусто»), а не показываем ложный empty-state «Привилегий нет.».
+function PrivilegesTableShell<T extends object>({
+  loading,
+  isError,
+  error,
+  rows,
+  columns,
+  rowKey,
+}: {
+  loading: boolean;
+  isError: boolean;
+  error: unknown;
+  rows: T[];
+  columns: ColumnsType<T>;
+  rowKey: string;
+}) {
+  const { wrapRef, scrollY } = useTableScrollY();
+  if (isError) return <ErrorResult error={error} />;
+  return (
+    <div style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+        <Table<T>
+          rowKey={rowKey}
+          size="small"
+          className="kc-table"
+          loading={loading}
+          dataSource={rows}
+          columns={columns}
+          pagination={false}
+          scroll={{ x: "max-content", y: scrollY }}
+          locale={{ emptyText: "Привилегий нет." }}
+          data-testid="subject-privileges-table"
+        />
+      </div>
+    </div>
+  );
+}
+
+// SubjectPrivilegesSubjectTable — привилегии субъекта через listSubjectPrivileges.
+// role_name резолвит сервер (dangling role → пусто, fallback на role_id) —
+// локальный roleNameById-резолв тут НЕ нужен. Субъект фиксирован → колонки:
+// Роль | Ресурс | Область | Создано.
+function SubjectPrivilegesSubjectTable({
+  mode,
+}: {
+  mode: { kind: "subject"; subjectType: "user" | "service_account" | "group"; subjectId: string };
+}) {
   const list = useQuery({
-    queryKey:
-      mode.kind === "subject"
-        ? ["iam", "access-bindings", "by-subject", mode.subjectType, mode.subjectId]
-        : ["iam", "access-bindings", "by-resource", mode.resourceType, mode.resourceId],
-    queryFn: () =>
-      mode.kind === "subject"
-        ? iamApi.listAccessBindingsBySubject(mode.subjectType, mode.subjectId, { pageSize: "200" })
-        : iamApi.listAccessBindingsByResource(mode.resourceType, mode.resourceId, { pageSize: "200" }),
-    enabled: mode.kind === "subject" ? !!mode.subjectId : !!mode.resourceId,
+    queryKey: ["iam", "subject-privileges", mode.subjectType, mode.subjectId],
+    queryFn: () => iamApi.listSubjectPrivileges(mode.subjectType, mode.subjectId, { page_size: "200" }),
+    enabled: !!mode.subjectId,
+    refetchInterval: 5_000,
+    staleTime: 0,
+  });
+
+  const privileges = list.data?.privileges ?? [];
+
+  const columns: ColumnsType<SubjectPrivilege> = [
+    {
+      title: "Роль",
+      key: "role",
+      render: (_v, row) => (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {row.role_name && <Typography.Text strong>{row.role_name}</Typography.Text>}
+          <CopyableMonoId id={row.role_id} />
+        </span>
+      ),
+    },
+    {
+      title: "Ресурс",
+      key: "resource",
+      render: (_v, row) => (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {row.resource_type && <Tag>{row.resource_type}</Tag>}
+          {row.resource_id ? <CopyableMonoId id={row.resource_id} /> : dash}
+        </span>
+      ),
+    },
+    {
+      title: "Область",
+      dataIndex: "scope",
+      key: "scope",
+      width: 120,
+      render: (v?: string) =>
+        v && v !== "SCOPE_UNSPECIFIED" ? (
+          <Tag color={scopeColor(v)}>{v}</Tag>
+        ) : (
+          <Typography.Text type="secondary">—</Typography.Text>
+        ),
+    },
+    {
+      title: "Создано",
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 180,
+      render: (v) => fmtTs(v as string | undefined),
+    },
+  ];
+
+  return (
+    <PrivilegesTableShell<SubjectPrivilege>
+      loading={list.isLoading}
+      isError={list.isError}
+      error={list.error}
+      rows={privileges}
+      columns={columns}
+      rowKey="binding_id"
+    />
+  );
+}
+
+// SubjectPrivilegesResourceTable — привязки, выданные НА ресурс-скоуп (Account),
+// через listByResource. Субъекты разные → резолвим email (user) + role_id → name.
+// Ресурс-скоуп фиксирован → колонки: Субъект | Роль | Область | Создано.
+function SubjectPrivilegesResourceTable({
+  mode,
+}: {
+  mode: { kind: "resource"; resourceType: "account" | "project" | "cluster"; resourceId: string };
+}) {
+  const list = useQuery({
+    queryKey: ["iam", "access-bindings", "by-resource", mode.resourceType, mode.resourceId],
+    queryFn: () => iamApi.listAccessBindingsByResource(mode.resourceType, mode.resourceId, { pageSize: "200" }),
+    enabled: !!mode.resourceId,
     refetchInterval: 5_000,
     staleTime: 0,
   });
@@ -114,11 +238,10 @@ function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
     return m;
   }, [rolesList.data]);
 
-  // В resource-режиме (Account) субъекты разные — резолвим email для user.
+  // Субъекты разные — резолвим email для user.
   const usersList = useQuery({
     queryKey: ["iam", "users", "list"],
     queryFn: () => iamApi.listUsers({ pageSize: "1000" }),
-    enabled: mode.kind === "resource",
     staleTime: 30_000,
   });
   const userById = useMemo(() => {
@@ -128,9 +251,8 @@ function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
   }, [usersList.data]);
 
   const bindings = list.data?.access_bindings ?? [];
-  const { wrapRef, scrollY } = useTableScrollY();
 
-  const allColumns: ColumnsType<AccessBinding> = [
+  const columns: ColumnsType<AccessBinding> = [
     {
       title: "Субъект",
       key: "subject",
@@ -165,16 +287,6 @@ function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
       },
     },
     {
-      title: "Ресурс",
-      key: "resource",
-      render: (_v, row) => (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <Tag>{row.resource_type}</Tag>
-          <CopyableMonoId id={row.resource_id} />
-        </span>
-      ),
-    },
-    {
       title: "Область",
       dataIndex: "scope",
       key: "scope",
@@ -195,27 +307,15 @@ function SubjectPrivilegesTab({ mode }: { mode: PrivilegesMode }) {
     },
   ];
 
-  // subject-режим → субъект фиксирован (скрываем «Субъект»); resource-режим →
-  // ресурс-скоуп фиксирован (скрываем «Ресурс»).
-  const columns = allColumns.filter((c) => (mode.kind === "subject" ? c.key !== "subject" : c.key !== "resource"));
-
   return (
-    <div style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
-      <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
-        <Table<AccessBinding>
-          rowKey="id"
-          size="small"
-          className="kc-table"
-          loading={list.isLoading}
-          dataSource={bindings}
-          columns={columns}
-          pagination={false}
-          scroll={{ x: "max-content", y: scrollY }}
-          locale={{ emptyText: "Привилегий нет." }}
-          data-testid="subject-privileges-table"
-        />
-      </div>
-    </div>
+    <PrivilegesTableShell<AccessBinding>
+      loading={list.isLoading}
+      isError={list.isError}
+      error={list.error}
+      rows={bindings}
+      columns={columns}
+      rowKey="id"
+    />
   );
 }
 

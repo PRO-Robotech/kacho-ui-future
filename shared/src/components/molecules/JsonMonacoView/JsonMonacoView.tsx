@@ -3,6 +3,7 @@
 //
 // Используется в JSON-табе detail-страниц вместо <pre>-блока.
 
+import { useMemo } from "react";
 import Editor from "@monaco-editor/react";
 import { theme } from "antd";
 import { useThemeMode } from "@shared/lib/theme-context";
@@ -16,7 +17,9 @@ interface Props {
 export function JsonMonacoView({ data, height = "60vh" }: Props) {
   const { token } = theme.useToken();
   const { mode } = useThemeMode();
-  const json = JSON.stringify(data, null, 2);
+  // Мемоизируем сериализацию: detail-query поллит каждые 3-5с и заново передаёт
+  // data — без memo Monaco перекормливался бы новой строкой на каждый рефетч.
+  const json = useMemo(() => JSON.stringify(data, null, 2), [data]);
   // KAC-246: Monaco-тема следует теме приложения (в светлой раньше оставался тёмным).
   const monacoTheme = mode === "dark" ? "vs-dark" : "vs";
 

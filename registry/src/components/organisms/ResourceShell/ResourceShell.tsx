@@ -30,7 +30,7 @@ import { CopyableId } from "@/components/atoms/CopyableId";
 import { LabelsCell } from "@/components/atoms/LabelsCell";
 import { formatDateTime } from "@/lib/datetime";
 import { RowActionsMenu, resourceHasRowActions } from "@/components/molecules/RowActionsMenu";
-import { JsonMonacoView } from "@/components/molecules/JsonMonacoView";
+import { LazyJsonMonacoView } from "@/components/molecules/JsonMonacoView";
 import { OperationsTab } from "@/components/organisms/OperationsTab";
 import { InlineResourceForm } from "@/components/organisms/InlineResourceForm";
 import { TableSearch, ColumnSettings, useHiddenColumns, type ToggleCol } from "@/components/molecules/TableToolbar";
@@ -55,8 +55,10 @@ function JsonIntView({ path }: { path: string }) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["jsonint", path],
     queryFn: () => api.get<Record<string, unknown>>(path),
-    refetchInterval: 5_000,
-    staleTime: 0,
+    // JSON-таб — read-only снимок; частый поллинг только гонял бы Monaco. Обновляем
+    // существенно реже (перекормка редактора вместо реального обновления UX).
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   });
   if (isError) return <ErrorResult error={error} />;
   if (isLoading && !data)
@@ -65,7 +67,7 @@ function JsonIntView({ path }: { path: string }) {
         <Spin />
       </div>
     );
-  return <JsonMonacoView data={data} />;
+  return <LazyJsonMonacoView data={data} />;
 }
 
 /** RelatedTable — встроенная таблица дочернего ресурса (тот же ResourceTable,
@@ -443,7 +445,7 @@ export function ResourceShell({
     eyebrow: "JSON",
     render: () => (
       <div>
-        <JsonMonacoView data={data} />
+        <LazyJsonMonacoView data={data} />
       </div>
     ),
   });

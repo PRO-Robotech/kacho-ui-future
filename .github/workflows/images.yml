@@ -77,8 +77,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: typecheck
     env:
-      DOCKERHUB_USERNAME: ${{ secrets.CUSTOM_DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.CUSTOM_DOCKERHUB_TOKEN }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
@@ -147,7 +147,7 @@ jobs:
     needs: build
     if: always() && (needs.build.result == 'success' || github.event_name == 'pull_request')
     env:
-      DOCKERHUB_USERNAME: ${{ secrets.CUSTOM_DOCKERHUB_USERNAME }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
       - name: Checkout

@@ -18,7 +18,7 @@ import {
   MoreOutlined,
   DragOutlined,
 } from "@ant-design/icons";
-import { JsonMonacoView } from "@shared/components/molecules/JsonMonacoView";
+import { LazyJsonMonacoView } from "@shared/components/molecules/JsonMonacoView";
 import { formatDateTime } from "@shared/lib/datetime";
 import { ErrorResult } from "@shared/components/molecules/ErrorResult";
 import { RefNameLink } from "@shared/components/molecules/RefNameLink";
@@ -582,7 +582,7 @@ export function ResourceDetailPage({
           {
             id: "raw",
             label: "JSON",
-            render: () => <JsonMonacoView data={data} />,
+            render: () => <LazyJsonMonacoView data={data} />,
           },
         ]),
   ];
@@ -638,8 +638,10 @@ function JsonIntTab({ path, queryKey }: { path: string; queryKey: unknown[] }) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey,
     queryFn: () => api.get<unknown>(path),
-    refetchInterval: 5_000,
-    staleTime: 0,
+    // JSON-таб — read-only снимок; частый поллинг только гонял бы Monaco. Обновляем
+    // существенно реже (перекормка редактора вместо реального обновления UX).
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   });
 
   if (isLoading && data === undefined) {
@@ -656,7 +658,7 @@ function JsonIntTab({ path, queryKey }: { path: string; queryKey: unknown[] }) {
       />
     );
   }
-  return <JsonMonacoView data={data} />;
+  return <LazyJsonMonacoView data={data} />;
 }
 
 // UsedByBlock — generic "Used by" rendering for any resource whose API response
