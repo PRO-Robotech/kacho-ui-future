@@ -113,6 +113,9 @@ const antdIconBySpec: Record<string, ReactElement> = {
   disks: <HddOutlined style={antdSize} />,
   images: <FileImageOutlined style={antdSize} />,
   snapshots: <CameraOutlined style={antdSize} />,
+  // storage
+  volumes: <HddOutlined style={antdSize} />,
+  "disk-types": <AppstoreOutlined style={antdSize} />,
   // admin / system
   "address-pools": <AppstoreOutlined style={antdSize} />,
   regions: <AppstoreOutlined style={antdSize} />,
@@ -161,6 +164,8 @@ export const HostRail: FC<{
     void Promise.allSettled([
       import("dashboard/navigation"),
       import("vpc/navigation"),
+      import("compute/navigation"),
+      import("storage/navigation"),
       import("nlb/navigation"),
       import("registry/navigation"),
       import("iam/navigation"),

@@ -77,6 +77,8 @@ host:
     nlb: ""
     registry: ""
     system: ""
+    compute: ""
+    storage: ""
 
 dashboard:
   name: ui-dashboard
@@ -188,6 +190,48 @@ system:
   replicas: 1
   # When empty, the chart derives this from the host image by replacing "host"
   # with "system", e.g. kacho-ui-future-host:dev -> kacho-ui-future-system:dev.
+  image: ""
+  imagePullPolicy: ""
+  port: 8080
+  resources:
+    requests:
+      cpu: 30m
+      memory: 64Mi
+    limits:
+      cpu: 180m
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+
+compute:
+  name: ui-compute
+  replicas: 1
+  # When empty, the chart derives this from the host image by replacing "host"
+  # with "compute", e.g. kacho-ui-future-host:dev -> kacho-ui-future-compute:dev.
+  image: ""
+  imagePullPolicy: ""
+  port: 8080
+  resources:
+    requests:
+      cpu: 30m
+      memory: 64Mi
+    limits:
+      cpu: 180m
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+
+storage:
+  name: ui-storage
+  replicas: 1
+  # When empty, the chart derives this from the host image by replacing "host"
+  # with "storage", e.g. kacho-ui-future-host:dev -> kacho-ui-future-storage:dev.
   image: ""
   imagePullPolicy: ""
   port: 8080
