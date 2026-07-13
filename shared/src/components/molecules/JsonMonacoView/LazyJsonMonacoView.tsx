@@ -1,7 +1,7 @@
-// LazyJsonMonacoView — code-split обёртка над JsonMonacoView. Monaco-рантайм
-// (@monaco-editor/react + сам редактор, многомегабайтный) тянется отдельным
-// чанком ТОЛЬКО при открытии JSON-таба, а не на первом рендере detail-страницы.
-// До готовности чанка показываем лёгкий Spin.
+// LazyJsonMonacoView — code-split обёртка над JsonMonacoView. Вьюер тянется
+// отдельным чанком ТОЛЬКО при открытии JSON-таба, а не на первом рендере
+// detail-страницы. До готовности чанка показываем лёгкий Spin. (Имя сохранено
+// исторически — JsonMonacoView больше не использует Monaco, см. его шапку.)
 
 import { lazy, Suspense } from "react";
 import { Spin } from "antd";

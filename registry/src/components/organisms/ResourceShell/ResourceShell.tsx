@@ -336,7 +336,10 @@ export function ResourceShell({
     }
     const rel = (spec.related ?? []).find((r) => REGISTRY[r.childId]?.route === headerTabId);
     const childSpec = rel ? REGISTRY[rel.childId] : undefined;
-    if (childSpec) {
+    // CTA «Создать <child>» только для ресурсов с form-driven create (ops.create).
+    // Репозиторий материализуется через docker push (ops.create=false) — без CTA
+    // (иначе форма упирается в «нет form-schema; используйте API напрямую»).
+    if (childSpec && childSpec.ops.create) {
       return (
         <Button
           type="primary"

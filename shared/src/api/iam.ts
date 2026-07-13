@@ -92,7 +92,9 @@ export interface ServiceAccountOAuthClient {
   id: string; // soc_…
   sva_id?: string;
   hydra_client_id?: string;
+  name?: string;
   description?: string;
+  labels?: Record<string, string>;
   expires_at?: string;
   last_used_at?: string;
   created_by_user_id?: string;
@@ -114,7 +116,9 @@ export interface IssueSAKeyResponse {
 }
 // Тело Issue-запроса. created_by_user_id проставляет backend из принципала — не шлем.
 export interface IssueSAKeyBody {
+  name?: string;
   description?: string;
+  labels?: Record<string, string>;
   ttl_seconds?: number;
 }
 
@@ -131,7 +135,9 @@ export interface UserOAuthClient {
   id: string; // uoc_…
   user_id?: string;
   hydra_client_id?: string;
+  name?: string;
   description?: string;
+  labels?: Record<string, string>;
   expires_at?: string;
   last_used_at?: string;
   created_by_user_id?: string;
@@ -153,7 +159,9 @@ export interface IssueUserTokenResponse {
 }
 // Тело Issue-запроса. created_by_user_id проставляет backend из принципала — не шлем.
 export interface IssueUserTokenBody {
+  name?: string;
   description?: string;
+  labels?: Record<string, string>;
   ttl_seconds?: number;
 }
 
