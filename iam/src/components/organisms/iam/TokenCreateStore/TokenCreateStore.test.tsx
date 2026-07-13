@@ -1,27 +1,29 @@
-import { createOpenStore } from "./TokenCreateStore";
+import { createSecretStore, type TokenSecret } from "./TokenCreateStore";
 
-describe("createOpenStore", () => {
-  it("starts closed and toggles via set()", () => {
-    const s = createOpenStore();
-    expect(s.get()).toBe(false);
-    s.set(true);
-    expect(s.get()).toBe(true);
-    s.set(false);
-    expect(s.get()).toBe(false);
+const secret: TokenSecret = { private_key_pem: "PEM", client_id: "cid", key_id: "kid" };
+
+describe("createSecretStore", () => {
+  it("starts empty and carries a secret via set()", () => {
+    const s = createSecretStore();
+    expect(s.get()).toBeNull();
+    s.set(secret);
+    expect(s.get()).toBe(secret);
+    s.set(null);
+    expect(s.get()).toBeNull();
   });
 
   it("notifies subscribers only on change and supports unsubscribe", () => {
-    const s = createOpenStore();
+    const s = createSecretStore();
     let calls = 0;
     const unsub = s.subscribe(() => {
       calls += 1;
     });
-    s.set(true); // change → notify
-    s.set(true); // no change → no notify
+    s.set(secret); // change → notify
+    s.set(secret); // no change → no notify
     expect(calls).toBe(1);
     unsub();
-    s.set(false); // unsubscribed → no notify
+    s.set(null); // unsubscribed → no notify (value still changes)
     expect(calls).toBe(1);
-    expect(s.get()).toBe(false);
+    expect(s.get()).toBeNull();
   });
 });

@@ -1,13 +1,15 @@
 // SaKeysPanel — вкладка «Токены» сервисного аккаунта: список OAuth-ключей
 // (SAKeyService.List) в форме стандартного ресурса + выпуск токена с TTL +
-// одноразовый показ секрета + отзыв. Секрет (private_key_pem) приходит один раз
-// в Operation.response — показываем его немедленно ВНУТРИ той же модалки
-// (create-форма сменяется secret-view; копировать/скачать), после закрытия он
-// безвозвратно теряется. Все мутации — async через Operation.
+// одноразовый показ секрета + отзыв.
 //
-// CTA «Создать токен» вынесена из тела панели в шапку страницы (tokensTab
-// headerAction в registerExtensions) через общий open-store — кнопка шапки и
-// панель координируют состояние модалки без роутинга.
+// Создание — НЕ модалка, а ФОРМА в зоне-3 detail-страницы (как inline-create
+// смежных ресурсов IAM): CTA «Создать токен» в шапке навигирует на
+// `${detailBase}/tokens/create`, ResourceShell разворачивает SaKeyCreateForm через
+// childCreate. После успешного Issue форма кладёт секрет (private_key_pem приходит
+// один раз в Operation.response) в secret-store и навигирует обратно на таблицу; сам
+// секрет показывается ОДИН раз after-create МОДАЛКОЙ (копировать/скачать), после
+// закрытия он безвозвратно теряется. Ошибка мутации НЕ навигирует — только toast.
+// Все мутации — async через Operation.
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -35,10 +37,12 @@ import type { IssueSAKeyBody, IssueSAKeyResponse, ServiceAccountOAuthClient } fr
 import type { Operation } from "@shared/api/types";
 import { CopyableMonoId, fmtTs, useIamMutation } from "@shared/components/organisms/iam/IamCommon";
 import { LabelsEditor, labelsFromEntries, type LabelEntry } from "@shared/components/organisms/LabelsEditor";
+import { FormShell } from "@shared/components/organisms/form/FormShell";
+import { FormFooter } from "@shared/components/organisms/form/FormFooter";
 import { useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { toast } from "@shared/lib/toast";
 import { MAX_TTL_DAYS, TTL_PRESETS, expiryState, ttlDaysToSeconds } from "@shared/lib/tokens-util";
-import { useOpenStore, type OpenStore } from "@/components/organisms/iam/TokenCreateStore";
+import { useSecretStore, type SecretStore, type TokenSecret } from "@/components/organisms/iam/TokenCreateStore";
 
 // Бейдж срока действия токена: «Бессрочный» / «Истек» / «истекает через X».
 function ExpiryBadge({ expiresAt }: { expiresAt?: string }) {
@@ -52,8 +56,8 @@ function ExpiryBadge({ expiresAt }: { expiresAt?: string }) {
 }
 
 // SecretBody — одноразовый показ секрета выпущенного токена (client_id + PEM,
-// копировать/скачать). Рендерится ВНУТРИ create-модалки после Issue (не отдельная
-// модалка) — держит private_key_pem в памяти до явного закрытия; фоновая ошибка
+// копировать/скачать). Рендерится внутри after-create модалки на таблице (SaKeysPanel)
+// — держит private_key_pem в памяти до явного закрытия; фоновая ошибка
 // (clipboard/скачивание) секрет не теряет.
 function SecretBody({ resp }: { resp: IssueSAKeyResponse }) {
   const pem = resp.private_key_pem ?? "";
@@ -125,34 +129,50 @@ function SecretBody({ resp }: { resp: IssueSAKeyResponse }) {
   );
 }
 
-// CreateTokenModal — модалка выпуска токена. Поля: Имя (≤63) + Описание (≤256) +
-// Метки (LabelsEditor) + Срок (пресеты либо «Свой срок» в днях). Клиентская
-// валидация ДО submit; ошибка мутации НЕ закрывает модалку (toast от
-// useIamMutation). На success — форма СМЕНЯЕТСЯ на secret-view в этой же модалке
-// (секрет показывается один раз), модалка остаётся открытой до явного закрытия.
-function CreateTokenModal({
-  open,
+// TokenSecretModal — after-create модалка одноразового показа секрета. Рендерится
+// на таблице (SaKeysPanel), управляется secret-store: форма зоны-3 кладёт туда
+// секрет после Issue → модалка открывается. Закрытие очищает store (секрет теряется).
+function TokenSecretModal({ store }: { store: SecretStore }) {
+  const secret = useSecretStore(store);
+  return (
+    <Modal
+      title="Токен создан"
+      open={!!secret}
+      onCancel={() => store.set(null)}
+      maskClosable={false}
+      width={640}
+      footer={[
+        <Button key="close" type="primary" onClick={() => store.set(null)}>
+          Я сохранил ключ
+        </Button>,
+      ]}
+    >
+      {secret ? <SecretBody resp={secret as unknown as IssueSAKeyResponse} /> : null}
+    </Modal>
+  );
+}
+
+// SaKeyCreateForm — ФОРМА выпуска токена в зоне-3 detail-страницы SA (childCreate).
+// Поля: Имя (≤63) + Описание (≤256) + Метки (LabelsEditor) + Срок (пресеты либо
+// «Свой срок» в днях). Клиентская валидация ДО submit; ошибка мутации НЕ навигирует
+// (toast от useIamMutation) — форма остаётся открытой. На success кладёт секрет в
+// secret-store (для after-create модалки на таблице) и навигирует обратно на таблицу.
+export function SaKeyCreateForm({
   serviceAccountId,
-  onClose,
+  secretStore,
+  onSuccess,
+  onCancel,
 }: {
-  open: boolean;
   serviceAccountId: string;
-  onClose: () => void;
+  secretStore: SecretStore;
+  onSuccess: () => void;
+  onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [labels, setLabels] = useState<LabelEntry[]>([]);
   const [ttlKey, setTtlKey] = useState<string>("90d");
   const [customDays, setCustomDays] = useState<number | null>(90);
-  const [secret, setSecret] = useState<IssueSAKeyResponse | null>(null);
-
-  const resetForm = () => {
-    setName("");
-    setDescription("");
-    setLabels([]);
-    setTtlKey("90d");
-    setCustomDays(90);
-  };
 
   const issue = useIamMutation({
     method: "POST",
@@ -160,17 +180,11 @@ function CreateTokenModal({
     invalidateKeys: [["iam", "sa-keys", serviceAccountId]],
     onSuccess: (op: Operation) => {
       const resp = (op.response ?? undefined) as unknown as IssueSAKeyResponse | undefined;
-      // Форма сменяется на secret-view — модалка НЕ закрывается.
-      setSecret(resp ?? {});
+      // Секрет → secret-store: after-create модалка на таблице покажет его один раз.
+      secretStore.set((resp ?? {}) as TokenSecret);
+      onSuccess();
     },
   });
-
-  const handleClose = () => {
-    if (issue.submitting) return; // не закрываем во время выпуска
-    resetForm();
-    setSecret(null);
-    onClose();
-  };
 
   const customInvalid = ttlKey === "custom" && (customDays == null || customDays < 1 || customDays > MAX_TTL_DAYS);
 
@@ -197,7 +211,8 @@ function CreateTokenModal({
       labels: labelsFromEntries(labels),
       ttl_seconds: ttlSeconds,
     };
-    // Ошибка submit/операции не закрывает модалку — useIamMutation покажет toast.
+    // Ошибка submit/операции НЕ навигирует — useIamMutation покажет toast, форма
+    // остаётся открытой (onSuccess зовётся только на done && !error).
     void issue.run(body).catch(() => undefined);
   };
 
@@ -207,71 +222,54 @@ function CreateTokenModal({
   ];
 
   return (
-    <Modal
-      title={secret ? "Токен создан" : "Создать токен"}
-      open={open}
-      onCancel={handleClose}
-      maskClosable={false}
-      width={secret ? 640 : undefined}
-      okText="Создать"
-      cancelText="Отмена"
-      confirmLoading={issue.submitting}
-      onOk={secret ? undefined : submit}
-      footer={
-        secret
-          ? [
-              <Button key="close" type="primary" onClick={handleClose}>
-                Я сохранил ключ
-              </Button>,
-            ]
-          : undefined
-      }
-      okButtonProps={{ disabled: customInvalid }}
-    >
-      {secret ? (
-        <SecretBody resp={secret} />
-      ) : (
-        <Form layout="vertical">
-          <Form.Item label="Имя" help="Не более 63 символов.">
-            <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={63} placeholder="Например: ci" />
-          </Form.Item>
-          <Form.Item label="Описание" help="Например: ключ для CI. Не более 256 символов.">
-            <Input.TextArea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={256}
-              showCount
-              autoSize={{ minRows: 1, maxRows: 3 }}
-              placeholder="Назначение токена"
+    <FormShell specId="service-accounts" mode="create" singular="Токен">
+      <Form layout="vertical">
+        <Form.Item label="Имя" help="Не более 63 символов.">
+          <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={63} placeholder="Например: ci" />
+        </Form.Item>
+        <Form.Item label="Описание" help="Например: ключ для CI. Не более 256 символов.">
+          <Input.TextArea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={256}
+            showCount
+            autoSize={{ minRows: 1, maxRows: 3 }}
+            placeholder="Назначение токена"
+          />
+        </Form.Item>
+        <Form.Item label="Метки">
+          <LabelsEditor value={labels} onChange={setLabels} />
+        </Form.Item>
+        <Form.Item label="Срок действия">
+          <Segmented value={ttlKey} onChange={(v) => setTtlKey(String(v))} options={segmentOptions} />
+        </Form.Item>
+        {ttlKey === "custom" && (
+          <Form.Item
+            label="Срок в днях"
+            validateStatus={customInvalid ? "error" : undefined}
+            help={customInvalid ? `От 1 до ${MAX_TTL_DAYS} дней` : `Максимум ${MAX_TTL_DAYS} дней (~2 года)`}
+          >
+            <InputNumber
+              value={customDays ?? undefined}
+              onChange={(v) => setCustomDays(typeof v === "number" ? v : null)}
+              min={1}
+              max={MAX_TTL_DAYS}
+              style={{ width: 160 }}
             />
           </Form.Item>
-          <Form.Item label="Метки">
-            <LabelsEditor value={labels} onChange={setLabels} />
-          </Form.Item>
-          <Form.Item label="Срок действия">
-            <Segmented value={ttlKey} onChange={(v) => setTtlKey(String(v))} options={segmentOptions} />
-          </Form.Item>
-          {ttlKey === "custom" && (
-            <Form.Item
-              label="Срок в днях"
-              validateStatus={customInvalid ? "error" : undefined}
-              help={customInvalid ? `От 1 до ${MAX_TTL_DAYS} дней` : `Максимум ${MAX_TTL_DAYS} дней (~2 года)`}
-            >
-              <InputNumber
-                value={customDays ?? undefined}
-                onChange={(v) => setCustomDays(typeof v === "number" ? v : null)}
-                min={1}
-                max={MAX_TTL_DAYS}
-                style={{ width: 160 }}
-              />
-            </Form.Item>
-          )}
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12 }}>
-            «Без срока» — токен действует бессрочно. Секрет будет показан один раз после создания.
-          </Typography.Paragraph>
-        </Form>
-      )}
-    </Modal>
+        )}
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12 }}>
+          «Без срока» — токен действует бессрочно. Секрет будет показан один раз после создания.
+        </Typography.Paragraph>
+      </Form>
+      <FormFooter
+        submitLabel="Создать токен"
+        submitting={issue.submitting}
+        submitDisabled={customInvalid}
+        onSubmit={submit}
+        onCancel={onCancel}
+      />
+    </FormShell>
   );
 }
 
@@ -321,10 +319,19 @@ function TokensEmptyState({ onCreate }: { onCreate: () => void }) {
 }
 
 // SaKeysPanel — таблица токенов (стандартная форма ресурса) + kebab-меню отзыва в
-// строке + empty-state с CTA. Модалка создания управляется open-store (кнопка в
-// шапке страницы, см. tokensTab). Список рефетчится после выпуска/отзыва.
-export function SaKeysPanel({ serviceAccountId, openStore }: { serviceAccountId: string; openStore: OpenStore }) {
-  const open = useOpenStore(openStore);
+// строке + empty-state с CTA. Создание — форма в зоне-3 (childCreate): CTA открывает
+// её через onCreate (навигация на `${detailBase}/tokens/create`). After-create
+// секрет показывается модалкой TokenSecretModal (secret-store). Список рефетчится
+// после выпуска/отзыва.
+export function SaKeysPanel({
+  serviceAccountId,
+  secretStore,
+  onCreate,
+}: {
+  serviceAccountId: string;
+  secretStore: SecretStore;
+  onCreate: () => void;
+}) {
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
   const list = useQuery({
@@ -432,7 +439,7 @@ export function SaKeysPanel({ serviceAccountId, openStore }: { serviceAccountId:
   return (
     <div style={{ height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
       {isEmpty ? (
-        <TokensEmptyState onCreate={() => openStore.set(true)} />
+        <TokensEmptyState onCreate={onCreate} />
       ) : (
         <div ref={wrapRef} className="kc-table-fill" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
           <Table<ServiceAccountOAuthClient>
@@ -449,7 +456,7 @@ export function SaKeysPanel({ serviceAccountId, openStore }: { serviceAccountId:
         </div>
       )}
 
-      <CreateTokenModal open={open} serviceAccountId={serviceAccountId} onClose={() => openStore.set(false)} />
+      <TokenSecretModal store={secretStore} />
     </div>
   );
 }
