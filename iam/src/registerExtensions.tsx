@@ -35,6 +35,7 @@ import { GroupMembersPanel } from "@/pages/iam/GroupsPage";
 import { AccessBindingCreateForm, type SubjectType } from "@/components/organisms/iam/AccessBindingCreateForm";
 import { SaKeysPanel } from "@/components/organisms/SaKeysPanel";
 import { UserTokensPanel } from "@/components/organisms/UserTokensPanel";
+import { createOpenStore, type OpenStore } from "@/components/organisms/iam/TokenCreateStore";
 import { InlineRoleCreateForm } from "@/components/organisms/iam/InlineRoleCreateForm";
 import { InlineRoleEditForm } from "@/components/organisms/iam/InlineRoleEditForm";
 
@@ -345,31 +346,59 @@ function privilegesTab(mode: PrivilegesMode, detailBase: string): DetailTab {
   };
 }
 
+// Open-store'ы модалки создания токена стабильны per-subject: extraTabs зовётся в
+// useMemo ResourceShell (может переигрываться при рефетче data), а кнопка шапки и
+// панель обязаны делить ОДИН store. Кэшируем по id субъекта.
+const tokenOpenStores = new Map<string, OpenStore>();
+function tokenOpenStore(id: string): OpenStore {
+  let s = tokenOpenStores.get(id);
+  if (!s) {
+    s = createOpenStore();
+    tokenOpenStores.set(id, s);
+  }
+  return s;
+}
+
+// CreateTokenButton — CTA «Создать токен» в шапке страницы на табе «Токены»:
+// открывает модалку создания через общий open-store (зеркалит GrantPrivilegeButton).
+function CreateTokenButton({ store }: { store: OpenStore }) {
+  return (
+    <Button type="primary" icon={<PlusOutlined />} onClick={() => store.set(true)}>
+      Создать токен
+    </Button>
+  );
+}
+
 // tokensTab — DetailTab «Токены» для detail-страницы сервисного аккаунта: список
 // OAuth-ключей (SAKeyService) + выпуск токена с одноразовым показом секрета + отзыв.
+// CTA «Создать токен» — в шапке страницы (headerAction), тело панели — только таблица.
 function tokensTab(serviceAccountId: string): DetailTab {
+  const store = tokenOpenStore(serviceAccountId);
   return {
     id: "tokens",
     label: "Токены",
     eyebrow: "Список",
     headerTitle: "Токены",
     headerIcon: <KeyOutlined />,
+    headerAction: <CreateTokenButton store={store} />,
     fill: true,
-    render: () => <SaKeysPanel serviceAccountId={serviceAccountId} />,
+    render: () => <SaKeysPanel serviceAccountId={serviceAccountId} openStore={store} />,
   };
 }
 
 // userTokensTab — DetailTab «Токены» для detail-страницы пользователя: список
 // персональных OAuth-токенов (UserTokenService). Зеркалит tokensTab SA.
 function userTokensTab(userId: string): DetailTab {
+  const store = tokenOpenStore(userId);
   return {
     id: "tokens",
     label: "Токены",
     eyebrow: "Список",
     headerTitle: "Токены",
     headerIcon: <KeyOutlined />,
+    headerAction: <CreateTokenButton store={store} />,
     fill: true,
-    render: () => <UserTokensPanel userId={userId} />,
+    render: () => <UserTokensPanel userId={userId} openStore={store} />,
   };
 }
 

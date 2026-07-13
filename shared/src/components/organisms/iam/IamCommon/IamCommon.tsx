@@ -130,7 +130,15 @@ export function useIamMutation(opts: {
             resp = await api.action(path, body ?? {});
             break;
         }
-        const id = resp?.operation?.id ?? null;
+        // Kachō REST-мутации возвращают ПЛОСКИЙ Operation (grpc-gateway отдаёт
+        // message напрямую, без {operation}-обёртки). Извлекаем op из обёртки
+        // ЛИБО из самого resp — иначе на плоском ответе resp.operation.id ===
+        // undefined → операция не поллится, onSuccess не зовётся (терялись
+        // redirect по op.metadata и one-time-секрет SA-key/user-token из
+        // op.response.private_key_pem).
+        const opResp = (resp as unknown as { operation?: Operation } & Partial<Operation>) ?? undefined;
+        const flatOp = (opResp?.operation ?? (opResp as Operation | undefined)) ?? undefined;
+        const id = flatOp?.id ?? null;
         if (id) {
           setOpId(id);
         } else {
@@ -139,7 +147,7 @@ export function useIamMutation(opts: {
           if (successTextRef.current) toast.success(successTextRef.current);
           setSubmitting(false);
         }
-        return resp.operation;
+        return flatOp;
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Ошибка";
         toast.error(msg);
