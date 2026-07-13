@@ -33,9 +33,9 @@ import { iamApi, type AccessBinding, type Group, type SubjectPrivilege, type Use
 import { useTableScrollY } from "@/components/organisms/iam/IamListShell";
 import { GroupMembersPanel } from "@/pages/iam/GroupsPage";
 import { AccessBindingCreateForm, type SubjectType } from "@/components/organisms/iam/AccessBindingCreateForm";
-import { SaKeysPanel } from "@/components/organisms/SaKeysPanel";
-import { UserTokensPanel } from "@/components/organisms/UserTokensPanel";
-import { createOpenStore, type OpenStore } from "@/components/organisms/iam/TokenCreateStore";
+import { SaKeysPanel, SaKeyCreateForm } from "@/components/organisms/SaKeysPanel";
+import { UserTokensPanel, UserTokenCreateForm } from "@/components/organisms/UserTokensPanel";
+import { createSecretStore, type SecretStore } from "@/components/organisms/iam/TokenCreateStore";
 import { InlineRoleCreateForm } from "@/components/organisms/iam/InlineRoleCreateForm";
 import { InlineRoleEditForm } from "@/components/organisms/iam/InlineRoleEditForm";
 
@@ -346,24 +346,28 @@ function privilegesTab(mode: PrivilegesMode, detailBase: string): DetailTab {
   };
 }
 
-// Open-store'ы модалки создания токена стабильны per-subject: extraTabs зовётся в
-// useMemo ResourceShell (может переигрываться при рефетче data), а кнопка шапки и
-// панель обязаны делить ОДИН store. Кэшируем по id субъекта.
-const tokenOpenStores = new Map<string, OpenStore>();
-function tokenOpenStore(id: string): OpenStore {
-  let s = tokenOpenStores.get(id);
+// Secret-store'ы стабильны per-subject: create-ФОРМА (зона-3, childCreate) и
+// панель-ТАБЛИЦА монтируются в разных поддеревьях — форма кладёт свежий секрет в
+// store, панель показывает его after-create модалкой. extraTabs/childCreate зовутся
+// в useMemo ResourceShell (может переигрываться при рефетче data), поэтому форма и
+// таблица обязаны делить ОДИН store — кэшируем по id субъекта.
+const tokenSecretStores = new Map<string, SecretStore>();
+function tokenSecretStore(id: string): SecretStore {
+  let s = tokenSecretStores.get(id);
   if (!s) {
-    s = createOpenStore();
-    tokenOpenStores.set(id, s);
+    s = createSecretStore();
+    tokenSecretStores.set(id, s);
   }
   return s;
 }
 
 // CreateTokenButton — CTA «Создать токен» в шапке страницы на табе «Токены»:
-// открывает модалку создания через общий open-store (зеркалит GrantPrivilegeButton).
-function CreateTokenButton({ store }: { store: OpenStore }) {
+// разворачивает create-ФОРМУ в зоне-3 (`${detailBase}/tokens/create`, childCreate) —
+// зеркалит GrantPrivilegeButton (не модалка).
+function CreateTokenButton({ detailBase }: { detailBase: string }) {
+  const navigate = useNavigate();
   return (
-    <Button type="primary" icon={<PlusOutlined />} onClick={() => store.set(true)}>
+    <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(`${detailBase}/tokens/create`)}>
       Создать токен
     </Button>
   );
@@ -371,34 +375,72 @@ function CreateTokenButton({ store }: { store: OpenStore }) {
 
 // tokensTab — DetailTab «Токены» для detail-страницы сервисного аккаунта: список
 // OAuth-ключей (SAKeyService) + выпуск токена с одноразовым показом секрета + отзыв.
-// CTA «Создать токен» — в шапке страницы (headerAction), тело панели — только таблица.
-function tokensTab(serviceAccountId: string): DetailTab {
-  const store = tokenOpenStore(serviceAccountId);
+// CTA «Создать токен» — в шапке страницы (headerAction) → форма в зоне-3; тело панели
+// — только таблица + after-create секрет-модалка.
+function tokensTab(serviceAccountId: string, detailBase: string, navigate: (to: string) => void): DetailTab {
+  const store = tokenSecretStore(serviceAccountId);
   return {
     id: "tokens",
     label: "Токены",
     eyebrow: "Список",
     headerTitle: "Токены",
     headerIcon: <KeyOutlined />,
-    headerAction: <CreateTokenButton store={store} />,
+    headerAction: <CreateTokenButton detailBase={detailBase} />,
     fill: true,
-    render: () => <SaKeysPanel serviceAccountId={serviceAccountId} openStore={store} />,
+    render: () => (
+      <SaKeysPanel
+        serviceAccountId={serviceAccountId}
+        secretStore={store}
+        onCreate={() => navigate(`${detailBase}/tokens/create`)}
+      />
+    ),
   };
 }
 
 // userTokensTab — DetailTab «Токены» для detail-страницы пользователя: список
 // персональных OAuth-токенов (UserTokenService). Зеркалит tokensTab SA.
-function userTokensTab(userId: string): DetailTab {
-  const store = tokenOpenStore(userId);
+function userTokensTab(userId: string, detailBase: string, navigate: (to: string) => void): DetailTab {
+  const store = tokenSecretStore(userId);
   return {
     id: "tokens",
     label: "Токены",
     eyebrow: "Список",
     headerTitle: "Токены",
     headerIcon: <KeyOutlined />,
-    headerAction: <CreateTokenButton store={store} />,
+    headerAction: <CreateTokenButton detailBase={detailBase} />,
     fill: true,
-    render: () => <UserTokensPanel userId={userId} openStore={store} />,
+    render: () => (
+      <UserTokensPanel userId={userId} secretStore={store} onCreate={() => navigate(`${detailBase}/tokens/create`)} />
+    ),
+  };
+}
+
+// tokensChildCreate — билдер childCreate для роута «tokens» (нет в REGISTRY):
+// разворачивает create-ФОРМУ токена в зоне-3. Форма кладёт свежий секрет в тот же
+// per-subject secret-store, что и панель, затем навигирует обратно на таблицу
+// (`${detailBase}/tokens`) — after-create модалка панели покажет секрет один раз.
+// Ошибка мутации НЕ навигирует (форма остаётся открытой).
+function tokensChildCreate(kind: "service_account" | "user"): (childRoute: string, ctx: DetailExtCtx) => ReactNode {
+  return (childRoute, { data, detailBase, navigate }) => {
+    if (childRoute !== "tokens") return null;
+    const id = getByPath<string>(data, "id") ?? "";
+    const back = `${detailBase}/tokens`;
+    const store = tokenSecretStore(id);
+    return kind === "service_account" ? (
+      <SaKeyCreateForm
+        serviceAccountId={id}
+        secretStore={store}
+        onSuccess={() => navigate(back)}
+        onCancel={() => navigate(back)}
+      />
+    ) : (
+      <UserTokenCreateForm
+        userId={id}
+        secretStore={store}
+        onSuccess={() => navigate(back)}
+        onCancel={() => navigate(back)}
+      />
+    );
   };
 }
 
@@ -432,6 +474,20 @@ function privilegesChildCreate(
         onCancel={() => navigate(back)}
       />
     );
+  };
+}
+
+// chainChildCreate — DetailExtension.childCreate — единая функция на ресурс, но у
+// субъектов (User/ServiceAccount) ДВА child-create-роута («privileges» + «tokens»).
+// Диспетчеризуем по childRoute: первый билдер, вернувший не-null, выигрывает.
+type ChildCreate = (childRoute: string, ctx: DetailExtCtx) => ReactNode;
+function chainChildCreate(...builders: ChildCreate[]): ChildCreate {
+  return (childRoute, ctx) => {
+    for (const b of builders) {
+      const node = b(childRoute, ctx);
+      if (node != null) return node;
+    }
+    return null;
   };
 }
 
@@ -583,15 +639,18 @@ registerDetailExtension("service-accounts", {
   overviewExtra: ({ data }) => [
     { label: "Аккаунт", value: <IamRefLink specId="accounts" refId={getByPath<string>(data, "account_id")} /> },
   ],
-  extraTabs: ({ data, detailBase }) => {
+  extraTabs: ({ data, detailBase, navigate }) => {
     const id = getByPath<string>(data, "id") ?? "";
     if (!id) return [];
     return [
       privilegesTab({ kind: "subject", subjectType: "service_account", subjectId: id }, detailBase),
-      tokensTab(id),
+      tokensTab(id, detailBase, navigate),
     ];
   },
-  childCreate: privilegesChildCreate({ kind: "subject", subjectType: "service_account" }),
+  childCreate: chainChildCreate(
+    privilegesChildCreate({ kind: "subject", subjectType: "service_account" }),
+    tokensChildCreate("service_account"),
+  ),
 });
 
 // User — субъект типа user. Обзор: статус приглашения, external id, аккаунт,
@@ -613,12 +672,18 @@ registerDetailExtension("users", {
       value: <IamRefLink specId="users" refId={getByPath<string>(data, "invited_by")} nameField="email" />,
     },
   ],
-  extraTabs: ({ data, detailBase }) => {
+  extraTabs: ({ data, detailBase, navigate }) => {
     const id = getByPath<string>(data, "id") ?? "";
     if (!id) return [];
-    return [privilegesTab({ kind: "subject", subjectType: "user", subjectId: id }, detailBase), userTokensTab(id)];
+    return [
+      privilegesTab({ kind: "subject", subjectType: "user", subjectId: id }, detailBase),
+      userTokensTab(id, detailBase, navigate),
+    ];
   },
-  childCreate: privilegesChildCreate({ kind: "subject", subjectType: "user" }),
+  childCreate: chainChildCreate(
+    privilegesChildCreate({ kind: "subject", subjectType: "user" }),
+    tokensChildCreate("user"),
+  ),
 });
 
 // Group — субъект типа group. Обзор: «Аккаунт»; «Участники» — секция под Обзором

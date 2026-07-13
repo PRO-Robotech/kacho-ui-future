@@ -202,8 +202,9 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
   const breadcrumb = useMemo(() => {
     const childSpec = mode === "child-create" && childRoute ? specByRoute(childRoute) : undefined;
     // Локализованная метка для кастомных child-create-роутов без REGISTRY-spec
-    // (privileges → «Привилегии»), чтобы breadcrumb не показывал raw route.
-    const CHILD_LABELS: Record<string, string> = { privileges: "Привилегии" };
+    // (privileges → «Привилегии», tokens → «Токены»), чтобы breadcrumb не показывал
+    // raw route.
+    const CHILD_LABELS: Record<string, string> = { privileges: "Привилегии", tokens: "Токены" };
     const childLabel = childSpec?.plural ?? (childRoute ? CHILD_LABELS[childRoute] ?? childRoute : "");
     const sec = (txt: string) => <Typography.Text type="secondary">{txt}</Typography.Text>;
     const sep = <Typography.Text type="secondary">/</Typography.Text>;
@@ -467,6 +468,7 @@ export function ResourceShell({ spec, mode }: { spec: ResourceSpec; mode?: Resou
   // «Привязка доступа» + иконка access-bindings).
   const CUSTOM_CHILD_HEADER: Record<string, { title: string; specId: string }> = {
     privileges: { title: "Привязка доступа", specId: "access-bindings" },
+    tokens: { title: "Токен", specId: "service-accounts" },
   };
   const customChild =
     mode === "child-create" && childRoute && !childForHeader ? CUSTOM_CHILD_HEADER[childRoute] : undefined;
